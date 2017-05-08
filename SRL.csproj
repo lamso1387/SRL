@@ -1,0 +1,137 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{2D35AAE4-59E4-4678-87F2-37E0A8369940}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SRL</RootNamespace>
+    <AssemblyName>SRL</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="EntityFramework, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>my_reference\EntityFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="ExcelLibrary, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>my_reference\ExcelLibrary.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>my_reference\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data.Entity">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Net.Http, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="System.Net.Http.Formatting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
+    <Reference Include="System.Web">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Windows.Forms">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Windows.Forms.DataVisualization">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Help.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PublicForm.aspx.cs" />
+    <Compile Include="Publics.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="content\bootstrap-treeview.min.css" />
+    <Content Include="content\bootstrap.min.css" />
+    <Content Include="content\fileinput.min.css" />
+    <Content Include="content\file\select2-spinner.gif" />
+    <Content Include="content\file\select2.png" />
+    <Content Include="content\file\select2x2.png" />
+    <Content Include="content\font-awesome.min.css" />
+    <Content Include="content\font.css" />
+    <Content Include="content\font\glyphicons-halflings-regular.svg" />
+    <Content Include="content\jquery-ui.min.css" />
+    <Content Include="content\jquery.dataTables.min.css" />
+    <Content Include="content\select2-bootstrap.min.css" />
+    <Content Include="content\select2.min.css" />
+    <Content Include="content\SRL.css" />
+    <Content Include="html\leaflet.html" />
+    <Content Include="my_reference\EntityFramework.dll" />
+    <Content Include="my_reference\ExcelLibrary.dll" />
+    <Content Include="my_reference\Newtonsoft.Json.dll" />
+    <Content Include="my_reference\System.Net.Http.dll" />
+    <Content Include="my_reference\System.Net.Http.Formatting.dll" />
+    <Content Include="query\query_arrange_error_name_anbar.sql" />
+    <Content Include="query\query_check_duplicate_in_new_data.sql" />
+    <Content Include="query\query_convert_float_columns.sql" />
+    <Content Include="query\query_delete_duplicate_records.sql" />
+    <Content Include="query\query_get_city_from_address.sql" />
+    <Content Include="query\query_get_isic.sql" />
+    <Content Include="query\query_insert_to_main_table.sql" />
+    <Content Include="query\query_oranger_dampezeshki.sql" />
+    <Content Include="query\query_to_get_national_id_from_namefamily.sql" />
+    <Content Include="query\query_update_postal_code.sql" />
+    <Content Include="script\bootstrap-treeview.min.js" />
+    <Content Include="script\bootstrap.js" />
+    <Content Include="script\bootstrap.min.js" />
+    <Content Include="script\fileinput.min.js" />
+    <Content Include="script\jquery-1.12.0.intellisense.js" />
+    <Content Include="script\jquery-2.2.1-vsdoc.js" />
+    <Content Include="script\jquery-2.2.1.min.js" />
+    <Content Include="script\jquery-ui-1.8.20.min.js" />
+    <Content Include="script\jquery.dataTables.min.js" />
+    <Content Include="script\jquery.min.js" />
+    <Content Include="script\select2.min.js" />
+    <Content Include="script\SRL.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="content\font\glyphicons-halflings-regular.eot" />
+    <None Include="content\font\glyphicons-halflings-regular.ttf" />
+    <None Include="content\font\glyphicons-halflings-regular.woff" />
+    <None Include="content\font\glyphicons-halflings-regular.woff2" />
+    <None Include="content\font\SYekan.ttf" />
+    <None Include="doc\google map.rtf" />
+    <None Include="doc\select2.rtf" />
+    <None Include="doc\sqlite.docx" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

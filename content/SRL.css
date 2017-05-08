@@ -1,0 +1,129 @@
+﻿.project-menu1 { /*give it to div.navbar bootstrap class */
+    margin: auto;
+    background-color: #32abbc;
+    border: 2px solid #2b93a2;
+}
+
+    .project-menu1 a {
+        border-radius: 0px;
+        text-decoration: none;
+        text-align: center;
+    }
+
+    .project-menu1 .navbar-nav li a {
+        color: #01454e;
+    }
+
+    .project-menu1 .navbar-nav a:hover,
+    .project-menu1 .navbar-nav a:focus {
+        background-color: #01454e !important;
+        color: #32abbc !important;
+    }
+
+.project-menu2 { /*give it to div.navbar bootstrap class */
+    background-color: #ccf5ff;
+    border-color: #ccf5ff;
+}
+
+    .project-menu2 a {
+        border-radius: 0px;
+        text-decoration: none;
+        text-align: center;
+    }
+
+    .project-menu2 .navbar-nav li a {
+        color: #0f3d3d;
+    }
+
+    .project-menu2 .navbar-nav a:hover,
+    .project-menu2 .navbar-nav a:focus {
+        background-color: #003d4d !important;
+        color: white;
+    }
+
+
+.top-right-radius {
+    border-top-right-radius: 7% !important;
+}
+
+.top-left-radius {
+    border-top-left-radius: 7% !important;
+}
+
+.bottom-right-radius {
+    border-bottom-right-radius: 7% !important;
+}
+
+.bottom-left-radius {
+    border-bottom-left-radius: 7% !important;
+}
+
+
+.rtl {
+    direction: rtl;
+}
+
+.ltr {
+    direction: ltr;
+}
+
+
+
+.loading {
+    display: none;
+    -animation: loading .7s infinite linear;
+    -webkit-animation: loading .7s infinite linear;
+}
+
+@keyframes loading {
+    from {
+        transform: scale(1) rotate(0deg);
+    }
+
+    to {
+        transform: scale(1) rotate(360deg);
+    }
+}
+
+@-webkit-keyframes loading {
+    from {
+        -webkit-transform: rotate(0deg);
+    }
+
+    to {
+        -webkit-transform: rotate(360deg);
+    }
+}
+
+.equal, .equal > div[class*='col-'] { /*add this class to a <div> where after that equal divs with col-*-* class must come*/
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
+    display: flex;
+    flex: 1 1 auto;
+}
+
+.inputResponse {
+    font-size: small;
+    color: red;
+}
+
+.board {
+    background-color: #00a3cc;
+    position: relative;
+    width: 50%;
+    margin: auto;
+    top: 50px;
+    text-align: center;
+    direction: rtl;
+}
+
+
+.inline-block {
+    display: inline-block;
+}
+
+.visible {
+	visibility: visible;
+}
