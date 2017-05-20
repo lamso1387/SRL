@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.Data;
 using System.Data.Entity;
+using Microsoft.Reporting.WinForms;
 
 namespace SRL
 {
@@ -399,5 +400,32 @@ namespace SRL
             foreach_looper++;
         }
 
+    }
+    public class WinReport <SubReportType>
+    {
+        public string DatasetName { get;set;}
+        List<SubReportType> SubreportList;
+        public WinReport (string dataset_name) 
+        {
+            DatasetName = dataset_name;
+        }
+
+        public void LoadReport<ReportType>(Microsoft.Reporting.WinForms.ReportViewer reportViewer1
+            , BindingSource report_binding_source, List<ReportType> report_list, List<SubReportType> sub_report_list)
+        {
+            if (sub_report_list != null) 
+                reportViewer1.LocalReport.SubreportProcessing +=
+               new SubreportProcessingEventHandler(MySubreportEventHandler);
+            SubreportList = sub_report_list;
+
+            report_binding_source.DataSource = report_list;
+            reportViewer1.RefreshReport();
+        }
+
+        private void MySubreportEventHandler(object sender
+            , SubreportProcessingEventArgs e)
+        {
+            e.DataSources.Add(new ReportDataSource(DatasetName, SubreportList));
+        }
     }
 }
