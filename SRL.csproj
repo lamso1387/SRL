@@ -51,6 +51,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System.Data.Entity" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Net.Http, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>my_reference\System.Net.Http.dll</HintPath>
@@ -72,7 +73,9 @@
     <Compile Include="Help.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublicForm.aspx.cs" />
-    <Compile Include="Publics.cs" />
+    <Compile Include="Public.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="content\bootstrap-treeview.min.css" />
@@ -127,6 +130,11 @@
     <None Include="doc\google map.rtf" />
     <None Include="doc\select2.rtf" />
     <None Include="doc\sqlite.docx" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Public.resx">
+      <DependentUpon>Public.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

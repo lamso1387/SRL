@@ -5,11 +5,57 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Net.Http;
 using System.Windows.Forms;
+using System.Drawing;
 using System.Data;
 using System.Data.Entity;
 
 namespace SRL
 {
+    public class WinTools
+    {
+        public class Media: Form
+        {
+            private Image CaptureScreen(Form form)
+            {
+                Bitmap memoryImage;
+                Graphics myGraphics = form.CreateGraphics();
+
+                Size s = this.Size;
+                memoryImage = new Bitmap(s.Width, s.Height, myGraphics);
+                return memoryImage;
+            }
+        }
+        public class Modal : Form
+        {
+            public Modal(UserControl user_control, string title)
+            {
+                this.Text = title;
+
+                this.Width = 1000;
+                this.Height = 500;
+                this.StartPosition = FormStartPosition.CenterScreen;
+
+                Panel pnlModal = new Panel();
+
+                pnlModal.Width = this.Width - 100;
+                pnlModal.Height = this.Height - 100;
+
+                AddChildToParentControlsAliagn(this, pnlModal);
+
+                AddChildToParentControlsAliagn(pnlModal, user_control);
+            }
+
+            private void AddChildToParentControlsAliagn(Control parent, Control child)
+            {
+                parent.Controls.Clear();
+                parent.Controls.Add(child);
+                child.Location = new Point(
+        parent.ClientSize.Width / 2 - child.Size.Width / 2,
+        parent.ClientSize.Height / 2 - child.Size.Height / 2);
+                child.Anchor = AnchorStyles.None;
+            }
+        }
+    }
     public class Security
     {
         public enum UserRegistrationStatus
@@ -311,7 +357,6 @@ namespace SRL
 
         
     }
-
     public class SrlButton : IDisposable
     {
         private Button btn_loader { get; set; }
@@ -355,5 +400,4 @@ namespace SRL
         }
 
     }
-
 }
