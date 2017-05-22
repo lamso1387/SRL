@@ -9,6 +9,7 @@ using System.Drawing;
 using System.Data;
 using System.Data.Entity;
 using Microsoft.Reporting.WinForms;
+using System.Configuration;
 
 namespace SRL
 {
@@ -263,6 +264,20 @@ namespace SRL
             db.Database.ExecuteSqlCommand(query);
             db.SaveChanges();
 
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="conStr">metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SqlClient;provider connection string="data source=.\SOHEILLAMSO;initial catalog=Semnan;integrated security=True;MultipleActiveResultSets=True;App=EntityFramework"</param>
+        /// <param name="conStrName">e.g. SemnanEntity</param>
+        public void UpdateConnectionString(string conStr, string conStrName)
+        {
+            var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            var connectionStringsSection = (ConnectionStringsSection)config.GetSection("connectionStrings");
+            connectionStringsSection.ConnectionStrings[conStrName].ConnectionString = conStr;
+            config.Save();
+            ConfigurationManager.RefreshSection("connectionStrings");
         }
 
     }
