@@ -10,6 +10,9 @@ using System.Data;
 using System.Data.Entity;
 using Microsoft.Reporting.WinForms;
 using System.Configuration;
+using System.IO;
+using System.Data.SqlClient;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace SRL
 {
@@ -177,6 +180,7 @@ namespace SRL
     }
     public class Convertor
     {
+
         public void MakeDataTableFromDGV(DataGridView dgview, DataTable table, int devider, int index)
         {
 
@@ -230,7 +234,17 @@ namespace SRL
              string activationLink = host + registerActivationUri + "?username=" + username + "&activationKey=" + registerHashValue;
              return activationLink;
          }
+        public static string Mobile(string mobile)
+        {
+            mobile = mobile.Length == 10 ? "0" + mobile : mobile;
+            return mobile;
 
+        }
+        public static string NationalId(string national_id)
+        {
+            national_id = national_id.Length == 8 ? "00" + national_id : (national_id.Length == 9 ? "0" + national_id : national_id);
+            return national_id;
+        }
     }
     public class Json
     {
@@ -244,9 +258,31 @@ namespace SRL
             return input.StartsWith("{") && input.EndsWith("}")
                    || input.StartsWith("[") && input.EndsWith("]");
         }
+
     }
     public class WinChart
     {
+        public void MakeChart(Chart chart, string xValue, string yValue, IQueryable<object> query)
+        {
+            string chartName = "name";
+            chart.ChartAreas.Clear();
+            chart.ChartAreas.Add(chartName);
+            chart.Series.Clear();
+            chart.Series.Add(chartName);
+            chart.Series[chartName].XValueMember = xValue;
+            chart.Series[chartName].YValueMembers = yValue;
+
+            chart.Series[chartName].IsValueShownAsLabel = true;
+
+            chart.ChartAreas[0].AxisX.MajorGrid.Enabled = false;
+            chart.ChartAreas[0].AxisY.MajorGrid.Enabled = false;
+
+            chart.ChartAreas[0].AxisX.Interval = 1;
+
+            chart.DataSource = query.ToList();
+            chart.DataBind();
+        }
+
         public void ShowDataOnChart(System.Windows.Forms.DataVisualization.Charting.Chart chart, string xValue, string yValue, IQueryable<object> query)
         {
             string chartName = "name";
@@ -268,27 +304,174 @@ namespace SRL
             chart.DataBind();
         }
     }
-    public class Database
+    public class Database: SRL.ControlLoad
     {
+        public Database():base()
+        {
+
+        }
+        public string ShowTableInDatagridview(string sql, DataGridView dgv, string connection_string)
+        {
+            string error = string.Empty;
+            try
+            {
+                SqlConnection con = new SqlConnection(connection_string);
+                SqlCommand com = new SqlCommand(sql, con);
+                SqlDataAdapter data = new SqlDataAdapter(com);
+                DataSet ds = new DataSet();
+                data.Fill(ds);
+                DataTable dt = ds.Tables[0];
+                dgv.DataSource = dt;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            return error;
+        }
+
+        public List<string> AddTableToDB(DbContext db, string table_name, DataGridView dataGridView1)
+        {
+            string tb_name = table_name;
+            string sql = "CREATE TABLE " + tb_name + " ( ID bigint IDENTITY(1,1) PRIMARY KEY)";
+            db.Database.ExecuteSqlCommand(sql);
+
+            List<string> columns = new List<string>();
+
+            foreach (DataGridViewColumn col in dataGridView1.Columns)
+            {
+                columns.Add(col.HeaderText);
+            }
+
+            List<string> columns_add = new List<string>();
+
+            foreach (var cola in columns)
+            {
+                columns_add.Add(cola + " nvarchar(255) ");
+            }
+
+            string columns_add_sql = string.Join(" ,", columns_add);
+
+            sql = "alter table " + tb_name + " add  " + columns_add_sql;
+
+            db.Database.ExecuteSqlCommand(sql);
+
+            db.SaveChanges();
+            return columns;
+        }
+
+        public string InserRowToTable(DbContext db, string table_name, DataGridView dataGridView1, Dictionary<string, string> other_value)
+        {
+            string error = string.Empty;
+
+            List<string> columns = new List<string>();
+
+            foreach (DataGridViewColumn col in dataGridView1.Columns)
+            {
+                columns.Add(col.HeaderText);
+            }
+
+            if (other_value != null) columns.AddRange(other_value.Keys.ToList());
+
+            string columns_sql = string.Join(" ,", columns);
+
+            string sql = "";
+            int i = 0;
+            foreach (DataGridViewRow row in dataGridView1.Rows)
+            {
+                List<string> cells = new List<string>();
+
+                foreach (DataGridViewCell cell in row.Cells)
+                {
+                    cells.Add(cell.Value == null ? "N''" : "N'" + cell.Value.ToString() + "'");
+                }
+
+                string other_sql = "";
+
+                if (other_value != null) other_sql = " , N'" + string.Join("' , N'", other_value.Values.ToList()) + "'";
+
+                string cells_sql = string.Join(" ,", cells) + other_sql;
+
+                sql = "insert into " + table_name + " (" + columns_sql + ") values (" + cells_sql + ")";
+                try
+                {
+                    i += db.Database.ExecuteSqlCommand(sql);
+                }
+                catch (Exception ex)
+                {
+                    error += ex.Message + " ";
+                }
+            }
+
+            db.SaveChanges();
+
+            return i.ToString() + ( string.IsNullOrWhiteSpace(error) ? "" : " inserted correctly. other row errors: " + error);
+
+        }
+
+        public string SearchTable(DbContext db, string table_name, Dictionary<string, string> filter, DataGridView dgv, Label lblCount, string connection_string)
+        {
+            string error = string.Empty;
+
+            List<string> where = new List<string>();
+            where.Add("1=1");
+            foreach (var item in filter)
+            {
+                where.Add(item.Key + "= '" + item.Value + "' ");
+            }
+            string where_sql = " where " + string.Join(" and ", where);
+            string sql = "select * from " + table_name + where_sql;
+
+            try
+            {
+                SqlConnection con = new SqlConnection(connection_string);
+                SqlCommand com = new SqlCommand(sql, con);
+                SqlDataAdapter data = new SqlDataAdapter(com);
+                DataSet ds = new DataSet();
+                data.Fill(ds);
+                DataTable dt = ds.Tables[0];
+                dgv.DataSource = dt;
+                lblCount.Text = dgv.Rows.Count.ToString();
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+
+            return error;
+
+        }
+
         public void TruncateTable( DbContext db, string table_name)
         {
             db.Database.ExecuteSqlCommand("truncate table " + table_name);
             db.SaveChanges();
         }
-        public void ExecuteQuery(DbContext db, string query)
+        public string ExecuteQuery(DbContext db, string query)
         {
-            db.Database.ExecuteSqlCommand(query);
-            db.SaveChanges();
+            string error = string.Empty;
 
+            try
+            {
+                db.Database.ExecuteSqlCommand(query);
+                db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            return error;
         }
-
+ 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="conStr">metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SqlClient;provider connection string="data source=.\SOHEILLAMSO;initial catalog=Semnan;integrated security=True;MultipleActiveResultSets=True;App=EntityFramework"</param>
         /// <param name="conStrName">e.g. SemnanEntity</param>
-        public void UpdateConnectionString(string conStr, string conStrName)
+        public void UpdateConnectionString(string conStr, string conStrName, Control control_to_load)
         {
+           ControlLoader(control_to_load, "connecting database...");
+
             var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             var connectionStringsSection = (ConnectionStringsSection)config.GetSection("connectionStrings");
             connectionStringsSection.ConnectionStrings[conStrName].ConnectionString = conStr;
@@ -297,57 +480,107 @@ namespace SRL
         }
 
     }
-    public class Excel
+    public class ExcelManagement: SRL.ControlLoad
     {
+        public ExcelManagement()
+        {
+        }
+        public ExcelManagement(Button btn):base(btn)
+        {
+        }
+        public void LoadDGVFromExcelNoHead(OpenFileDialog ofDialog, Label lblFileName, DataGridView dgv)
+        {
+            ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
+            ofDialog.ShowDialog();
+            lblFileName.Text = ofDialog.FileName;
+
+            ExcelLibrary.Office.Excel.Workbook excel_file = ExcelLibrary.Office.Excel.Workbook.Open(ofDialog.FileName);
+            var worksheet = excel_file.Worksheets[0]; // assuming only 1 worksheet
+            var cells = worksheet.Cells;
+
+            if (true)
+            {
+                int file_last_column_index = cells.LastColIndex;
+                // add columns
+                foreach (var header in cells.GetRow(cells.FirstRowIndex))
+                {
+                    dgv.Columns.Add(header.Value.StringValue, header.Value.StringValue);
+                }
+
+                // add rows
+                for (int rowIndex = cells.FirstRowIndex + 1; rowIndex <= cells.LastRowIndex; rowIndex++)
+                {
+                    ExcelLibrary.Office.Excel.Row file_row = cells.GetRow(rowIndex);
+                    List<object> file_row_cells = new List<object>();
+                    for (int i = 0; i < file_last_column_index + 1; i++)
+                    {
+                        file_row_cells.Add(file_row.GetCell(i).Value);
+                    }
+                    dgv.Rows.Add(file_row_cells.ToArray());
+
+                    //dgv.Rows.Add(file_row.GetCell(0).Value, file_row.GetCell(1).Value, file_row.GetCell(2).Value, file_row.GetCell(3).Value, file_row.GetCell(4).Value,
+                    //    file_row.GetCell(5).Value, file_row.GetCell(6).Value, file_row.GetCell(7).Value, file_row.GetCell(8).Value, file_row.GetCell(9).Value, file_row.GetCell(10).Value,
+                    //    file_row.GetCell(11).Value, file_row.GetCell(12).Value, file_row.GetCell(13).Value, file_row.GetCell(14).Value, file_row.GetCell(15).Value, file_row.GetCell(16).Value,
+                    //    file_row.GetCell(17).Value, file_row.GetCell(18).Value, file_row.GetCell(19).Value, file_row.GetCell(20).Value, file_row.GetCell(21).Value, file_row.GetCell(22).Value, file_row.GetCell(23).Value,
+                    //    file_row.GetCell(24).Value, file_row.GetCell(25).Value, file_row.GetCell(26).Value, file_row.GetCell(27).Value, file_row.GetCell(28).Value, file_row.GetCell(29).Value, file_row.GetCell(30).Value
+                    //    );
+                }
+
+            }
+        }
+
         public void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv)
             {
-                ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
-                ofDialog.ShowDialog();
-                lblFileName.Text = ofDialog.FileName;
+            ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
+            ofDialog.ShowDialog();
+            lblFileName.Text = ofDialog.FileName;
 
-                ExcelLibrary.Office.Excel.Workbook excel_file = ExcelLibrary.Office.Excel.Workbook.Open(ofDialog.FileName);
-                var worksheet = excel_file.Worksheets[0]; // assuming only 1 worksheet
-                var cells = worksheet.Cells;
-
-                if (CheckExcelHeaders(cells, main_headers))
+            ExcelLibrary.Office.Excel.Workbook excel_file = ExcelLibrary.Office.Excel.Workbook.Open(ofDialog.FileName);
+            var worksheet = excel_file.Worksheets[0]; // assuming only 1 worksheet
+            var cells = worksheet.Cells;
+            string check_header = CheckExcelHeaders(cells, main_headers);
+            if (check_header == "true")
+            {
+                int file_last_column_index = cells.LastColIndex;
+                // add columns
+                foreach (var header in cells.GetRow(cells.FirstRowIndex))
                 {
-
-                    // add columns
-                    foreach (var header in cells.GetRow(cells.FirstRowIndex))
-                    {
-                        dgv.Columns.Add(header.Value.StringValue, header.Value.StringValue);
-                    }
-
-                    // add rows
-                    for (int rowIndex = cells.FirstRowIndex + 1; rowIndex <= cells.LastRowIndex; rowIndex++)
-                    {
-                        ExcelLibrary.Office.Excel.Row file_row = cells.GetRow(rowIndex);
-                        List<object> file_row_list = new List<object>();
-                        foreach (var file_row_cell in file_row)
-                        {
-                            file_row_list.Add(file_row_cell.Value.Value);
-                        }
-                        dgv.Rows.Add(file_row_list.ToArray());
-
-                        //dgv.Rows.Add(file_row.GetCell(0).Value, file_row.GetCell(1).Value, file_row.GetCell(2).Value, file_row.GetCell(3).Value, file_row.GetCell(4).Value,
-                        //    file_row.GetCell(5).Value, file_row.GetCell(6).Value, file_row.GetCell(7).Value, file_row.GetCell(8).Value, file_row.GetCell(9).Value, file_row.GetCell(10).Value,
-                        //    file_row.GetCell(11).Value, file_row.GetCell(12).Value, file_row.GetCell(13).Value, file_row.GetCell(14).Value, file_row.GetCell(15).Value, file_row.GetCell(16).Value,
-                        //    file_row.GetCell(17).Value, file_row.GetCell(18).Value, file_row.GetCell(19).Value, file_row.GetCell(20).Value, file_row.GetCell(21).Value, file_row.GetCell(22).Value, file_row.GetCell(23).Value,
-                        //    file_row.GetCell(24).Value, file_row.GetCell(25).Value, file_row.GetCell(26).Value, file_row.GetCell(27).Value, file_row.GetCell(28).Value, file_row.GetCell(29).Value, file_row.GetCell(30).Value
-                        //    );
-                    }
-
+                    dgv.Columns.Add(header.Value.StringValue, header.Value.StringValue);
                 }
+
+                // add rows
+                for (int rowIndex = cells.FirstRowIndex + 1; rowIndex <= cells.LastRowIndex; rowIndex++)
+                {
+                    ExcelLibrary.Office.Excel.Row file_row = cells.GetRow(rowIndex);
+                    List<object> file_row_cells = new List<object>();
+                    for (int i = 0; i < file_last_column_index + 1; i++)
+                    {
+                        file_row_cells.Add(file_row.GetCell(i).Value);
+                    }
+                    dgv.Rows.Add(file_row_cells.ToArray());
+
+                    //dgv.Rows.Add(file_row.GetCell(0).Value, file_row.GetCell(1).Value, file_row.GetCell(2).Value, file_row.GetCell(3).Value, file_row.GetCell(4).Value,
+                    //    file_row.GetCell(5).Value, file_row.GetCell(6).Value, file_row.GetCell(7).Value, file_row.GetCell(8).Value, file_row.GetCell(9).Value, file_row.GetCell(10).Value,
+                    //    file_row.GetCell(11).Value, file_row.GetCell(12).Value, file_row.GetCell(13).Value, file_row.GetCell(14).Value, file_row.GetCell(15).Value, file_row.GetCell(16).Value,
+                    //    file_row.GetCell(17).Value, file_row.GetCell(18).Value, file_row.GetCell(19).Value, file_row.GetCell(20).Value, file_row.GetCell(21).Value, file_row.GetCell(22).Value, file_row.GetCell(23).Value,
+                    //    file_row.GetCell(24).Value, file_row.GetCell(25).Value, file_row.GetCell(26).Value, file_row.GetCell(27).Value, file_row.GetCell(28).Value, file_row.GetCell(29).Value, file_row.GetCell(30).Value
+                    //    );
+                }
+
             }
-        public bool CheckExcelHeaders(ExcelLibrary.Office.Excel.CellCollection cells, string[] main_headers)
+
+            else MessageBox.Show(check_header);
+        }
+
+        public string CheckExcelHeaders(ExcelLibrary.Office.Excel.CellCollection cells, string[] main_headers)
         {
+
             foreach (var file_header in cells.GetRow(cells.FirstRowIndex))
             {
                 Application.DoEvents();
                 if (!main_headers.Contains(file_header.Value.StringValue))
                 {
-                    MessageBox.Show(file_header.Value.StringValue + " is not valid.");
-                    return false;
+                    return file_header.Value.StringValue + " is not valid.";
                 }
                 else continue;
             }
@@ -359,16 +592,40 @@ namespace SRL
                 Application.DoEvents();
                 if (!file_headers.Contains(main_header))
                 {
-                    MessageBox.Show("file does not have column: " + main_header);
-                    return false;
+                    return "file does not have column: " + main_header;
                 }
                 else continue;
             }
 
-            return true;
+            return "true";
 
         }
-        public void ExportToExcell(DataGridView dgview, int devider,string path)
+        public void ExportToExcell(DataGridView dgview, int devider, string fileFullName)
+        {
+          
+
+            DataSet ds = new DataSet();
+            int table_count = dgview.Rows.Count / devider;
+            int index = 0;
+
+            for (int i = 0; i < table_count; i++)
+            {
+                ButtonLoader(table_count);
+                DataTable table = new DataTable(i.ToString());
+                ds.Tables.Add(table);
+                new Convertor().MakeDataTableFromDGV(dgview, table, devider, index);
+                index += devider;
+            }
+            DataTable _table = new DataTable("else");
+            ds.Tables.Add(_table);
+            new Convertor().MakeDataTableFromDGV(dgview, _table, devider, index);
+
+            //ExcelLibrary.DataSetHelper.CreateWorkbook(@Publics.desktop_root + "exported.xls", ds);
+            ExcelLibrary.DataSetHelper.CreateWorkbook(@fileFullName, ds);
+        }
+
+
+        public void ExportToExcell2(DataGridView dgview, int devider,string path)
         {//"C:\Users\project\Desktop\exported.xls"
             DataSet ds = new DataSet();
             int table_count = dgview.Rows.Count / devider;
@@ -389,26 +646,30 @@ namespace SRL
 
         
     }
-    public class SrlButton : IDisposable
+    public class ControlLoad : IDisposable
     {
         private Button btn_loader { get; set; }
+        private Control control_to_load { get; set; }
 
         int foreach_looper = 0;
 
-        public SrlButton()
+        public ControlLoad()
         {
         }
 
-        public SrlButton(Button btnLoader)
+        public ControlLoad(Button btnLoader)
         {
             btn_loader = btnLoader;
             btn_loader.Tag = btn_loader.Text;
         }
 
-        public void Dispose()
-        {
-            if (btn_loader != null) btn_loader.Text = btn_loader.Tag.ToString();
-        }
+        //public ControlLoad(Control controlToLoad)
+        //{
+        //    control_to_load = controlToLoad;
+        //    control_to_load.Tag = control_to_load.Text;
+        //}
+
+        
 
         public void ButtonLoader(int all)
         {
@@ -429,6 +690,20 @@ namespace SRL
             Application.DoEvents();
 
             foreach_looper++;
+        }
+        public void ControlLoader(Control controlToLoad, string loading_text)
+        {
+            Application.DoEvents();
+            control_to_load = controlToLoad;
+            control_to_load.Tag = control_to_load.Text;
+            control_to_load.Text = loading_text;
+            Application.DoEvents();
+        }
+        
+        public void Dispose()
+        {
+            if (btn_loader != null) btn_loader.Text = btn_loader.Tag.ToString();
+            if (control_to_load != null) control_to_load.Text = control_to_load.Tag.ToString();
         }
 
     }
@@ -458,5 +733,69 @@ namespace SRL
         {
             e.DataSources.Add(new ReportDataSource(DatasetName, SubreportList));
         }
+    }
+    public class FileManagement
+    {
+        public FileManagement()
+        {
+
+        }
+        public  string GetFileContentInRoot(string fileName, int line)
+        {
+            string path = Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory);
+
+            path = Directory.GetParent(Directory.GetParent(path).FullName).FullName;
+
+            path += @"\" + fileName;
+
+            var get_line = File.ReadLines(path).Skip(line - 1);
+
+            return get_line.Count() < 1 ? "" : get_line.First();
+        }
+        public  string GetFileContent(string fileFullName, int line)
+        {
+            string path = @fileFullName;
+
+            var get_line = File.ReadLines(path).Skip(line - 1);
+
+            return get_line.Count() < 1 ? "" : get_line.First();
+        }
+        public  void SaveToFileInRoot(string fileName, string content, int line)
+        {
+            string path = Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory);
+
+            path = Directory.GetParent(Directory.GetParent(path).FullName).FullName;
+
+            path += @"\" + fileName;
+
+            string[] arrLine = File.ReadAllLines(path);
+            while (arrLine.Count() < line)
+            {
+                TextWriter tw = new StreamWriter(path, true);
+                tw.WriteLine("empty line created");
+                tw.Close();
+                arrLine = File.ReadAllLines(path);
+            }
+            arrLine[line - 1] = content;
+            File.WriteAllLines(path, arrLine);
+
+        }
+        public  void SaveToFile(string fileFullName, string content, int line)
+        {
+            string path = @fileFullName;
+
+            string[] arrLine = File.ReadAllLines(path);
+            while (arrLine.Count() < line)
+            {
+                TextWriter tw = new StreamWriter(path, true);
+                tw.WriteLine("empty line created");
+                tw.Close();
+                arrLine = File.ReadAllLines(path);
+            }
+            arrLine[line - 1] = content;
+            File.WriteAllLines(path, arrLine);
+
+        }
+
     }
 }
