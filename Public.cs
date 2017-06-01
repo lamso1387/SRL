@@ -13,35 +13,49 @@ using System.Configuration;
 using System.IO;
 using System.Data.SqlClient;
 using System.Windows.Forms.DataVisualization.Charting;
+using System.Reflection;
 
 namespace SRL
 {
-    public class SettingClass<SettingEntity> where SettingEntity : DbSet<SettingEntity>
+    public class SettingClass<SettingEntity> where SettingEntity : class
     {
+
         static DbContext db;
 
+        /// <summary>
+        /// SettingEntity table must have  columns "key" and "value".
+        /// </summary>
+        /// <param name="db_"></param>
         public SettingClass(DbContext db_)
         {
             db = db_;
         }
 
-        public static void InitiateSetting(Dictionary<string, string> keyValuesetting)
+        public void InitiateSetting(Dictionary<string, string> keyValuesetting)
         {
             foreach (var item in db.Set<SettingEntity>())
             {
                 db.Set<SettingEntity>().Remove(item);
             }
-            
+
             db.SaveChanges();
 
             foreach (var item in keyValuesetting)
             {
-                var set = (SettingEntity)Activator.CreateInstance(typeof(SettingEntity));
-                typeof(SettingEntity).GetField("key").SetValue(set, item.Key);
-                typeof(SettingEntity).GetField("value").SetValue(set, item.Value);
-                db.Set<SettingEntity>().Add(set);              
+
+
+                var instance = (SettingEntity)Activator.CreateInstance(typeof(SettingEntity));
+
+
+                PropertyInfo propk = typeof(SettingEntity).GetProperty("key");
+                propk.SetValue(instance, item.Key, null);
+
+                PropertyInfo propv = typeof(SettingEntity).GetProperty("value");
+                propv.SetValue(instance, item.Value, null);
+
+                db.Set<SettingEntity>().Add(instance);
             }
-            
+
             db.SaveChanges();
         }
 
@@ -240,6 +254,7 @@ namespace SRL
     public class WebResponse
     {
 
+
         public void WebMessageBox(string message, System.Web.HttpResponse response)
         {
             //ClientScript.RegisterStartupScript(GetType(), "Javascript", "javascript:alert('assa'); ", true);
@@ -252,7 +267,23 @@ namespace SRL
     }
     public class Convertor
     {
+        public void CopyDataTableToDataTable(DataTable dt_from, DataTable dt_to)
+        {
 
+            if (dt_from.Columns.Count > dt_to.Columns.Count)
+            {
+                dt_to.Columns.Clear();
+                foreach (DataColumn col in dt_from.Columns)
+                {
+                    DataColumn col_ = new DataColumn(col.ColumnName);
+                    dt_to.Columns.Add(col_);
+                }
+            }
+            foreach (DataRow row in dt_from.Rows)
+            {
+                dt_to.Rows.Add(row.ItemArray);
+            }
+        }
         public void MakeDataTableFromDGV(DataGridView dgview, DataTable table, int devider, int index)
         {
 
@@ -318,8 +349,16 @@ namespace SRL
             return national_id;
         }
     }
-    public class Json
+    public class Json : ControlLoad
     {
+        public Json()
+        {
+
+        }
+        public Json(Button btn) : base(btn)
+        {
+
+        }
         public T StringToJson<T>(string input) where T : new()
         {
             return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input);
@@ -329,6 +368,44 @@ namespace SRL
             input = input.Trim();
             return input.StartsWith("{") && input.EndsWith("}")
                    || input.StartsWith("[") && input.EndsWith("]");
+        }
+
+        public DataTable ConvertJsonToDataTable(List<Dictionary<string, object>> list)
+        {
+            DataTable dt = new DataTable();
+
+            bool create_columns = false;
+
+            int all_ = list.Count;
+
+            foreach (var item in list)
+            {
+                ButtonLoader(all_);
+                Dictionary<string, object> item_to_show = new Dictionary<string, object>();
+
+                foreach (var item_ in item)
+                {
+
+                    if (item_.Value != null) item_to_show[item_.Key.ToString()] = item_.Value.ToString();
+                    else item_to_show[item_.Key.ToString()] = null;
+                }
+
+                if (!create_columns)
+                    foreach (var col in item_to_show.Keys)
+                    {
+                        dt.Columns.Add(col);
+                        create_columns = true;
+                    }
+                int col_add = item_to_show.Values.Count - dt.Columns.Count;
+                for (int i = 0; i < col_add; i++)
+                {
+                    dt.Columns.Add("added" + i);
+                }
+                dt.Rows.Add(item_to_show.Values.ToArray());
+            }
+
+            return dt;
+
         }
 
     }
@@ -698,24 +775,7 @@ namespace SRL
             //ExcelLibrary.DataSetHelper.CreateWorkbook(@Publics.desktop_root + "exported.xls", ds);
             ExcelLibrary.DataSetHelper.CreateWorkbook(@fileFullName, ds);
         }
-        public void ExportToExcell2(DataGridView dgview, int devider, string path)
-        {//"C:\Users\project\Desktop\exported.xls"
-            DataSet ds = new DataSet();
-            int table_count = dgview.Rows.Count / devider;
-            int index = 0;
-            for (int i = 0; i < table_count; i++)
-            {
-                DataTable table = new DataTable(i.ToString());
-                ds.Tables.Add(table);
-                new Convertor().MakeDataTableFromDGV(dgview, table, devider, index);
-                index += devider;
-            }
-            DataTable _table = new DataTable("else");
-            ds.Tables.Add(_table);
-            new Convertor().MakeDataTableFromDGV(dgview, _table, devider, index);
-
-            ExcelLibrary.DataSetHelper.CreateWorkbook(@path, ds);
-        }
+       
     }
     public class ControlLoad : IDisposable
     {
