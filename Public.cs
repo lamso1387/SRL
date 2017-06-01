@@ -16,19 +16,79 @@ using System.Windows.Forms.DataVisualization.Charting;
 
 namespace SRL
 {
+    public class SettingClass<SettingEntity> where SettingEntity : DbSet<SettingEntity>
+    {
+        static DbContext db;
+
+        public SettingClass(DbContext db_)
+        {
+            db = db_;
+        }
+
+        public static void InitiateSetting(Dictionary<string, string> keyValuesetting)
+        {
+            foreach (var item in db.Set<SettingEntity>())
+            {
+                db.Set<SettingEntity>().Remove(item);
+            }
+            
+            db.SaveChanges();
+
+            foreach (var item in keyValuesetting)
+            {
+                var set = (SettingEntity)Activator.CreateInstance(typeof(SettingEntity));
+                typeof(SettingEntity).GetField("key").SetValue(set, item.Key);
+                typeof(SettingEntity).GetField("value").SetValue(set, item.Value);
+                db.Set<SettingEntity>().Add(set);              
+            }
+            
+            db.SaveChanges();
+        }
+
+    }
+
     public class WinTools
     {
-        public class Media: Form
+        public void AddChildToParentControlsAliagn(Control parent, Control child)
+        {
+            parent.Controls.Clear();
+            parent.Controls.Add(child);
+            AliagnChildToParent(parent, child);
+
+        }
+        public void AliagnChildToParent(Control parent, Control child)
+        {
+            child.Location = new Point(
+    parent.ClientSize.Width / 2 - child.Size.Width / 2,
+    parent.ClientSize.Height / 2 - child.Size.Height / 2);
+            child.Anchor = AnchorStyles.None;
+
+        }
+        public void AdjusChildToParent(Form parent_form, Control child, FormWindowState fws,
+            bool form_max_box, double child_width_relative, double child_height_relative)
+        {
+            parent_form.WindowState = fws;
+            parent_form.MaximizeBox = form_max_box;
+            int form_x = parent_form.Width;
+            int form_y = parent_form.Height;
+
+            child.Width = int.Parse(Math.Floor(child_width_relative * form_x).ToString());
+            child.Height = int.Parse(Math.Floor(child_width_relative * form_y).ToString());
+        }
+
+        public class Media
         {
             private Image CaptureScreen(Form form)
             {
                 Bitmap memoryImage;
                 Graphics myGraphics = form.CreateGraphics();
 
-                Size s = this.Size;
+                Size s = form.Size;
                 memoryImage = new Bitmap(s.Width, s.Height, myGraphics);
                 return memoryImage;
             }
+
+
         }
         public class Modal : Form
         {
@@ -45,21 +105,33 @@ namespace SRL
                 pnlModal.Width = this.Width - 100;
                 pnlModal.Height = this.Height - 100;
 
-                AddChildToParentControlsAliagn(this, pnlModal);
+                new WinTools().AddChildToParentControlsAliagn(this, pnlModal);
 
-                AddChildToParentControlsAliagn(pnlModal, user_control);
+                new WinTools().AddChildToParentControlsAliagn(pnlModal, user_control);
             }
 
-            private void AddChildToParentControlsAliagn(Control parent, Control child)
-            {
-                parent.Controls.Clear();
-                parent.Controls.Add(child);
-                child.Location = new Point(
-        parent.ClientSize.Width / 2 - child.Size.Width / 2,
-        parent.ClientSize.Height / 2 - child.Size.Height / 2);
-                child.Anchor = AnchorStyles.None;
-            }
         }
+        public bool Validation(Label lblError, List<Control> fieldNotNull = null, List<TextBox> tbMobile = null)
+        {
+            lblError.Text = string.Empty;
+            if (fieldNotNull != null)
+                foreach (var item in fieldNotNull)
+                {
+                    if (string.IsNullOrWhiteSpace(item.Text))
+                        lblError.Text += " فیلد " + item.Tag + " اجباری است. ";
+                }
+            if (tbMobile != null)
+                foreach (var item in tbMobile)
+                {
+                    if (string.IsNullOrWhiteSpace(item.Text)) continue;
+                    if (item.Text.Substring(0, 1) != "0" || item.Text.Length != 11)
+                        lblError.Text += " فیلد " + item.Tag + " اشتباه است. ";
+                }
+
+            return string.IsNullOrWhiteSpace(lblError.Text) ? true : false;
+        }
+
+
     }
     public class Security
     {
@@ -75,7 +147,7 @@ namespace SRL
         {
             page.Session[key] = value;
         }
-        public void LoginRedirect(System.Web.SessionState.HttpSessionState session, System.Web.HttpResponse response,string redirectUri)
+        public void LoginRedirect(System.Web.SessionState.HttpSessionState session, System.Web.HttpResponse response, string redirectUri)
         {
             if (session["username"] == null)
                 response.Redirect(redirectUri);
@@ -84,7 +156,7 @@ namespace SRL
                 //  MessageBox(session["username"].ToString(), response);
             }
         }
-        public void SendActivationEmail(string username, string registerHashValue,string registerActivationUri, string toMail,string subject,string body, Dictionary<string, object> response, string fromMail, string password)
+        public void SendActivationEmail(string username, string registerHashValue, string registerActivationUri, string toMail, string subject, string body, Dictionary<string, object> response, string fromMail, string password)
         {
             try
             {
@@ -94,39 +166,39 @@ namespace SRL
                 mailMessage.From = from;
                 mailMessage.Subject = subject;
                 mailMessage.Body = body;
-               SRL.Convertor convertor = new SRL.Convertor();
-                string activationLink =convertor.MakeActivationLink(username,registerHashValue,registerActivationUri);
+                SRL.Convertor convertor = new SRL.Convertor();
+                string activationLink = convertor.MakeActivationLink(username, registerHashValue, registerActivationUri);
                 mailMessage.Body += activationLink;
                 System.Net.Mail.SmtpClient smtpClient = new System.Net.Mail.SmtpClient("smtp.gmail.com");
                 smtpClient.Port = 587;
                 smtpClient.Credentials = new System.Net.NetworkCredential(fromMail, password);
                 smtpClient.EnableSsl = true;
                 smtpClient.Send(mailMessage);
-                response["emailSent"]= true;
+                response["emailSent"] = true;
             }
             catch (Exception ex)
             {
-                response["emailSent"]= false;
-                response["emailError"]= ex.Message;
+                response["emailSent"] = false;
+                response["emailError"] = ex.Message;
             }
         }
-        public bool RedirectIfNotLogin(System.Web.UI.Page page, Dictionary<string,object> response, string redirect)
+        public bool RedirectIfNotLogin(System.Web.UI.Page page, Dictionary<string, object> response, string redirect)
         {
             var usernameSession = page.Session["username"];
             if (usernameSession == null)
             {
-                response["redirect"]= redirect;
+                response["redirect"] = redirect;
                 return false;
             }
             else
             {
-                response["username"]= usernameSession;
+                response["username"] = usernameSession;
                 return true;
             }
         }
-      public string GetSHA1(string input)
+        public string GetSHA1(string input)
         {
-            using (System.Security.Cryptography.SHA1Managed sha1=new System.Security.Cryptography.SHA1Managed())
+            using (System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed())
             {
                 var hash = sha1.ComputeHash(Encoding.UTF8.GetBytes(input));
                 var sb = new StringBuilder(hash.Length * 2);
@@ -142,7 +214,7 @@ namespace SRL
     }
     public class KeyValue
     {
-        public void AddItem(Dictionary<string, object> result,string key, object value)
+        public void AddItem(Dictionary<string, object> result, string key, object value)
         {
             result[key] = value;
         }
@@ -157,7 +229,7 @@ namespace SRL
         /// <param name="uri">3</param>
         /// <param name="input">4</param>
 
-        public void PostAsJsonAsync(Dictionary<string,object> response, System.Net.Http.HttpClient client,string uri, object input)
+        public void PostAsJsonAsync(Dictionary<string, object> response, System.Net.Http.HttpClient client, string uri, object input)
         {
             System.Net.Http.HttpResponseMessage httpResponse = client.PostAsJsonAsync(uri, input).Result;
             string responseContent = httpResponse.Content.ReadAsStringAsync().Result;
@@ -167,16 +239,16 @@ namespace SRL
     }
     public class WebResponse
     {
-            
-            public  void WebMessageBox(string message, System.Web.HttpResponse response)
-            {
-                //ClientScript.RegisterStartupScript(GetType(), "Javascript", "javascript:alert('assa'); ", true);
-                string msg = "<script type=\"text/javascript\" language=\"javascript\">";
-                msg += "alert('" + message + "');";
-                msg += "</script>";
-                response.Write(message);
-                // response.Write(msg);
-            }
+
+        public void WebMessageBox(string message, System.Web.HttpResponse response)
+        {
+            //ClientScript.RegisterStartupScript(GetType(), "Javascript", "javascript:alert('assa'); ", true);
+            string msg = "<script type=\"text/javascript\" language=\"javascript\">";
+            msg += "alert('" + message + "');";
+            msg += "</script>";
+            response.Write(message);
+            // response.Write(msg);
+        }
     }
     public class Convertor
     {
@@ -214,7 +286,7 @@ namespace SRL
         {
             return System.Text.RegularExpressions.Regex.Unescape(input);
         }
-         public string MakeHashValue(string textToHash)
+        public string MakeHashValue(string textToHash)
         {
             if (String.IsNullOrEmpty(textToHash))
                 return String.Empty;
@@ -225,15 +297,15 @@ namespace SRL
                 return BitConverter.ToString(hashValue).Replace("-", String.Empty);
             }
         }
-         public string MakeActivationLink(string username, string registerHashValue, string registerActivationUri)
-         {
-             //string host = HttpContext.Current.Request.Url.Authority;
-             string host = System.Web.HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority);
-             String strPathAndQuery = System.Web.HttpContext.Current.Request.Url.PathAndQuery;
-             String strUrl = System.Web.HttpContext.Current.Request.Url.AbsoluteUri.Replace(strPathAndQuery, "/");
-             string activationLink = host + registerActivationUri + "?username=" + username + "&activationKey=" + registerHashValue;
-             return activationLink;
-         }
+        public string MakeActivationLink(string username, string registerHashValue, string registerActivationUri)
+        {
+            //string host = HttpContext.Current.Request.Url.Authority;
+            string host = System.Web.HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority);
+            String strPathAndQuery = System.Web.HttpContext.Current.Request.Url.PathAndQuery;
+            String strUrl = System.Web.HttpContext.Current.Request.Url.AbsoluteUri.Replace(strPathAndQuery, "/");
+            string activationLink = host + registerActivationUri + "?username=" + username + "&activationKey=" + registerHashValue;
+            return activationLink;
+        }
         public static string Mobile(string mobile)
         {
             mobile = mobile.Length == 10 ? "0" + mobile : mobile;
@@ -304,9 +376,10 @@ namespace SRL
             chart.DataBind();
         }
     }
-    public class Database: SRL.ControlLoad
+    public class Database : SRL.ControlLoad
     {
-        public Database():base()
+        public Database()
+            : base()
         {
 
         }
@@ -405,7 +478,7 @@ namespace SRL
 
             db.SaveChanges();
 
-            return i.ToString() + ( string.IsNullOrWhiteSpace(error) ? "" : " inserted correctly. other row errors: " + error);
+            return i.ToString() + (string.IsNullOrWhiteSpace(error) ? "" : " inserted correctly. other row errors: " + error);
 
         }
 
@@ -442,7 +515,7 @@ namespace SRL
 
         }
 
-        public void TruncateTable( DbContext db, string table_name)
+        public void TruncateTable(DbContext db, string table_name)
         {
             db.Database.ExecuteSqlCommand("truncate table " + table_name);
             db.SaveChanges();
@@ -462,15 +535,16 @@ namespace SRL
             }
             return error;
         }
- 
+
         /// <summary>
         /// 
         /// </summary>
         /// <param name="conStr">metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SqlClient;provider connection string="data source=.\SOHEILLAMSO;initial catalog=Semnan;integrated security=True;MultipleActiveResultSets=True;App=EntityFramework"</param>
         /// <param name="conStrName">e.g. SemnanEntity</param>
+        /// <param name="control_to_load"></param>
         public void UpdateConnectionString(string conStr, string conStrName, Control control_to_load)
         {
-           ControlLoader(control_to_load, "connecting database...");
+            ControlLoader(control_to_load, "connecting database...");
 
             var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             var connectionStringsSection = (ConnectionStringsSection)config.GetSection("connectionStrings");
@@ -480,12 +554,13 @@ namespace SRL
         }
 
     }
-    public class ExcelManagement: SRL.ControlLoad
+    public class ExcelManagement : SRL.ControlLoad
     {
         public ExcelManagement()
         {
         }
-        public ExcelManagement(Button btn):base(btn)
+        public ExcelManagement(Button btn)
+            : base(btn)
         {
         }
         public void LoadDGVFromExcelNoHead(OpenFileDialog ofDialog, Label lblFileName, DataGridView dgv)
@@ -530,7 +605,7 @@ namespace SRL
         }
 
         public void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv)
-            {
+        {
             ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
             ofDialog.ShowDialog();
             lblFileName.Text = ofDialog.FileName;
@@ -602,7 +677,7 @@ namespace SRL
         }
         public void ExportToExcell(DataGridView dgview, int devider, string fileFullName)
         {
-          
+
 
             DataSet ds = new DataSet();
             int table_count = dgview.Rows.Count / devider;
@@ -623,9 +698,7 @@ namespace SRL
             //ExcelLibrary.DataSetHelper.CreateWorkbook(@Publics.desktop_root + "exported.xls", ds);
             ExcelLibrary.DataSetHelper.CreateWorkbook(@fileFullName, ds);
         }
-
-
-        public void ExportToExcell2(DataGridView dgview, int devider,string path)
+        public void ExportToExcell2(DataGridView dgview, int devider, string path)
         {//"C:\Users\project\Desktop\exported.xls"
             DataSet ds = new DataSet();
             int table_count = dgview.Rows.Count / devider;
@@ -643,8 +716,6 @@ namespace SRL
 
             ExcelLibrary.DataSetHelper.CreateWorkbook(@path, ds);
         }
-
-        
     }
     public class ControlLoad : IDisposable
     {
@@ -669,7 +740,7 @@ namespace SRL
         //    control_to_load.Tag = control_to_load.Text;
         //}
 
-        
+
 
         public void ButtonLoader(int all)
         {
@@ -699,7 +770,7 @@ namespace SRL
             control_to_load.Text = loading_text;
             Application.DoEvents();
         }
-        
+
         public void Dispose()
         {
             if (btn_loader != null) btn_loader.Text = btn_loader.Tag.ToString();
@@ -707,19 +778,65 @@ namespace SRL
         }
 
     }
-    public class WinReport <SubReportType>
+    public class WinReport<SubReportType>
     {
-        public string DatasetName { get;set;}
+        public string DatasetName { get; set; }
         List<SubReportType> SubreportList;
-        public WinReport (string dataset_name) 
+        public WinReport(string dataset_name)
         {
             DatasetName = dataset_name;
+        }
+
+        public void MakePDFInDialog(Microsoft.Reporting.WinForms.ReportViewer reportViewer1)
+        {
+            Microsoft.Reporting.WinForms.Warning[] warnings;
+            string[] streamids;
+            string mimeType;
+            string encoding;
+            string filenameExtension;
+
+            byte[] bytes = reportViewer1.LocalReport.Render(
+                "PDF", null, out mimeType, out encoding, out filenameExtension,
+                out streamids, out warnings);
+
+            SaveFileDialog saveFileDialog1 = new SaveFileDialog();
+
+            saveFileDialog1.Filter = "*PDF files (*.pdf)|*.pdf";
+            saveFileDialog1.FilterIndex = 2;
+            saveFileDialog1.RestoreDirectory = true;
+            saveFileDialog1.FileName = "";
+
+            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                System.IO.FileStream newFile = new System.IO.FileStream(
+                    saveFileDialog1.FileName, System.IO.FileMode.Create);
+                newFile.Write(bytes, 0, bytes.Length);
+                newFile.Close();
+            }
+        }
+        public void MakePDF(Microsoft.Reporting.WinForms.ReportViewer reportViewer1, string fullFileName)
+        {
+            Microsoft.Reporting.WinForms.Warning[] warnings;
+            string[] streamids;
+            string mimeType;
+            string encoding;
+            string filenameExtension;
+
+            byte[] bytes = reportViewer1.LocalReport.Render(
+                "PDF", null, out mimeType, out encoding, out filenameExtension,
+                out streamids, out warnings);
+
+            System.IO.FileStream newFile = new System.IO.FileStream(
+               fullFileName, System.IO.FileMode.Create);
+            newFile.Write(bytes, 0, bytes.Length);
+            newFile.Close();
+
         }
 
         public void LoadReport<ReportType>(Microsoft.Reporting.WinForms.ReportViewer reportViewer1
             , BindingSource report_binding_source, List<ReportType> report_list, List<SubReportType> sub_report_list)
         {
-            if (sub_report_list != null) 
+            if (sub_report_list != null)
                 reportViewer1.LocalReport.SubreportProcessing +=
                new SubreportProcessingEventHandler(MySubreportEventHandler);
             SubreportList = sub_report_list;
@@ -740,7 +857,7 @@ namespace SRL
         {
 
         }
-        public  string GetFileContentInRoot(string fileName, int line)
+        public string GetFileContentInRoot(string fileName, int line)
         {
             string path = Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory);
 
@@ -752,7 +869,7 @@ namespace SRL
 
             return get_line.Count() < 1 ? "" : get_line.First();
         }
-        public  string GetFileContent(string fileFullName, int line)
+        public string GetFileContent(string fileFullName, int line)
         {
             string path = @fileFullName;
 
@@ -760,7 +877,7 @@ namespace SRL
 
             return get_line.Count() < 1 ? "" : get_line.First();
         }
-        public  void SaveToFileInRoot(string fileName, string content, int line)
+        public void SaveToFileInRoot(string fileName, string content, int line)
         {
             string path = Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory);
 
@@ -780,7 +897,7 @@ namespace SRL
             File.WriteAllLines(path, arrLine);
 
         }
-        public  void SaveToFile(string fileFullName, string content, int line)
+        public void SaveToFile(string fileFullName, string content, int line)
         {
             string path = @fileFullName;
 
@@ -795,6 +912,33 @@ namespace SRL
             arrLine[line - 1] = content;
             File.WriteAllLines(path, arrLine);
 
+        }
+
+
+        /// <summary>
+        /// Copy all the files in folder and Replaces any files with the same name
+        /// </summary>
+        /// <param name="SourcePath">full SourcePath</param>
+        /// <param name="DestinationPath">full DestinationPath</param>
+        /// <returns>returns "true" or error message</returns>
+        public string CopyFolderAndReplaceSameFileName(string SourcePath, string DestinationPath)
+        {
+            try
+            {
+                foreach (string dirPath in Directory.GetDirectories(SourcePath, "*",
+                    SearchOption.AllDirectories))
+                    Directory.CreateDirectory(dirPath.Replace(SourcePath, DestinationPath));
+
+                //Copy all the files & Replaces any files with the same name
+                foreach (string newPath in Directory.GetFiles(SourcePath, "*.*",
+                    SearchOption.AllDirectories))
+                    File.Copy(newPath, newPath.Replace(SourcePath, DestinationPath), true);
+                return "true";
+            }
+            catch (Exception exc)
+            {
+                return exc.Message;
+            }
         }
 
     }
