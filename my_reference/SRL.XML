@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>SRL</name>
+    </assembly>
+    <members>
+        <member name="M:SRL.WebRequest.PostAsJsonAsync(System.Collections.Generic.Dictionary{System.String,System.Object},System.Net.Http.HttpClient,System.String,System.Object)">
+            <summary>
+            salam
+            </summary>
+            <param name="response">1</param>
+            <param name="client">2</param>
+            <param name="uri">3</param>
+            <param name="input">4</param>
+        </member>
+        <member name="M:SRL.Database.UpdateConnectionString(System.String,System.String,System.Windows.Forms.Control)">
+            <summary>
+            
+            </summary>
+            <param name="conStr">metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SqlClient;provider connection string="data source=.\SOHEILLAMSO;initial catalog=Semnan;integrated security=True;MultipleActiveResultSets=True;App=EntityFramework"</param>
+            <param name="conStrName">e.g. SemnanEntity</param>
+            <param name="control_to_load"></param>
+        </member>
+        <member name="M:SRL.FileManagement.CopyFolderAndReplaceSameFileName(System.String,System.String)">
+            <summary>
+            Copy all the files in folder and Replaces any files with the same name
+            </summary>
+            <param name="SourcePath">full SourcePath</param>
+            <param name="DestinationPath">full DestinationPath</param>
+            <returns>returns "true" or error message</returns>
+        </member>
+    </members>
+</doc>
