@@ -19,7 +19,7 @@ namespace SRL
 {
     public class SettingClass<SettingEntity> where SettingEntity : class
     {
-
+        string setting_table_name;
         static DbContext db;
 
         /// <summary>
@@ -29,36 +29,174 @@ namespace SRL
         public SettingClass(DbContext db_)
         {
             db = db_;
+            setting_table_name = typeof(SettingEntity).Name;
         }
 
         public void InitiateSetting(Dictionary<string, string> keyValuesetting)
         {
-            foreach (var item in db.Set<SettingEntity>())
-            {
-                db.Set<SettingEntity>().Remove(item);
-            }
+            SRL.Database srl_database = new Database();
+            SRL.ClassManagement<SettingEntity> class_mgnt = new SRL.ClassManagement<SettingEntity>();
 
-            db.SaveChanges();
+            srl_database.EntityRemoveAll<SettingEntity>(db);
 
             foreach (var item in keyValuesetting)
             {
-
-
-                var instance = (SettingEntity)Activator.CreateInstance(typeof(SettingEntity));
-
-
-                PropertyInfo propk = typeof(SettingEntity).GetProperty("key");
-                propk.SetValue(instance, item.Key, null);
-
-                PropertyInfo propv = typeof(SettingEntity).GetProperty("value");
-                propv.SetValue(instance, item.Value, null);
-
-                db.Set<SettingEntity>().Add(instance);
+                var instance = class_mgnt.CreateInstance();
+                class_mgnt.SetProperty("key", instance, item.Key);
+                class_mgnt.SetProperty("value", instance, item.Value);
+                srl_database.EntityAdd<SettingEntity>(db, instance);
             }
 
             db.SaveChanges();
         }
+        public Dictionary<string, string> CreateKeyValueSetting()
+        {
+            Dictionary<string, string> kv = new Dictionary<string, string>();
+            kv["setting_is_set"] = "true";
+            kv["form_font_size"] = "8";
+            kv["menu_font_size"] = "11";
+            kv["child_width_relative"] = "0/8";
+            kv["child_height_relative"] = "0/8";
+            return kv;
+        }
+        public void ShowSettingInControls(Control form_font_size, Control menu_font_size, Control child_width_relative, Control child_height_relative)
+        {
+            if (form_font_size != null) form_font_size.Text = SqlQuerySettingTable("form_font_size");
+            if (menu_font_size != null) menu_font_size.Text = SqlQuerySettingTable("menu_font_size");
+            if (child_width_relative != null) child_width_relative.Text = SqlQuerySettingTable("child_width_relative");
+            if (child_height_relative != null) child_height_relative.Text = SqlQuerySettingTable("child_height_relative");
+        }
+        public string UpdateSetting(string form_font_size, string menu_font_size, string child_width_relative, string child_height_relative)
+        {
+            string error = string.Empty;
+            if (form_font_size != null) error = ExecuteUpdateSettingTable("form_font_size", form_font_size);
+            if (menu_font_size != null) error = ExecuteUpdateSettingTable("menu_font_size", menu_font_size);
+            if (child_width_relative != null) error = ExecuteUpdateSettingTable("child_width_relative", child_width_relative);
+            if (child_height_relative != null) error = ExecuteUpdateSettingTable("child_height_relative", child_height_relative);
+            return error;
+        }
 
+        private string ExecuteUpdateSettingTable(string key, string value)
+        {
+            string sql = "update " + setting_table_name + " set value='" + value + "' where key='" + key + "'";
+            return new SRL.Database().ExecuteQuery(db, sql);
+        }
+        public bool CheckSettingIsSet()
+        {
+            string query = SqlQuerySettingTable("setting_is_set", null);
+            int row_count = db.Set<SettingEntity>().Count();
+            return query == null || query == "false" ? false : true;
+        }
+        public void StartSetting(Form form, Control menuContainor)
+        {
+            string size = SqlQuerySettingTable("form_font_size");
+            form.Font = new Font(form.Font.FontFamily, float.Parse(size));
+
+            size = SqlQuerySettingTable("menu_font_size");
+            menuContainor.Font = new Font(menuContainor.Font.FontFamily, float.Parse(size));
+
+
+            string width = SqlQuerySettingTable("child_width_relative");
+            string height = SqlQuerySettingTable("child_height_relative");
+            var wintool = new WinTools();
+            wintool.AdjustChildToParent(form, menuContainor, FormWindowState.Maximized, false
+                , double.Parse(width), double.Parse(height));
+
+            wintool.AliagnChildToParent(form, menuContainor);
+
+        }
+
+        private string SqlQuerySettingTable(string key, string default_if_empty = null)
+        {
+
+            string sql = "select value from " + setting_table_name + " where key='" + key + "'";
+            var query = new SRL.Database().SqlQuery<string>(db, sql).DefaultIfEmpty(default_if_empty).FirstOrDefault();
+            return query;
+
+        }
+
+    }
+    public class ChildParent
+    {
+        public object AddCategory<EntityT>(DbContext db, string categoryName, EntityT newCategory) where EntityT : class
+        {
+            SRL.ClassManagement<EntityT> class_mgnt = new ClassManagement<EntityT>();
+
+            class_mgnt.SetProperty("categoryName", newCategory, categoryName);
+            SRL.Database srl_database = new Database();
+            srl_database.EntityAdd<EntityT>(db, newCategory);
+            db.SaveChanges();
+            return class_mgnt.GetProperty("ID", newCategory);
+        }
+        public void AddChildParent<EntityT>(DbContext db, long childId, long parentId, EntityT categoryClass) where EntityT : class
+        {
+            SRL.ClassManagement<EntityT> class_mgnt = new ClassManagement<EntityT>();
+            class_mgnt.SetProperty("parentID", categoryClass, parentId);
+            class_mgnt.SetProperty("childID", categoryClass, childId);
+            SRL.Database srl_database = new Database();
+            srl_database.EntityAdd<EntityT>(db, categoryClass);
+            db.SaveChanges();
+        }
+        public static void DeleteNodeChilds(DbContext db, long parentId)
+        {
+            string childsId = null;// = db.CategoryClass.Where(x => x.parentID == parentId).Select(x => x.childID).ToArray();
+            if (childsId.Length > 0)
+            {
+                foreach (var childId in childsId)
+                {
+                    //        CategoryClass categoryClass = db.CategoryClass.First(x => x.childID == childId);
+                    //        db.CategoryClass.Remove(categoryClass);
+                    //        db.SaveChanges();
+                    //        DeleteNodeChilds(long.Parse(childId.ToString()));
+                    //        Category category = db.Category.First(x => x.ID == childId);
+                    //        db.Category.Remove(category);
+                    //        db.SaveChanges();
+                }
+            }
+        }
+    }
+    public class ActionManagement
+    {
+        public static void ParallelSend(System.Data.Entity.DbContext db, List<System.Data.Entity.DbSet> DBitems, string from, string parallel)
+        {
+            int all = DBitems.Count;
+            List<Task> task_list = new List<Task>();
+            int per_count = int.Parse(parallel);
+            int take = all / per_count;
+            int skip = 0;
+            var DBquery = DBitems.AsQueryable();
+            for (int j = 0; j < per_count; j++)
+            {
+                System.Windows.Forms.Application.DoEvents();
+                var query = DBquery.Skip(skip).Take(take);
+                skip += take;
+                Task task = new Task(() => new Convertor()); //new Task(() => StartSending(db, query.ToList()));
+                task_list.Add(task);
+                task.Start();
+
+            }
+            Task.WaitAll(task_list.ToArray());
+        }
+    }
+    public class ClassManagement<ClassType> where ClassType : class
+    {
+        public ClassType CreateInstance()
+        {
+            return (ClassType)Activator.CreateInstance(typeof(ClassType));
+        }
+
+        public void SetProperty(string property_name, ClassType instance, object value)
+        {
+            PropertyInfo propk = typeof(ClassType).GetProperty(property_name);
+            propk.SetValue(instance, value, null);
+
+        }
+        public object GetProperty(string property_name, ClassType instance)
+        {
+            PropertyInfo propk = typeof(ClassType).GetProperty(property_name);
+            return propk.GetValue(instance);
+
+        }
     }
 
     public class WinTools
@@ -78,7 +216,8 @@ namespace SRL
             child.Anchor = AnchorStyles.None;
 
         }
-        public void AdjusChildToParent(Form parent_form, Control child, FormWindowState fws,
+
+        public void AdjustChildToParent(Form parent_form, Control child, FormWindowState fws,
             bool form_max_box, double child_width_relative, double child_height_relative)
         {
             parent_form.WindowState = fws;
@@ -355,7 +494,8 @@ namespace SRL
         {
 
         }
-        public Json(Button btn) : base(btn)
+        public Json(Button btn)
+            : base(btn)
         {
 
         }
@@ -458,6 +598,22 @@ namespace SRL
         public Database()
             : base()
         {
+
+        }
+        public void EntityRemoveAll<EntityType>(DbContext db) where EntityType : class
+        {
+            foreach (var item in db.Set<EntityType>())
+            {
+                db.Set<EntityType>().Remove(item);
+            }
+            db.SaveChanges();
+
+        }
+
+        public void EntityAdd<EntityType>(DbContext db, EntityType instance) where EntityType : class
+        {
+            db.Set<EntityType>().Add(instance);
+            db.SaveChanges();
 
         }
         public string ShowTableInDatagridview(string sql, DataGridView dgv, string connection_string)
@@ -611,6 +767,12 @@ namespace SRL
                 error = ex.Message;
             }
             return error;
+        }
+        public List<OutputType> SqlQuery<OutputType>(DbContext db, string query)
+        {
+            var result = db.Database.SqlQuery<OutputType>(query).ToList();
+            return result;
+
         }
 
         /// <summary>
@@ -775,7 +937,7 @@ namespace SRL
             //ExcelLibrary.DataSetHelper.CreateWorkbook(@Publics.desktop_root + "exported.xls", ds);
             ExcelLibrary.DataSetHelper.CreateWorkbook(@fileFullName, ds);
         }
-       
+
     }
     public class ControlLoad : IDisposable
     {
