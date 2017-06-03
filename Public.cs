@@ -600,6 +600,11 @@ namespace SRL
         {
 
         }
+        public Database(Button btn)
+            : base(btn)
+        {
+
+        }
         public void EntityRemoveAll<EntityType>(DbContext db) where EntityType : class
         {
             foreach (var item in db.Set<EntityType>())
@@ -703,8 +708,10 @@ namespace SRL
 
             string sql = "";
             int i = 0;
+            int all_ = dataGridView1.Rows.Count;
             foreach (DataGridViewRow row in dataGridView1.Rows)
             {
+                ButtonLoader(all_);
                 List<string> cells = new List<string>();
 
                 foreach (DataGridViewCell cell in row.Cells)
