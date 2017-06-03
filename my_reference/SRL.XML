@@ -4,6 +4,12 @@
         <name>SRL</name>
     </assembly>
     <members>
+        <member name="M:SRL.SettingClass`1.#ctor(System.Data.Entity.DbContext)">
+            <summary>
+            SettingEntity table must have  columns "key" and "value".
+            </summary>
+            <param name="db_"></param>
+        </member>
         <member name="M:SRL.WebRequest.PostAsJsonAsync(System.Collections.Generic.Dictionary{System.String,System.Object},System.Net.Http.HttpClient,System.String,System.Object)">
             <summary>
             salam

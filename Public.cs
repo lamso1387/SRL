@@ -635,7 +635,27 @@ namespace SRL
             }
             return error;
         }
-
+        public string ShowTablesInDB(string connection_string, DataTable dt, string where_cluase = null)
+        {
+            string sql = "SELECT table_name FROM INFORMATION_SCHEMA.TABLES   ";
+            //WHERE TABLE_NAME LIKE '%TEST_%'
+            if (!string.IsNullOrWhiteSpace(where_cluase)) sql += where_cluase;
+            string error = string.Empty;
+            try
+            {
+                SqlConnection con = new SqlConnection(connection_string);
+                SqlCommand com = new SqlCommand(sql, con);
+                SqlDataAdapter data = new SqlDataAdapter(com);
+                DataSet ds = new DataSet();
+                data.Fill(ds);
+                dt = ds.Tables[0];
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            return error;
+        }
         public List<string> AddTableToDB(DbContext db, string table_name, DataGridView dataGridView1)
         {
             string tb_name = table_name;
