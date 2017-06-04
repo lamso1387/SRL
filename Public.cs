@@ -54,26 +54,39 @@ namespace SRL
             Dictionary<string, string> kv = new Dictionary<string, string>();
             kv["setting_is_set"] = "true";
             kv["form_font_size"] = "8";
-            kv["menu_font_size"] = "11";
+            kv["menu_font_size"] = "8";
             kv["child_width_relative"] = "0/8";
             kv["child_height_relative"] = "0/8";
+            kv["font_name"] = "B Nazanin";
+            kv["menu_back_color"] = "Control";
+            kv["form_back_color"] = "Control";
             return kv;
         }
-        public void ShowSettingInControls(Control form_font_size, Control menu_font_size, Control child_width_relative, Control child_height_relative)
+        public void ShowSettingInControls(Control form_font_size, Control menu_font_size,
+            Control child_width_relative, Control child_height_relative, Control font_name,
+            Control form_back_color, Control menu_back_color)
         {
             if (form_font_size != null) form_font_size.Text = SqlQuerySettingTable("form_font_size");
             if (menu_font_size != null) menu_font_size.Text = SqlQuerySettingTable("menu_font_size");
             if (child_width_relative != null) child_width_relative.Text = SqlQuerySettingTable("child_width_relative");
             if (child_height_relative != null) child_height_relative.Text = SqlQuerySettingTable("child_height_relative");
+            if (font_name != null) font_name.Text = SqlQuerySettingTable("font_name");
+            if (form_back_color != null) form_back_color.BackColor =Color.FromName(SqlQuerySettingTable("form_back_color"));
+            if (menu_back_color != null) menu_back_color.BackColor =Color.FromName(SqlQuerySettingTable("menu_back_color"));
         }
-        public string UpdateSetting(string form_font_size, string menu_font_size, string child_width_relative, string child_height_relative)
+        public string UpdateSetting(string form_font_size, string menu_font_size,
+            string child_width_relative, string child_height_relative, string font_name,
+            string form_back_color, string menu_back_color)
         {
             string error = string.Empty;
             if (form_font_size != null) error = ExecuteUpdateSettingTable("form_font_size", form_font_size);
             if (menu_font_size != null) error = ExecuteUpdateSettingTable("menu_font_size", menu_font_size);
             if (child_width_relative != null) error = ExecuteUpdateSettingTable("child_width_relative", child_width_relative);
             if (child_height_relative != null) error = ExecuteUpdateSettingTable("child_height_relative", child_height_relative);
-            return error;
+            if (font_name != null) error = ExecuteUpdateSettingTable("font_name", font_name);
+            if (form_back_color != null) error = ExecuteUpdateSettingTable("form_back_color", form_back_color);
+            if (menu_back_color != null) error = ExecuteUpdateSettingTable("menu_back_color", menu_back_color);
+           return error;
         }
 
         private string ExecuteUpdateSettingTable(string key, string value)
@@ -89,11 +102,19 @@ namespace SRL
         }
         public void StartSetting(Form form, Control menuContainor)
         {
-            string size = SqlQuerySettingTable("form_font_size");
-            form.Font = new Font(form.Font.FontFamily, float.Parse(size));
+            string font = SqlQuerySettingTable("font_name");
 
-            size = SqlQuerySettingTable("menu_font_size");
-            menuContainor.Font = new Font(menuContainor.Font.FontFamily, float.Parse(size));
+            string query = SqlQuerySettingTable("form_font_size");
+            form.Font = new Font(font, float.Parse(query));
+
+            query = SqlQuerySettingTable("menu_font_size");
+            menuContainor.Font = new Font(font, float.Parse(query));
+
+            query = SqlQuerySettingTable("form_back_color");
+            form.BackColor= Color.FromName(query);
+            
+            query = SqlQuerySettingTable("menu_back_color");
+            menuContainor.BackColor = Color.FromName(query);
 
 
             string width = SqlQuerySettingTable("child_width_relative");
@@ -201,6 +222,23 @@ namespace SRL
 
     public class WinTools
     {
+        public void StyleDatagridview(DataGridView dataGridView1, string style_mode)
+        {
+            switch (style_mode)
+            {
+                case "1":
+                    dataGridView1.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    dataGridView1.ColumnHeadersDefaultCellStyle.BackColor = Color.Aquamarine;
+                    dataGridView1.ColumnHeadersDefaultCellStyle.ForeColor = Color.Red;
+                    dataGridView1.ColumnHeadersHeight = 30;
+                    dataGridView1.EnableHeadersVisualStyles = false;
+                    break;
+
+                default:
+                    break;
+            }
+
+        }
         public void AddChildToParentControlsAliagn(Control parent, Control child)
         {
             parent.Controls.Clear();
@@ -226,7 +264,7 @@ namespace SRL
             int form_y = parent_form.Height;
 
             child.Width = int.Parse(Math.Floor(child_width_relative * form_x).ToString());
-            child.Height = int.Parse(Math.Floor(child_width_relative * form_y).ToString());
+            child.Height = int.Parse(Math.Floor(child_height_relative * form_y).ToString());
         }
 
         public class Media
