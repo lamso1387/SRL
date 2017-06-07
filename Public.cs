@@ -14,19 +14,55 @@ using System.IO;
 using System.Data.SqlClient;
 using System.Windows.Forms.DataVisualization.Charting;
 using System.Reflection;
+using System.Globalization;
+using System.Runtime.InteropServices;
 
 namespace SRL
 {
+
+    public class DateTimeClass
+    {
+        System.Windows.Forms.Timer timer = null;
+        Control control_to_show_time;
+        public void StartTimer(Control control, string full_or_long_or_short)
+        {
+            timer = new System.Windows.Forms.Timer();
+            timer.Interval = 1000;
+            timer.Tick += new EventHandler((sender, e) => timer_Tick(sender, e, full_or_long_or_short));
+            timer.Enabled = true;
+            control_to_show_time = control;
+        }
+
+        void timer_Tick(object sender, EventArgs e, string show_type)
+        {
+            switch (show_type)
+            {
+                case "full":
+                    control_to_show_time.Text = DateTime.Now.ToString();
+                    break;
+                case "long":
+                    control_to_show_time.Text = DateTime.Now.ToLongTimeString();
+                    break;
+                case "short":
+                    control_to_show_time.Text = DateTime.Now.ToShortTimeString();
+                    break;
+                default:
+                    break;
+            }
+
+
+
+        }
+    }
     public class SettingClass<SettingEntity> where SettingEntity : class
     {
         string setting_table_name;
         static DbContext db;
-
         /// <summary>
         /// SettingEntity table must have  columns "key" and "value".
         /// </summary>
         /// <param name="db_"></param>
-        public SettingClass(DbContext db_)
+        public SettingClass(DbContext db_ = null)
         {
             db = db_;
             setting_table_name = typeof(SettingEntity).Name;
@@ -53,13 +89,13 @@ namespace SRL
         {
             Dictionary<string, string> kv = new Dictionary<string, string>();
             kv["setting_is_set"] = "true";
-            kv["form_font_size"] = "8";
-            kv["menu_font_size"] = "8";
-            kv["child_width_relative"] = "0/8";
-            kv["child_height_relative"] = "0/8";
-            kv["font_name"] = "B Nazanin";
-            kv["menu_back_color"] = "Control";
-            kv["form_back_color"] = "Control";
+            kv["form_font_size"] = "11";
+            kv["menu_font_size"] = "12";
+            kv["child_width_relative"] = "0/9";
+            kv["child_height_relative"] = "0/9";
+            kv["font_name"] = "B Koodak";
+            kv["menu_back_color"] = "White";
+            kv["form_back_color"] = "White";
             return kv;
         }
         public void ShowSettingInControls(Control form_font_size, Control menu_font_size,
@@ -71,8 +107,8 @@ namespace SRL
             if (child_width_relative != null) child_width_relative.Text = SqlQuerySettingTable("child_width_relative");
             if (child_height_relative != null) child_height_relative.Text = SqlQuerySettingTable("child_height_relative");
             if (font_name != null) font_name.Text = SqlQuerySettingTable("font_name");
-            if (form_back_color != null) form_back_color.BackColor =Color.FromName(SqlQuerySettingTable("form_back_color"));
-            if (menu_back_color != null) menu_back_color.BackColor =Color.FromName(SqlQuerySettingTable("menu_back_color"));
+            if (form_back_color != null) form_back_color.BackColor = Color.FromName(SqlQuerySettingTable("form_back_color"));
+            if (menu_back_color != null) menu_back_color.BackColor = Color.FromName(SqlQuerySettingTable("menu_back_color"));
         }
         public string UpdateSetting(string form_font_size, string menu_font_size,
             string child_width_relative, string child_height_relative, string font_name,
@@ -86,7 +122,7 @@ namespace SRL
             if (font_name != null) error = ExecuteUpdateSettingTable("font_name", font_name);
             if (form_back_color != null) error = ExecuteUpdateSettingTable("form_back_color", form_back_color);
             if (menu_back_color != null) error = ExecuteUpdateSettingTable("menu_back_color", menu_back_color);
-           return error;
+            return error;
         }
 
         private string ExecuteUpdateSettingTable(string key, string value)
@@ -100,30 +136,38 @@ namespace SRL
             int row_count = db.Set<SettingEntity>().Count();
             return query == null || query == "false" ? false : true;
         }
-        public void StartSetting(Form form, Control menuContainor)
+        public void StartSetting(Control form, Control menuContainor, bool isfont = true, bool isform_back_color = true,
+            bool ismenu_back_color = true, bool isrelative = true, bool isAliagn = true)
         {
-            string font = SqlQuerySettingTable("font_name");
+            if (isfont)
+            {
+                string font = SqlQuerySettingTable("font_name");
 
-            string query = SqlQuerySettingTable("form_font_size");
-            form.Font = new Font(font, float.Parse(query));
+                string query = SqlQuerySettingTable("form_font_size");
+                form.Font = new Font(font, float.Parse(query));
 
-            query = SqlQuerySettingTable("menu_font_size");
-            menuContainor.Font = new Font(font, float.Parse(query));
+                query = SqlQuerySettingTable("menu_font_size");
+                menuContainor.Font = new Font(font, float.Parse(query));
+            }
+            if (isform_back_color)
+            {
+                string query = SqlQuerySettingTable("form_back_color");
+                form.BackColor = Color.FromName(query);
+            }
 
-            query = SqlQuerySettingTable("form_back_color");
-            form.BackColor= Color.FromName(query);
-            
-            query = SqlQuerySettingTable("menu_back_color");
-            menuContainor.BackColor = Color.FromName(query);
-
-
-            string width = SqlQuerySettingTable("child_width_relative");
-            string height = SqlQuerySettingTable("child_height_relative");
+            if (ismenu_back_color)
+            {
+               string query = SqlQuerySettingTable("menu_back_color");
+                menuContainor.BackColor = Color.FromName(query);
+            }
             var wintool = new WinTools();
-            wintool.AdjustChildToParent(form, menuContainor, FormWindowState.Maximized, false
-                , double.Parse(width), double.Parse(height));
-
-            wintool.AliagnChildToParent(form, menuContainor);
+            if (isrelative)
+            {
+                string width = SqlQuerySettingTable("child_width_relative");
+                string height = SqlQuerySettingTable("child_height_relative");
+                wintool.AdjustChildToParent(form, menuContainor,double.Parse(width), double.Parse(height));
+            }
+           if(isAliagn)  wintool.AliagnChildToParent(form, menuContainor);
 
         }
 
@@ -219,19 +263,91 @@ namespace SRL
 
         }
     }
-
-    public class WinTools
+    public class WinUI
     {
+        public class AlterTitleBarColor : Form
+        {
+            /// <summary>
+            /// add all of this class code (after constructor) to Form1.cs before it's constructor and call  DisableProcessWindowsGhosting() in that load event.
+            /// </summary>
+            public AlterTitleBarColor()
+            {
+                var accessHandle = this.Handle;
+            }
+
+            Color title_color = Color.Black;
+            const int WM_NCPAINT = 0x85;
+
+            [DllImport("user32.dll", SetLastError = true)]
+            public static extern IntPtr GetWindowDC(IntPtr hwnd);
+
+            [DllImport("user32.dll", SetLastError = true)]
+            public static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+
+            [DllImport("user32.dll", SetLastError = true)]
+            public static extern void DisableProcessWindowsGhosting();
+
+            [DllImport("UxTheme.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+            public static extern IntPtr SetWindowTheme(IntPtr hwnd, string pszSubAppName, string pszSubIdList);
+
+            protected override void OnHandleCreated(EventArgs e)
+            {
+                SetWindowTheme(this.Handle, "", "");
+                base.OnHandleCreated(e);
+            }
+
+
+            protected override void WndProc(ref Message m)
+            {
+                base.WndProc(ref m);
+
+                switch (m.Msg)
+                {
+                    case WM_NCPAINT:
+                        {
+                            IntPtr hdc = GetWindowDC(m.HWnd);
+                            using (Graphics g = Graphics.FromHdc(hdc))
+                            {
+                                Brush b = new SolidBrush(title_color);
+                                g.FillRectangle(b, new Rectangle(0, 0, this.Width, this.Height)); //2000, 2000));
+                            }
+                            int r = ReleaseDC(m.HWnd, hdc);
+                        }
+                        break;
+                }
+            }
+
+
+        }
+        public void RoundBorderForm(Form frm)
+        {
+            //make a regtangular witd one point(x,y) and it's width and height:
+            Rectangle Bounds = new Rectangle(0, 0, frm.Width, frm.Height);
+            //size of a radius to disgh for a point arc
+            int CornerRadius = 1;
+            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
+            //making regtangular width 4 arc
+            path.AddArc(Bounds.X, Bounds.Y, CornerRadius, CornerRadius, 180, 90);
+            path.AddArc(Bounds.X + Bounds.Width - CornerRadius, Bounds.Y, CornerRadius, CornerRadius, 270, 90);
+            path.AddArc(Bounds.X + Bounds.Width - CornerRadius, Bounds.Y + Bounds.Height - CornerRadius, CornerRadius, CornerRadius, 0, 90);
+            path.AddArc(Bounds.X, Bounds.Y + Bounds.Height - CornerRadius, CornerRadius, CornerRadius, 90, 90);
+            path.CloseAllFigures();
+
+            frm.Region = new Region(path);
+        }
         public void StyleDatagridview(DataGridView dataGridView1, string style_mode)
         {
             switch (style_mode)
             {
                 case "1":
                     dataGridView1.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                    dataGridView1.ColumnHeadersDefaultCellStyle.BackColor = Color.Aquamarine;
+                    dataGridView1.ColumnHeadersDefaultCellStyle.BackColor = Color.Aqua;
                     dataGridView1.ColumnHeadersDefaultCellStyle.ForeColor = Color.Red;
                     dataGridView1.ColumnHeadersHeight = 30;
+                    dataGridView1.RightToLeft = RightToLeft.Yes;
+                    dataGridView1.RowHeadersVisible = false;
                     dataGridView1.EnableHeadersVisualStyles = false;
+                    dataGridView1.Width = dataGridView1.Columns.GetColumnsWidth(DataGridViewElementStates.None) + 3;
                     break;
 
                 default:
@@ -239,13 +355,47 @@ namespace SRL
             }
 
         }
-        public void AddChildToParentControlsAliagn(Control parent, Control child)
+        public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, string basic_back_color_name)
         {
+            foreach (ToolStripMenuItem item in menu_strip.Items)
+            {
+                item.BackColor = default(Color);
+
+            }
+            menu_strip.Items[item_name_to_alter_color].BackColor = Color.FromName(basic_back_color_name);
+
+        }
+        public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, Color back_color, Color fore_color)
+        {
+            foreach (ToolStripMenuItem item in menu_strip.Items)
+            {
+                item.BackColor = default(Color);
+                item.ForeColor = default(Color);
+
+            }
+            menu_strip.Items[item_name_to_alter_color].BackColor = back_color;
+            menu_strip.Items[item_name_to_alter_color].ForeColor = fore_color;
+
+
+        }
+
+    }
+    public class WinTools
+    {
+        public void FullScreenNoTaskbar(Control control)
+        {
+            control.Left = control.Top = 0;
+            control. Width = Screen.PrimaryScreen.WorkingArea.Width;
+            control .Height = Screen.PrimaryScreen.WorkingArea.Height;
+        }
+        public void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false)
+        {
+            if (reset_child_font) child.Font = default(Font);
             parent.Controls.Clear();
             parent.Controls.Add(child);
             AliagnChildToParent(parent, child);
-
         }
+
         public void AliagnChildToParent(Control parent, Control child)
         {
             child.Location = new Point(
@@ -255,11 +405,8 @@ namespace SRL
 
         }
 
-        public void AdjustChildToParent(Form parent_form, Control child, FormWindowState fws,
-            bool form_max_box, double child_width_relative, double child_height_relative)
+        public void AdjustChildToParent(Control parent_form, Control child, double child_width_relative, double child_height_relative)
         {
-            parent_form.WindowState = fws;
-            parent_form.MaximizeBox = form_max_box;
             int form_x = parent_form.Width;
             int form_y = parent_form.Height;
 
@@ -296,10 +443,11 @@ namespace SRL
                 pnlModal.Width = this.Width - 100;
                 pnlModal.Height = this.Height - 100;
 
-                new WinTools().AddChildToParentControlsAliagn(this, pnlModal);
+                new WinTools().AddChildToParentControlsAliagn(this, pnlModal, true);
 
-                new WinTools().AddChildToParentControlsAliagn(pnlModal, user_control);
+                new WinTools().AddChildToParentControlsAliagn(pnlModal, user_control, true);
             }
+
 
         }
         public bool Validation(Label lblError, List<Control> fieldNotNull = null, List<TextBox> tbMobile = null)
@@ -328,11 +476,18 @@ namespace SRL
     {
         public Security() { }
 
+
         public enum UserRegistrationStatus
         {
             NotRegistered = 0,
             NotActivated = 1,
             Activated = 2
+        }
+        public void WinCheckLogin(DbContext db, string entity_name, WinSessionId session)
+        {
+            new SRL.WinLogin(db, entity_name, session).ShowDialog();
+
+            if (!session.IsLogined) Environment.Exit(0);
         }
         public void CreateSession(string key, object value, System.Web.UI.Page page)
         {
@@ -444,6 +599,41 @@ namespace SRL
     }
     public class Convertor
     {
+        public List<string> EnglishToPersianDate(DateTime d)
+        {
+            List<string> date_list = new List<string>();
+            //string GregorianDate = "Thursday, October 24, 2013";
+            //DateTime d = DateTime.Parse(GregorianDate);
+            PersianCalendar pc = new PersianCalendar();
+            date_list.Add(string.Format("{0}/{1}/{2}", pc.GetYear(d), pc.GetMonth(d), pc.GetDayOfMonth(d)));
+            var persianDate = new DateTime(pc.GetYear(d), pc.GetMonth(d), pc.GetDayOfMonth(d) - 1);
+            date_list.Add(persianDate.ToString("yyyy MMM ddd", CultureInfo.GetCultureInfo("fa-Ir")));
+
+            date_list.Add(string.Format("{0}, {1}/{2}/{3} {4}:{5}:{6}\n",
+                      pc.GetDayOfWeek(d),
+                      pc.GetMonth(d),
+                      pc.GetDayOfMonth(d),
+                      pc.GetYear(d),
+                      pc.GetHour(d),
+                      pc.GetMinute(d),
+                      pc.GetSecond(d)));
+
+            return date_list;
+        }
+        public DateTime PersianToEnglishDate(int year, int month, int day)
+        {
+            PersianCalendar pc = new PersianCalendar();
+            DateTime dt = new DateTime(year, month, day, pc);
+            return dt;
+        }
+
+        public DateTime PersianToEnglishDate(int year, int month, int day, int hour, int minute, int second, int milsec)
+        {
+            PersianCalendar pc = new PersianCalendar();
+            DateTime dt = pc.ToDateTime(year, month, day, hour, minute, second, milsec);
+
+            return dt;
+        }
         public void CopyDataTableToDataTable(DataTable dt_from, DataTable dt_to)
         {
 

@@ -78,6 +78,12 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublicForm.aspx.cs" />
     <Compile Include="Public.cs" />
+    <Compile Include="tools\WinLogin.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="tools\WinLogin.Designer.cs">
+      <DependentUpon>WinLogin.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="content\bootstrap-treeview.min.css" />
@@ -132,6 +138,11 @@
     <None Include="doc\google map.rtf" />
     <None Include="doc\select2.rtf" />
     <None Include="doc\sqlite.docx" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="tools\WinLogin.resx">
+      <DependentUpon>WinLogin.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
