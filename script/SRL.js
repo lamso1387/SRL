@@ -32,7 +32,8 @@ window.SRL = SRL;
     };
 
 
-    SRL.BindBigCityToOstan= function (stateID, bigCityId, optionClasses) {
+
+    SRL.BindBigCityToOstan = function (stateID, bigCityId, optionClasses) {
         $('#' + stateID).on('change', function (e) {
             StartLoader('#' + bigCityId + '-icon', '#' + bigCityId + '-loader');
             $('#' + bigCityId).empty().append('<option value="">انتخاب کنید</option>');
@@ -212,7 +213,7 @@ window.SRL = SRL;
             }
             document.cookie = encodeURIComponent(name) + "=" + encodeURIComponent(value) + expires + "; path=/";
         };
-
+        
         SRL.DropdownHover = function (isSmooth, dropdownSelector, fadeInDelay, fadeOutDelay) {
             /// <summary>
             ///     1: makes dropdown auto open smoothly
