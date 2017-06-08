@@ -90,12 +90,12 @@ namespace SRL
             Dictionary<string, string> kv = new Dictionary<string, string>();
             kv["setting_is_set"] = "true";
             kv["form_font_size"] = "11";
-            kv["menu_font_size"] = "12";
+            kv["menu_font_size"] = "11";
             kv["child_width_relative"] = "0/9";
             kv["child_height_relative"] = "0/9";
             kv["font_name"] = "B Koodak";
-            kv["menu_back_color"] = "White";
-            kv["form_back_color"] = "White";
+            kv["menu_back_color"] = "Control";
+            kv["font_factor"] = "1/003";
             return kv;
         }
         public void ShowSettingInControls(Control form_font_size, Control menu_font_size,
@@ -382,6 +382,74 @@ namespace SRL
     }
     public class WinTools
     {
+        public class TextBoxBorderColor : TextBox
+        {
+            public Color border_color;
+            public Color border_focus_color;
+            public string border_or_focus_or_both;
+
+            public TextBoxBorderColor(Color border_color_, Color border_focus_color_, string border_or_focus_or_both_)
+            {
+                border_color = border_color_;
+                border_focus_color = border_focus_color_;
+                border_or_focus_or_both = border_or_focus_or_both_;
+            }
+            [DllImport("user32")]
+            private static extern IntPtr GetWindowDC(IntPtr hwnd);
+            private const int WM_NCPAINT = 0x85;
+            protected override void WndProc(ref Message m)
+            {
+                base.WndProc(ref m);
+                Pen pen;
+                switch (border_or_focus_or_both)
+                {
+                    case "border":
+                        if (m.Msg == WM_NCPAINT && !this.Focused)
+                        {
+                            pen = new Pen(border_color);
+                            var dc = GetWindowDC(Handle);
+                            using (Graphics g = Graphics.FromHdc(dc))
+                            {
+                                g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                            }
+                        }
+                        break;
+                    case "focus":
+                        if (m.Msg == WM_NCPAINT && this.Focused)
+                        {
+                            pen = new Pen(border_focus_color);
+                            var dc = GetWindowDC(Handle);
+                            using (Graphics g = Graphics.FromHdc(dc))
+                            {
+                                g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                            }
+                        }
+                        break;
+                    case "both":
+                        if (m.Msg == WM_NCPAINT && this.Focused)
+                        {
+                            pen = new Pen(border_focus_color);
+                            var dc = GetWindowDC(Handle);
+                            using (Graphics g = Graphics.FromHdc(dc))
+                            {
+                                g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                            }
+                        }
+                        else if (m.Msg == WM_NCPAINT && !this.Focused)
+                        {
+                            pen = new Pen(border_color);
+                            var dc = GetWindowDC(Handle);
+                            using (Graphics g = Graphics.FromHdc(dc))
+                            {
+                                g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                            }
+                        }
+                        break;
+
+                }
+
+            }
+        }
         public void FullScreenNoTaskbar(Control control)
         {
             control.Left = control.Top = 0;
@@ -394,6 +462,17 @@ namespace SRL
             parent.Controls.Clear();
             parent.Controls.Add(child);
             AliagnChildToParent(parent, child);
+        }
+        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor=1)
+        {
+            decimal x_relative = Decimal.Divide(parent.Width, child.Width);
+            decimal y_relative = Decimal.Divide(parent.Height, child.Height);
+            var f = (x_relative + y_relative) / 2 ;
+            f *= font_factor;
+
+            child.Font = new Font(child.Font.FontFamily, child.Font.Size * (float)f);
+
+            AddChildToParentControlsAliagn(parent, child);
         }
 
         public void AliagnChildToParent(Control parent, Control child)
