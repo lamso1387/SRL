@@ -16,6 +16,7 @@ using System.Windows.Forms.DataVisualization.Charting;
 using System.Reflection;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
 
 namespace SRL
 {
@@ -157,7 +158,7 @@ namespace SRL
 
             if (ismenu_back_color)
             {
-               string query = SqlQuerySettingTable("menu_back_color");
+                string query = SqlQuerySettingTable("menu_back_color");
                 menuContainor.BackColor = Color.FromName(query);
             }
             var wintool = new WinTools();
@@ -165,9 +166,9 @@ namespace SRL
             {
                 string width = SqlQuerySettingTable("child_width_relative");
                 string height = SqlQuerySettingTable("child_height_relative");
-                wintool.AdjustChildToParent(form, menuContainor,double.Parse(width), double.Parse(height));
+                wintool.AdjustChildToParent(form, menuContainor, double.Parse(width), double.Parse(height));
             }
-           if(isAliagn)  wintool.AliagnChildToParent(form, menuContainor);
+            if (isAliagn) wintool.AliagnChildToParent(form, menuContainor);
 
         }
 
@@ -243,7 +244,7 @@ namespace SRL
             Task.WaitAll(task_list.ToArray());
         }
     }
-    public class ClassManagement<ClassType> where ClassType : class
+    public class ClassManagement<ClassType> // where ClassType : class 
     {
         public ClassType CreateInstance()
         {
@@ -261,6 +262,20 @@ namespace SRL
             PropertyInfo propk = typeof(ClassType).GetProperty(property_name);
             return propk.GetValue(instance);
 
+        }
+        public string GetEnumDescription(ClassType enum_value)
+        {
+            //   enum with Description example:
+            //       public enum MyEnum
+            //            {
+            //              [Description("label1")]
+            //              name1=1,
+            //
+            //              [Description("label2")]
+            //              Len=2
+            //             }
+            DescriptionAttribute[] attributes = (DescriptionAttribute[])enum_value.GetType().GetField(enum_value.ToString()).GetCustomAttributes(typeof(DescriptionAttribute), false);
+            return attributes.Length > 0 ? attributes[0].Description : string.Empty;
         }
     }
     public class WinUI
@@ -318,6 +333,17 @@ namespace SRL
             }
 
 
+        }
+        public Icon ResizeIcon(Icon icon, int width_multi_8 = 16, int height = 16)
+        {
+            Size size = new Size(width_multi_8, height);
+            Bitmap bitmap = new Bitmap(size.Width, size.Height);
+            using (Graphics g = Graphics.FromImage(bitmap))
+            {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.DrawImage(icon.ToBitmap(), new Rectangle(Point.Empty, size));
+            }
+            return Icon.FromHandle(bitmap.GetHicon());
         }
         public void RoundBorderForm(Form frm)
         {
@@ -382,6 +408,20 @@ namespace SRL
     }
     public class WinTools
     {
+        public void MakeComboBoxSizable(ComboBox cb, int height, Padding pad)
+        {
+            cb.DrawMode = DrawMode.OwnerDrawFixed;
+
+            decimal factor1 = Decimal.Divide(cb.Height, cb.ItemHeight);
+            decimal item_height1 = height / factor1;
+
+            int factor2 = cb.Height - cb.ItemHeight;
+            int item_height2 = height - factor2;
+
+            int item_height = Decimal.ToInt32(Decimal.Divide(item_height1 + item_height2, 2));
+            cb.ItemHeight = Decimal.ToInt32(item_height);
+            cb.Margin = pad;
+        }
         public class TextBoxBorderColor : TextBox
         {
             public Color border_color;
@@ -453,8 +493,8 @@ namespace SRL
         public void FullScreenNoTaskbar(Control control)
         {
             control.Left = control.Top = 0;
-            control. Width = Screen.PrimaryScreen.WorkingArea.Width;
-            control .Height = Screen.PrimaryScreen.WorkingArea.Height;
+            control.Width = Screen.PrimaryScreen.WorkingArea.Width;
+            control.Height = Screen.PrimaryScreen.WorkingArea.Height;
         }
         public void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false)
         {
@@ -463,11 +503,11 @@ namespace SRL
             parent.Controls.Add(child);
             AliagnChildToParent(parent, child);
         }
-        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor=1)
+        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1)
         {
             decimal x_relative = Decimal.Divide(parent.Width, child.Width);
             decimal y_relative = Decimal.Divide(parent.Height, child.Height);
-            var f = (x_relative + y_relative) / 2 ;
+            var f = (x_relative + y_relative) / 2;
             f *= font_factor;
 
             child.Font = new Font(child.Font.FontFamily, child.Font.Size * (float)f);
@@ -529,7 +569,7 @@ namespace SRL
 
 
         }
-        public bool Validation(Label lblError, List<Control> fieldNotNull = null, List<TextBox> tbMobile = null)
+        public bool ValidationInLabel(Label lblError, List<Control> fieldNotNull = null, List<TextBox> tbMobile = null)
         {
             lblError.Text = string.Empty;
             if (fieldNotNull != null)
@@ -548,8 +588,143 @@ namespace SRL
 
             return string.IsNullOrWhiteSpace(lblError.Text) ? true : false;
         }
+        public class UserControlValidation : UserControl
+        {
+            ErrorProvider errorProvider1;
+            UserControl user_control;
+            bool force_cancel = true;
+
+            public enum ErrorTypes
+            {
+                [Description("اجباری")]
+                NotNull = 1,
+
+                [Description("11 رقمی شروع با صفر")]
+                MobilePattern = 2,
+
+                [Description("اجباری و 11 رقمی شروع با صفر")]
+                NotNull_MobilePattern = 3,
 
 
+                [Description("فرمت اشتباه")]
+                DatePattern = 4
+
+            }
+
+
+            public UserControlValidation(UserControl uc, ErrorProvider errorProvider, bool force_cancel_)
+            {
+                errorProvider1 = errorProvider;
+                user_control = uc;
+                force_cancel=force_cancel_;
+            }
+
+            public void CheckAllField(List<Control> controls, out bool validation_result)
+            {
+                bool main_force_cancel=force_cancel;
+                force_cancel = true;
+                foreach (Control control in controls)
+                {
+                    control.Focus();
+                }
+               validation_result= user_control.ValidateChildren(ValidationConstraints.Enabled);
+               force_cancel = main_force_cancel;
+                // user_control.Validate();
+            }
+            /// <summary>
+            /// each control can use this method one time. eather add item to ErrorType enum source code or test another UserControlValidation object
+            /// </summary>
+            /// <param name="control"></param>
+            /// <param name="error_position"></param>
+            /// <param name="error_type"></param>
+            /// <param name="padding"></param>
+            public void ControlValidation(Control control, ErrorIconAlignment error_position, ErrorTypes error_type, int padding = 0)
+            {
+                errorProvider1.SetIconAlignment(control, error_position);
+                errorProvider1.SetIconPadding(control, padding);
+                switch (error_type)
+                {
+                    case ErrorTypes.NotNull:
+                        control.Validating += new System.ComponentModel.CancelEventHandler(not_null_Validating);
+                        break;
+                    case ErrorTypes.MobilePattern:
+                        control.Validating += new System.ComponentModel.CancelEventHandler(mobile_pattern_Validating);
+                        break;
+                    case ErrorTypes.NotNull_MobilePattern:
+                        control.Validating += new System.ComponentModel.CancelEventHandler(not_null_mobile_pattern_Validating);
+                        break;
+                    case ErrorTypes.DatePattern:
+                        control.Validating += new System.ComponentModel.CancelEventHandler(date_pattern_Validating);
+                        break;
+                }
+
+            }
+
+            private void date_pattern_Validating(object sender, CancelEventArgs e)
+            {
+                Control control = sender as Control;
+               
+                var dt = new DateTime();
+                if (control.Text.Any())
+                if (!DateTime.TryParse(control.Text, out dt))
+                {
+                    e.Cancel = force_cancel;
+                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.DatePattern);
+
+                    errorProvider1.SetError(control, msg);
+
+                    return;
+                }
+                errorProvider1.SetError(control, "");
+            }
+            private void not_null_mobile_pattern_Validating(object sender, CancelEventArgs e)
+            {
+                Control control = sender as Control;
+                bool status=control.Text.Any() ?
+                   ( (control.Text.Length !=11 || control.Text.Substring(0,1) !="0") ? true:false) 
+                   : true;
+                if (status)
+                {
+                    e.Cancel = force_cancel;
+                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.NotNull_MobilePattern);
+
+                    errorProvider1.SetError(control, msg);
+
+                    return;
+                }
+                errorProvider1.SetError(control, "");
+            }
+            private void mobile_pattern_Validating(object sender, CancelEventArgs e)
+            {
+                Control control = sender as Control;
+                if (control.Text.Any()) 
+                if (control.Text.Length !=11 || control.Text.Substring(0,1) !="0")
+                {
+                    e.Cancel = force_cancel;
+                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.MobilePattern);
+
+                    errorProvider1.SetError(control, msg);
+
+                    return;
+                }
+                errorProvider1.SetError(control, "");
+            }
+            private void not_null_Validating(object sender, CancelEventArgs e)
+            {
+                Control control = sender as Control;
+                if (control.Text.Trim() == "")
+                {
+                    e.Cancel = force_cancel;
+                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.NotNull);
+
+                    errorProvider1.SetError(control, msg);
+
+                    return;
+                }
+                errorProvider1.SetError(control, "");
+            }
+
+        }
     }
     public class Security
     {
