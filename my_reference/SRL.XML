@@ -10,6 +10,20 @@
             </summary>
             <param name="db_"></param>
         </member>
+        <member name="M:SRL.WinUI.AlterTitleBarColor.#ctor">
+            <summary>
+            add all of this class code (after constructor) to Form1.cs before it's constructor and call  DisableProcessWindowsGhosting() in that load event.
+            </summary>
+        </member>
+        <member name="M:SRL.WinTools.UserControlValidation.ControlValidation(System.Windows.Forms.Control,SRL.WinTools.UserControlValidation.ErrorTypes,System.Windows.Forms.ErrorIconAlignment,System.Int32)">
+            <summary>
+            each control can use this method one time. eather add item to ErrorType enum source code or test another UserControlValidation object
+            </summary>
+            <param name="control"></param>
+            <param name="error_position"></param>
+            <param name="error_type"></param>
+            <param name="padding"></param>
+        </member>
         <member name="M:SRL.WebRequest.PostAsJsonAsync(System.Collections.Generic.Dictionary{System.String,System.Object},System.Net.Http.HttpClient,System.String,System.Object)">
             <summary>
             salam
@@ -34,6 +48,31 @@
             <param name="SourcePath">full SourcePath</param>
             <param name="DestinationPath">full DestinationPath</param>
             <returns>returns "true" or error message</returns>
+        </member>
+        <member name="M:SRL.WinLogin.#ctor(System.Data.Entity.DbContext,System.String,SRL.WinSessionId)">
+            <summary>
+            user table must have column: ID (long or bigint),username, password, name_family
+            </summary>
+            <param name="db_"></param>
+            <param name="entity_name_"></param>
+            <param name="session_"></param>
+        </member>
+        <member name="F:SRL.WinLogin.components">
+            <summary>
+            Required designer variable.
+            </summary>
+        </member>
+        <member name="M:SRL.WinLogin.Dispose(System.Boolean)">
+            <summary>
+            Clean up any resources being used.
+            </summary>
+            <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        </member>
+        <member name="M:SRL.WinLogin.InitializeComponent">
+            <summary>
+            Required method for Designer support - do not modify
+            the contents of this method with the code editor.
+            </summary>
         </member>
     </members>
 </doc>
