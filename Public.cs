@@ -21,7 +21,7 @@ using System.ComponentModel;
 namespace SRL
 {
 
-    public class DateTimeClass
+    public class DateTimeLanguageClass
     {
         System.Windows.Forms.Timer timer = null;
         Control control_to_show_time;
@@ -53,6 +53,18 @@ namespace SRL
 
 
 
+        }
+
+
+        public string GetCurrentKeyboardShort()
+        {
+
+            return InputLanguage.CurrentInputLanguage.Culture.Name;
+        }
+        public string ChangeKeyboardAltShift()
+        {
+            SendKeys.Send("%+");
+            return GetCurrentKeyboardShort();
         }
     }
     public class SettingClass<SettingEntity> where SettingEntity : class
@@ -607,7 +619,10 @@ namespace SRL
 
 
                 [Description("فرمت اشتباه")]
-                DatePattern = 4
+                MaskDatePattern = 4,
+
+                [Description("عدد اعشاری مجاز است")]
+                DecimalInput = 5
 
             }
 
@@ -616,19 +631,19 @@ namespace SRL
             {
                 errorProvider1 = errorProvider;
                 user_control = uc;
-                force_cancel=force_cancel_;
+                force_cancel = force_cancel_;
             }
 
             public void CheckAllField(List<Control> controls, out bool validation_result)
             {
-                bool main_force_cancel=force_cancel;
+                bool main_force_cancel = force_cancel;
                 force_cancel = true;
                 foreach (Control control in controls)
                 {
                     control.Focus();
                 }
-               validation_result= user_control.ValidateChildren(ValidationConstraints.Enabled);
-               force_cancel = main_force_cancel;
+                validation_result = user_control.ValidateChildren(ValidationConstraints.Enabled);
+                force_cancel = main_force_cancel;
                 // user_control.Validate();
             }
             /// <summary>
@@ -638,7 +653,7 @@ namespace SRL
             /// <param name="error_position"></param>
             /// <param name="error_type"></param>
             /// <param name="padding"></param>
-            public void ControlValidation(Control control, ErrorIconAlignment error_position, ErrorTypes error_type, int padding = 0)
+            public void ControlValidation(Control control, ErrorTypes error_type, ErrorIconAlignment error_position = ErrorIconAlignment.MiddleRight, int padding = 0)
             {
                 errorProvider1.SetIconAlignment(control, error_position);
                 errorProvider1.SetIconPadding(control, padding);
@@ -649,39 +664,73 @@ namespace SRL
                         break;
                     case ErrorTypes.MobilePattern:
                         control.Validating += new System.ComponentModel.CancelEventHandler(mobile_pattern_Validating);
+                        control.KeyPress += new System.Windows.Forms.KeyPressEventHandler(number_input_KeyPress);
                         break;
                     case ErrorTypes.NotNull_MobilePattern:
                         control.Validating += new System.ComponentModel.CancelEventHandler(not_null_mobile_pattern_Validating);
+                        control.KeyPress += new System.Windows.Forms.KeyPressEventHandler(number_input_KeyPress);
                         break;
-                    case ErrorTypes.DatePattern:
-                        control.Validating += new System.ComponentModel.CancelEventHandler(date_pattern_Validating);
+                    case ErrorTypes.MaskDatePattern:
+                        control.Validating += new System.ComponentModel.CancelEventHandler(mask_date_pattern_Validating);
+                        break;
+                    case ErrorTypes.DecimalInput:
+                        control.KeyPress += new System.Windows.Forms.KeyPressEventHandler(decimal_input_KeyPress);
                         break;
                 }
 
             }
-
-            private void date_pattern_Validating(object sender, CancelEventArgs e)
+            private void number_input_KeyPress(object sender, KeyPressEventArgs e)
             {
-                Control control = sender as Control;
-               
-                var dt = new DateTime();
-                if (control.Text.Any())
-                if (!DateTime.TryParse(control.Text, out dt))
+                if (((e.KeyChar < 48 || e.KeyChar > 57) && e.KeyChar != 8 ))
                 {
-                    e.Cancel = force_cancel;
-                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.DatePattern);
-
-                    errorProvider1.SetError(control, msg);
-
+                    e.Handled = true;
                     return;
                 }
+            }
+            private void decimal_input_KeyPress(object sender, KeyPressEventArgs e)
+            {
+                if (((e.KeyChar < 48 || e.KeyChar > 57) && e.KeyChar != 8 && e.KeyChar != 46))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
+                // checks to make sure only 1 decimal is allowed
+                if (e.KeyChar == 46)
+                {
+                    if ((sender as TextBox).Text.IndexOf(e.KeyChar) != -1)
+                        e.Handled = true;
+                }
+            }
+
+            private void mask_date_pattern_Validating(object sender, CancelEventArgs e)
+            {
+                MaskedTextBox control = sender as MaskedTextBox;
+                MaskFormat format = control.TextMaskFormat;
+                control.TextMaskFormat = MaskFormat.ExcludePromptAndLiterals;
+                if (control.Text.Any())
+                    control.TextMaskFormat = MaskFormat.IncludeLiterals;
+
+                var dt = new DateTime();
+                if (control.Text.Any())
+                    if (!DateTime.TryParse(control.Text, out dt))
+                    {
+                        e.Cancel = force_cancel;
+                        var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.MaskDatePattern);
+
+                        errorProvider1.SetError(control, msg);
+                        control.TextMaskFormat = format;
+                        return;
+                    }
+                control.TextMaskFormat = format;
                 errorProvider1.SetError(control, "");
             }
             private void not_null_mobile_pattern_Validating(object sender, CancelEventArgs e)
             {
+              
                 Control control = sender as Control;
-                bool status=control.Text.Any() ?
-                   ( (control.Text.Length !=11 || control.Text.Substring(0,1) !="0") ? true:false) 
+                bool status = control.Text.Any() ?
+                   ((control.Text.Length != 11 || control.Text.Substring(0, 1) != "0") ? true : false)
                    : true;
                 if (status)
                 {
@@ -697,16 +746,16 @@ namespace SRL
             private void mobile_pattern_Validating(object sender, CancelEventArgs e)
             {
                 Control control = sender as Control;
-                if (control.Text.Any()) 
-                if (control.Text.Length !=11 || control.Text.Substring(0,1) !="0")
-                {
-                    e.Cancel = force_cancel;
-                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.MobilePattern);
+                if (control.Text.Any())
+                    if (control.Text.Length != 11 || control.Text.Substring(0, 1) != "0")
+                    {
+                        e.Cancel = force_cancel;
+                        var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.MobilePattern);
 
-                    errorProvider1.SetError(control, msg);
+                        errorProvider1.SetError(control, msg);
 
-                    return;
-                }
+                        return;
+                    }
                 errorProvider1.SetError(control, "");
             }
             private void not_null_Validating(object sender, CancelEventArgs e)
@@ -871,6 +920,13 @@ namespace SRL
                       pc.GetHour(d),
                       pc.GetMinute(d),
                       pc.GetSecond(d)));
+
+            string year = pc.GetYear(d).ToString();
+            string mounth = pc.GetMonth(d) < 10 ? "0" + pc.GetMonth(d).ToString() : pc.GetMonth(d).ToString();
+            string day = pc.GetDayOfMonth(d) < 10 ? "0" + pc.GetDayOfMonth(d).ToString() : pc.GetDayOfMonth(d).ToString();
+            date_list.Add(year);
+            date_list.Add(mounth);
+            date_list.Add(day);
 
             return date_list;
         }
