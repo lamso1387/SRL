@@ -292,6 +292,59 @@ namespace SRL
     }
     public class WinUI
     {
+        public class PictureBoxHover
+        {
+            int width_magnify = 0;
+            int height_magnify = 0;
+            System.Windows.Forms.Cursor cursor;
+            int opacity = 255;
+            public PictureBoxHover(PictureBox pb, System.Windows.Forms.Cursor cursor_, int width_magnify_ = 0, int height_magnify_ = 0, int opacity_ = 255)
+            {
+                width_magnify = width_magnify_;
+                height_magnify = height_magnify_;
+                opacity = opacity_;
+                cursor = cursor_;
+                pb.MouseHover += new System.EventHandler(pb_MouseHover);
+                pb.MouseLeave += new System.EventHandler(pb_MouseLeave);
+            }
+
+            private void pb_MouseHover(object sender, EventArgs e)
+            {
+                PictureBox pb = sender as PictureBox;
+
+                pb.Height += height_magnify;
+                pb.Width += width_magnify;
+                pb.Cursor = cursor;
+
+                SetPictueBoxOpacity(pb, opacity);
+
+            }
+            private void pb_MouseLeave(object sender, EventArgs e)
+            {
+                PictureBox pb = sender as PictureBox;
+
+                pb.Height -= height_magnify;
+                pb.Width -= width_magnify;
+                SetPictueBoxOpacity(pb, 255);
+
+
+            }
+            public void SetPictueBoxOpacity(PictureBox pb, int opc)
+            {
+                Bitmap pic = (Bitmap)pb.Image;
+                for (int w = 0; w < pic.Width; w++)
+                {
+                    for (int h = 0; h < pic.Height; h++)
+                    {
+                        Color c = pic.GetPixel(w, h);
+                        Color newC = Color.FromArgb(opc, c);
+                        pic.SetPixel(w, h, newC);
+                    }
+                }
+                pb.Image = pic;
+            }
+        }
+      
         public class AlterTitleBarColor : Form
         {
             /// <summary>
