@@ -377,7 +377,7 @@ namespace SRL
                 pb.Image = pic;
             }
         }
-      
+
         public class AlterTitleBarColor : Form
         {
             /// <summary>
@@ -601,14 +601,35 @@ namespace SRL
             parent.Controls.Add(child);
             AliagnChildToParent(parent, child);
         }
-        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1)
+        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false)
         {
+            FontFamily font_family = child.Font.FontFamily;
+            FontStyle font_style = child.Font.Style;
+            if (use_parent_font_family)
+            {
+                font_family = parent.Font.FontFamily;
+                font_style = parent.Font.Style;
+            }
+
+
+            if (!font_family.IsStyleAvailable(font_style))
+            {
+                font_style = font_family.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular :
+                    font_family.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold :
+                    font_family.IsStyleAvailable(FontStyle.Italic) ? FontStyle.Italic :
+                    font_family.IsStyleAvailable(FontStyle.Underline) ? FontStyle.Underline : FontStyle.Strikeout;
+            }
+
+            child.Font = new Font(font_family, child.Font.Size * (float)font_factor, font_style);
+
             decimal x_relative = Decimal.Divide(parent.Width, child.Width);
             decimal y_relative = Decimal.Divide(parent.Height, child.Height);
             var f = (x_relative + y_relative) / 2;
             f *= font_factor;
 
-            child.Font = new Font(child.Font.FontFamily, child.Font.Size * (float)f);
+
+
+            child.Font = new Font(font_family, child.Font.Size * (float)f, font_style);
 
             AddChildToParentControlsAliagn(parent, child);
         }
@@ -629,6 +650,16 @@ namespace SRL
 
             child.Width = int.Parse(Math.Floor(child_width_relative * form_x).ToString());
             child.Height = int.Parse(Math.Floor(child_height_relative * form_y).ToString());
+        }
+        public void AdjustAndAliagnChildToParent(Control parent_form, Control child, double child_width_relative, double child_height_relative)
+        {
+            int form_x = parent_form.Width;
+            int form_y = parent_form.Height;
+
+            child.Width = int.Parse(Math.Floor(child_width_relative * form_x).ToString());
+            child.Height = int.Parse(Math.Floor(child_height_relative * form_y).ToString());
+
+            AliagnChildToParent(parent_form, child);
         }
 
         public class Media
@@ -767,7 +798,7 @@ namespace SRL
             }
             private void number_input_KeyPress(object sender, KeyPressEventArgs e)
             {
-                if (((e.KeyChar < 48 || e.KeyChar > 57) && e.KeyChar != 8 ))
+                if (((e.KeyChar < 48 || e.KeyChar > 57) && e.KeyChar != 8))
                 {
                     e.Handled = true;
                     return;
@@ -813,7 +844,7 @@ namespace SRL
             }
             private void not_null_mobile_pattern_Validating(object sender, CancelEventArgs e)
             {
-              
+
                 Control control = sender as Control;
                 bool status = control.Text.Any() ?
                    ((control.Text.Length != 11 || control.Text.Substring(0, 1) != "0") ? true : false)
