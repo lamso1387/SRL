@@ -344,7 +344,7 @@ namespace SRL
                 pb.Image = pic;
             }
         }
-      
+
         public class AlterTitleBarColor : Form
         {
             /// <summary>
@@ -568,17 +568,24 @@ namespace SRL
             parent.Controls.Add(child);
             AliagnChildToParent(parent, child);
         }
-        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family=false)
+        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false)
         {
             FontFamily font_family = child.Font.FontFamily;
-            if (use_parent_font_family) font_family = parent.Font.FontFamily;
+            FontStyle font_style = child.Font.Style;
+            if (use_parent_font_family)
+            {
+                font_family = parent.Font.FontFamily;
+                font_style = parent.Font.Style;
+            }
 
-            
 
-            FontStyle font_style = font_family.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular :
-                font_family.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold :
-                font_family.IsStyleAvailable(FontStyle.Italic) ? FontStyle.Italic :
-                font_family.IsStyleAvailable(FontStyle.Underline) ? FontStyle.Underline : FontStyle.Strikeout;
+            if (!font_family.IsStyleAvailable(font_style))
+            {
+                font_style = font_family.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular :
+                    font_family.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold :
+                    font_family.IsStyleAvailable(FontStyle.Italic) ? FontStyle.Italic :
+                    font_family.IsStyleAvailable(FontStyle.Underline) ? FontStyle.Underline : FontStyle.Strikeout;
+            }
 
             child.Font = new Font(font_family, child.Font.Size * (float)font_factor, font_style);
 
@@ -758,7 +765,7 @@ namespace SRL
             }
             private void number_input_KeyPress(object sender, KeyPressEventArgs e)
             {
-                if (((e.KeyChar < 48 || e.KeyChar > 57) && e.KeyChar != 8 ))
+                if (((e.KeyChar < 48 || e.KeyChar > 57) && e.KeyChar != 8))
                 {
                     e.Handled = true;
                     return;
@@ -804,7 +811,7 @@ namespace SRL
             }
             private void not_null_mobile_pattern_Validating(object sender, CancelEventArgs e)
             {
-              
+
                 Control control = sender as Control;
                 bool status = control.Text.Any() ?
                    ((control.Text.Length != 11 || control.Text.Substring(0, 1) != "0") ? true : false)
