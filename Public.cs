@@ -575,8 +575,8 @@ namespace SRL
 
             
 
-            FontStyle font_style = font_family.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular :
-                font_family.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold :
+            FontStyle font_style = font_family.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold :
+                font_family.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular :
                 font_family.IsStyleAvailable(FontStyle.Italic) ? FontStyle.Italic :
                 font_family.IsStyleAvailable(FontStyle.Underline) ? FontStyle.Underline : FontStyle.Strikeout;
 
