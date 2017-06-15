@@ -196,6 +196,17 @@ namespace SRL
     }
     public class ChildParent
     {
+        public IEnumerable<Control> GetAllChildrenControls(Control root)
+        {
+            var q = new Queue<Control>(root.Controls.Cast<Control>());
+            while (q.Any())
+            {
+                var next = q.Dequeue();
+                next.Controls.Cast<Control>().ToList().ForEach(q.Enqueue);
+
+                yield return next;
+            }
+        }
         public object AddCategory<EntityT>(DbContext db, string categoryName, EntityT newCategory) where EntityT : class
         {
             SRL.ClassManagement<EntityT> class_mgnt = new ClassManagement<EntityT>();
@@ -298,7 +309,10 @@ namespace SRL
             int height_magnify = 0;
             System.Windows.Forms.Cursor cursor;
             int opacity = 255;
-            public PictureBoxHover(PictureBox pb, System.Windows.Forms.Cursor cursor_, int width_magnify_ = 0, int height_magnify_ = 0, int opacity_ = 255)
+            public PictureBoxHover()
+            {
+            }
+            public void EnablePictureBoxHover(PictureBox pb, System.Windows.Forms.Cursor cursor_, int width_magnify_ = 0, int height_magnify_ = 0, int opacity_ = 255)
             {
                 width_magnify = width_magnify_;
                 height_magnify = height_magnify_;
@@ -329,6 +343,17 @@ namespace SRL
 
 
             }
+            public Bitmap CreateNonIndexedImage(Image src)
+            {
+                Bitmap newBmp = new Bitmap(src.Width, src.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+                using (Graphics gfx = Graphics.FromImage(newBmp))
+                {
+                    gfx.DrawImage(src, 0, 0);
+                }
+
+                return newBmp;
+            }
             public void SetPictueBoxOpacity(PictureBox pb, int opc)
             {
                 Bitmap pic = (Bitmap)pb.Image;
@@ -338,7 +363,15 @@ namespace SRL
                     {
                         Color c = pic.GetPixel(w, h);
                         Color newC = Color.FromArgb(opc, c);
-                        pic.SetPixel(w, h, newC);
+                        try
+                        {
+                            pic.SetPixel(w, h, newC);
+                        }
+                        catch
+                        {
+                            pic = CreateNonIndexedImage(pic);
+                            pic.SetPixel(w, h, newC);
+                        }
                     }
                 }
                 pb.Image = pic;
