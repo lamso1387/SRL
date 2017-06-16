@@ -506,6 +506,26 @@ namespace SRL
     }
     public class WinTools
     {
+
+        public T CloneControl<T>(T controlToClone)
+            where T : Control
+        {
+            PropertyInfo[] controlProperties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+            T instance = Activator.CreateInstance<T>();
+
+            foreach (PropertyInfo propInfo in controlProperties)
+            {
+                if (propInfo.CanWrite)
+                {
+                    if (propInfo.Name != "WindowTarget")
+                        propInfo.SetValue(instance, propInfo.GetValue(controlToClone, null), null);
+                }
+            }
+
+            return instance;
+        }
+
         public void MakeComboBoxSizable(ComboBox cb, int height, Padding pad)
         {
             cb.DrawMode = DrawMode.OwnerDrawFixed;
@@ -1761,17 +1781,25 @@ namespace SRL
         {
 
         }
-        public string GetFileContentInRoot(string fileName, int line)
+        
+        public string GetFilePathInRoot(string fileName)
         {
             string path = Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory);
 
             path = Directory.GetParent(Directory.GetParent(path).FullName).FullName;
 
             path += @"\" + fileName;
+            
+            return path;
+        }
+        public IEnumerable<string> GetFileLines(string fileFullName)
+        {
 
-            var get_line = File.ReadLines(path).Skip(line - 1);
+            string path = @fileFullName;
 
-            return get_line.Count() < 1 ? "" : get_line.First();
+            var get_line = File.ReadLines(path);
+
+            return get_line;
         }
         public string GetFileContent(string fileFullName, int line)
         {
@@ -1781,26 +1809,7 @@ namespace SRL
 
             return get_line.Count() < 1 ? "" : get_line.First();
         }
-        public void SaveToFileInRoot(string fileName, string content, int line)
-        {
-            string path = Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory);
-
-            path = Directory.GetParent(Directory.GetParent(path).FullName).FullName;
-
-            path += @"\" + fileName;
-
-            string[] arrLine = File.ReadAllLines(path);
-            while (arrLine.Count() < line)
-            {
-                TextWriter tw = new StreamWriter(path, true);
-                tw.WriteLine("empty line created");
-                tw.Close();
-                arrLine = File.ReadAllLines(path);
-            }
-            arrLine[line - 1] = content;
-            File.WriteAllLines(path, arrLine);
-
-        }
+       
         public void SaveToFile(string fileFullName, string content, int line)
         {
             string path = @fileFullName;
