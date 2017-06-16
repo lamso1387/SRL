@@ -58,6 +58,11 @@ namespace SRL
         {
             this.Close();
         }
+
+        private void WinLogin_Load(object sender, EventArgs e)
+        {
+
+        }
     }
 
     public class WinSessionId

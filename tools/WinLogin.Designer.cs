@@ -39,7 +39,7 @@
             // btnEnter
             // 
             this.btnEnter.Location = new System.Drawing.Point(191, 94);
-            this.btnEnter.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.btnEnter.Margin = new System.Windows.Forms.Padding(4);
             this.btnEnter.Name = "btnEnter";
             this.btnEnter.Size = new System.Drawing.Size(133, 34);
             this.btnEnter.TabIndex = 0;
@@ -60,7 +60,7 @@
             // tbUsername
             // 
             this.tbUsername.Location = new System.Drawing.Point(191, 13);
-            this.tbUsername.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.tbUsername.Margin = new System.Windows.Forms.Padding(4);
             this.tbUsername.Name = "tbUsername";
             this.tbUsername.Size = new System.Drawing.Size(132, 27);
             this.tbUsername.TabIndex = 2;
@@ -68,7 +68,7 @@
             // tbPassword
             // 
             this.tbPassword.Location = new System.Drawing.Point(191, 48);
-            this.tbPassword.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.tbPassword.Margin = new System.Windows.Forms.Padding(4);
             this.tbPassword.Name = "tbPassword";
             this.tbPassword.PasswordChar = '*';
             this.tbPassword.Size = new System.Drawing.Size(132, 27);
@@ -109,12 +109,13 @@
             this.Controls.Add(this.label1);
             this.Controls.Add(this.btnEnter);
             this.Font = new System.Drawing.Font("B Koodak", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
-            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.Margin = new System.Windows.Forms.Padding(4);
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "WinLogin";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "ورود به نرم افزار";
+            this.Load += new System.EventHandler(this.WinLogin_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 

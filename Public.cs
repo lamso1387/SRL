@@ -620,7 +620,7 @@ namespace SRL
                     font_family.IsStyleAvailable(FontStyle.Underline) ? FontStyle.Underline : FontStyle.Strikeout;
             }
 
-            child.Font = new Font(font_family, child.Font.Size * (float)font_factor, font_style);
+        //    child.Font = new Font(font_family, child.Font.Size * (float)font_factor, font_style);
 
             decimal x_relative = Decimal.Divide(parent.Width, child.Width);
             decimal y_relative = Decimal.Divide(parent.Height, child.Height);
