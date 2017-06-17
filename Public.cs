@@ -20,6 +20,74 @@ using System.ComponentModel;
 
 namespace SRL
 {
+    public class TextBoxBorderColor : TextBox
+    {
+        public Color border_color;
+        public Color border_focus_color;
+        public string border_or_focus_or_both;
+
+        public TextBoxBorderColor(Color border_color_, Color border_focus_color_, string border_or_focus_or_both_)
+        {
+            border_color = border_color_;
+            border_focus_color = border_focus_color_;
+            border_or_focus_or_both = border_or_focus_or_both_;
+        }
+        [DllImport("user32")]
+        private static extern IntPtr GetWindowDC(IntPtr hwnd);
+        private const int WM_NCPAINT = 0x85;
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+            Pen pen;
+            switch (border_or_focus_or_both)
+            {
+                case "border":
+                    if (m.Msg == WM_NCPAINT && !this.Focused)
+                    {
+                        pen = new Pen(border_color);
+                        var dc = GetWindowDC(Handle);
+                        using (Graphics g = Graphics.FromHdc(dc))
+                        {
+                            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                        }
+                    }
+                    break;
+                case "focus":
+                    if (m.Msg == WM_NCPAINT && this.Focused)
+                    {
+                        pen = new Pen(border_focus_color);
+                        var dc = GetWindowDC(Handle);
+                        using (Graphics g = Graphics.FromHdc(dc))
+                        {
+                            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                        }
+                    }
+                    break;
+                case "both":
+                    if (m.Msg == WM_NCPAINT && this.Focused)
+                    {
+                        pen = new Pen(border_focus_color);
+                        var dc = GetWindowDC(Handle);
+                        using (Graphics g = Graphics.FromHdc(dc))
+                        {
+                            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                        }
+                    }
+                    else if (m.Msg == WM_NCPAINT && !this.Focused)
+                    {
+                        pen = new Pen(border_color);
+                        var dc = GetWindowDC(Handle);
+                        using (Graphics g = Graphics.FromHdc(dc))
+                        {
+                            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                        }
+                    }
+                    break;
+
+            }
+
+        }
+    }
 
     public class DateTimeLanguageClass
     {
@@ -66,6 +134,13 @@ namespace SRL
             SendKeys.Send("%+");
             return GetCurrentKeyboardShort();
         }
+        public DateTime? TryGetDateTimeValue(string datetime_string)
+        {
+            DateTime dt = new DateTime();
+            if (!DateTime.TryParse(datetime_string, out dt)) return null;
+            return dt;
+        }
+
     }
     public class SettingClass<SettingEntity> where SettingEntity : class
     {
@@ -207,6 +282,51 @@ namespace SRL
                 yield return next;
             }
         }
+
+        public void ClearControlsValue<ControlType>(IEnumerable<Control> controls_to_search, string property_to_clear, object clear_value)
+        {
+            SRL.ClassManagement<ControlType> class_mgnt = new ClassManagement<ControlType>();
+
+            var q = new Queue<ControlType>();
+            controls_to_search.OfType<ControlType>().ToList().ForEach(q.Enqueue);
+            while (q.Any())
+            {
+                var next = q.Dequeue();
+                class_mgnt.SetProperty(property_to_clear, next, clear_value);
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="parent_to_refresh"></param>
+        /// <param name="types_to_refresh"></param>
+        /// <param name="controls_to_refresh">new List Type() { typeof(Button), typeof(TextBox),... }</param>
+        public void RefreshFormControls(Control parent_to_refresh, List<Type> types_to_refresh = null, List<Control> controls_to_refresh = null)
+        {
+            IEnumerable<Control> childs = GetAllChildrenControls(parent_to_refresh);
+
+            if (types_to_refresh != null)
+                foreach (var item in types_to_refresh)
+                {
+                    if (item == typeof(ComboBox)) ClearControlsValue<ComboBox>(childs, "Text", string.Empty);
+                    if (item == typeof(TextBox)) ClearControlsValue<TextBox>(childs, "Text", string.Empty);
+                    if (item == typeof(RadioButton)) ClearControlsValue<RadioButton>(childs, "Checked", false);
+                    if (item == typeof(CheckBox)) ClearControlsValue<CheckBox>(childs, "Checked", false);
+                }
+
+            if (controls_to_refresh != null)
+                foreach (dynamic control in controls_to_refresh)
+                {
+                    if (control is ComboBox) control.Text = string.Empty;
+                    if (control is TextBox) control.Text = string.Empty;
+                    if (control is RadioButton) control.Checked = false;
+                    if (control is CheckBox) control.Checked = false;
+                }
+        }
+
+
+
         public object AddCategory<EntityT>(DbContext db, string categoryName, EntityT newCategory) where EntityT : class
         {
             SRL.ClassManagement<EntityT> class_mgnt = new ClassManagement<EntityT>();
@@ -269,6 +389,7 @@ namespace SRL
     }
     public class ClassManagement<ClassType> // where ClassType : class 
     {
+
         public ClassType CreateInstance()
         {
             return (ClassType)Activator.CreateInstance(typeof(ClassType));
@@ -500,13 +621,17 @@ namespace SRL
             menu_strip.Items[item_name_to_alter_color].BackColor = back_color;
             menu_strip.Items[item_name_to_alter_color].ForeColor = fore_color;
 
-
         }
 
     }
+
     public class WinTools
     {
-
+        public class ComboItem
+        {
+            public string Text { get; set; }
+            public object Value { get; set; }
+        }
         public T CloneControl<T>(T controlToClone)
             where T : Control
         {
@@ -526,6 +651,26 @@ namespace SRL
             return instance;
         }
 
+      
+
+      
+        /// <summary>
+        /// this method make app slow. use it in your app rather than reference from SRL
+        /// </summary>
+        /// <typeparam name="ValueT"></typeparam>
+        /// <param name="cb"></param>
+        /// <param name="enumerable_data_source">enumerable_data_source is IEnumerable query of  new {string Text=?, object Value=? }</param>
+        /// <param name="empty_row_value">empty row is added to top</param>
+        public void ComboBoxDataBind<ValueT>(ComboBox cb, IEnumerable<dynamic> enumerable_data_source, ValueT empty_row_value)
+        {
+            var data_source = enumerable_data_source.ToList();
+            cb.Items.Clear();
+            cb.DisplayMember = "Text";
+            cb.ValueMember = "Value";
+            data_source.Insert(0, new { Text = "", Value = empty_row_value });
+            cb.DataSource = data_source;
+
+        }
         public void MakeComboBoxSizable(ComboBox cb, int height, Padding pad)
         {
             cb.DrawMode = DrawMode.OwnerDrawFixed;
@@ -540,74 +685,7 @@ namespace SRL
             cb.ItemHeight = Decimal.ToInt32(item_height);
             cb.Margin = pad;
         }
-        public class TextBoxBorderColor : TextBox
-        {
-            public Color border_color;
-            public Color border_focus_color;
-            public string border_or_focus_or_both;
 
-            public TextBoxBorderColor(Color border_color_, Color border_focus_color_, string border_or_focus_or_both_)
-            {
-                border_color = border_color_;
-                border_focus_color = border_focus_color_;
-                border_or_focus_or_both = border_or_focus_or_both_;
-            }
-            [DllImport("user32")]
-            private static extern IntPtr GetWindowDC(IntPtr hwnd);
-            private const int WM_NCPAINT = 0x85;
-            protected override void WndProc(ref Message m)
-            {
-                base.WndProc(ref m);
-                Pen pen;
-                switch (border_or_focus_or_both)
-                {
-                    case "border":
-                        if (m.Msg == WM_NCPAINT && !this.Focused)
-                        {
-                            pen = new Pen(border_color);
-                            var dc = GetWindowDC(Handle);
-                            using (Graphics g = Graphics.FromHdc(dc))
-                            {
-                                g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-                            }
-                        }
-                        break;
-                    case "focus":
-                        if (m.Msg == WM_NCPAINT && this.Focused)
-                        {
-                            pen = new Pen(border_focus_color);
-                            var dc = GetWindowDC(Handle);
-                            using (Graphics g = Graphics.FromHdc(dc))
-                            {
-                                g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-                            }
-                        }
-                        break;
-                    case "both":
-                        if (m.Msg == WM_NCPAINT && this.Focused)
-                        {
-                            pen = new Pen(border_focus_color);
-                            var dc = GetWindowDC(Handle);
-                            using (Graphics g = Graphics.FromHdc(dc))
-                            {
-                                g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-                            }
-                        }
-                        else if (m.Msg == WM_NCPAINT && !this.Focused)
-                        {
-                            pen = new Pen(border_color);
-                            var dc = GetWindowDC(Handle);
-                            using (Graphics g = Graphics.FromHdc(dc))
-                            {
-                                g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-                            }
-                        }
-                        break;
-
-                }
-
-            }
-        }
         public void FullScreenNoTaskbar(Control control)
         {
             control.Left = control.Top = 0;
@@ -640,7 +718,7 @@ namespace SRL
                     font_family.IsStyleAvailable(FontStyle.Underline) ? FontStyle.Underline : FontStyle.Strikeout;
             }
 
-        //    child.Font = new Font(font_family, child.Font.Size * (float)font_factor, font_style);
+            //    child.Font = new Font(font_family, child.Font.Size * (float)font_factor, font_style);
 
             decimal x_relative = Decimal.Divide(parent.Width, child.Width);
             decimal y_relative = Decimal.Divide(parent.Height, child.Height);
@@ -698,12 +776,12 @@ namespace SRL
         }
         public class Modal : Form
         {
-            public Modal(UserControl user_control, string title)
+            public Modal(UserControl user_control, string title, int width_=1000, int height_=500)
             {
                 this.Text = title;
 
-                this.Width = 1000;
-                this.Height = 500;
+                this.Width = width_;
+                this.Height = height_;
                 this.StartPosition = FormStartPosition.CenterScreen;
 
                 Panel pnlModal = new Panel();
@@ -826,14 +904,28 @@ namespace SRL
             }
             private void decimal_input_KeyPress(object sender, KeyPressEventArgs e)
             {
-                if (((e.KeyChar < 48 || e.KeyChar > 57) && e.KeyChar != 8 && e.KeyChar != 46))
+                //8	        BACKSPACE key
+                //46        .  
+                //47        /     
+                //48        0 
+                //49        1
+                //50        2
+                //51        3
+                //52        4
+                //53        5
+                //54        6
+                //55        7
+                //56        8
+                //57        9
+
+                if (((e.KeyChar < 48 || e.KeyChar > 57) && e.KeyChar != 8 && e.KeyChar != 47))
                 {
                     e.Handled = true;
                     return;
                 }
 
                 // checks to make sure only 1 decimal is allowed
-                if (e.KeyChar == 46)
+                if (e.KeyChar == 47)
                 {
                     if ((sender as TextBox).Text.IndexOf(e.KeyChar) != -1)
                         e.Handled = true;
@@ -1280,6 +1372,9 @@ namespace SRL
         {
 
         }
+
+        
+
         public void EntityRemoveAll<EntityType>(DbContext db) where EntityType : class
         {
             foreach (var item in db.Set<EntityType>())
@@ -1781,7 +1876,7 @@ namespace SRL
         {
 
         }
-        
+
         public string GetFilePathInRoot(string fileName)
         {
             string path = Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory);
@@ -1789,7 +1884,7 @@ namespace SRL
             path = Directory.GetParent(Directory.GetParent(path).FullName).FullName;
 
             path += @"\" + fileName;
-            
+
             return path;
         }
         public IEnumerable<string> GetFileLines(string fileFullName)
@@ -1809,7 +1904,7 @@ namespace SRL
 
             return get_line.Count() < 1 ? "" : get_line.First();
         }
-       
+
         public void SaveToFile(string fileFullName, string content, int line)
         {
             string path = @fileFullName;
