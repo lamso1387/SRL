@@ -12,7 +12,6 @@ using System.Data.Entity;
 namespace SRL
 {
 
-
     public partial class WinLogin : Form
     {
         DbContext db;

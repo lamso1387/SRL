@@ -17,78 +17,10 @@ using System.Reflection;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
+using IWshRuntimeLibrary;
 
 namespace SRL
 {
-    public class TextBoxBorderColor : TextBox
-    {
-        public Color border_color;
-        public Color border_focus_color;
-        public string border_or_focus_or_both;
-
-        public TextBoxBorderColor(Color border_color_, Color border_focus_color_, string border_or_focus_or_both_)
-        {
-            border_color = border_color_;
-            border_focus_color = border_focus_color_;
-            border_or_focus_or_both = border_or_focus_or_both_;
-        }
-        [DllImport("user32")]
-        private static extern IntPtr GetWindowDC(IntPtr hwnd);
-        private const int WM_NCPAINT = 0x85;
-        protected override void WndProc(ref Message m)
-        {
-            base.WndProc(ref m);
-            Pen pen;
-            switch (border_or_focus_or_both)
-            {
-                case "border":
-                    if (m.Msg == WM_NCPAINT && !this.Focused)
-                    {
-                        pen = new Pen(border_color);
-                        var dc = GetWindowDC(Handle);
-                        using (Graphics g = Graphics.FromHdc(dc))
-                        {
-                            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-                        }
-                    }
-                    break;
-                case "focus":
-                    if (m.Msg == WM_NCPAINT && this.Focused)
-                    {
-                        pen = new Pen(border_focus_color);
-                        var dc = GetWindowDC(Handle);
-                        using (Graphics g = Graphics.FromHdc(dc))
-                        {
-                            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-                        }
-                    }
-                    break;
-                case "both":
-                    if (m.Msg == WM_NCPAINT && this.Focused)
-                    {
-                        pen = new Pen(border_focus_color);
-                        var dc = GetWindowDC(Handle);
-                        using (Graphics g = Graphics.FromHdc(dc))
-                        {
-                            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-                        }
-                    }
-                    else if (m.Msg == WM_NCPAINT && !this.Focused)
-                    {
-                        pen = new Pen(border_color);
-                        var dc = GetWindowDC(Handle);
-                        using (Graphics g = Graphics.FromHdc(dc))
-                        {
-                            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-                        }
-                    }
-                    break;
-
-            }
-
-        }
-    }
-
     public class DateTimeLanguageClass
     {
         System.Windows.Forms.Timer timer = null;
@@ -144,6 +76,8 @@ namespace SRL
     }
     public class SettingClass<SettingEntity> where SettingEntity : class
     {
+        SRL.Database srl_database = new Database();
+        SRL.ClassManagement<SettingEntity> class_mgnt = new SRL.ClassManagement<SettingEntity>();
         string setting_table_name;
         static DbContext db;
         /// <summary>
@@ -158,8 +92,7 @@ namespace SRL
 
         public void InitiateSetting(Dictionary<string, string> keyValuesetting)
         {
-            SRL.Database srl_database = new Database();
-            SRL.ClassManagement<SettingEntity> class_mgnt = new SRL.ClassManagement<SettingEntity>();
+
 
             srl_database.EntityRemoveAll<SettingEntity>(db);
 
@@ -177,18 +110,99 @@ namespace SRL
         {
             Dictionary<string, string> kv = new Dictionary<string, string>();
             kv["setting_is_set"] = "true";
+
             kv["form_font_size"] = "11";
             kv["menu_font_size"] = "11";
             kv["child_width_relative"] = "0/9";
             kv["child_height_relative"] = "0/9";
             kv["font_name"] = "B Koodak";
+            kv["form_back_color"] = "Control";
             kv["menu_back_color"] = "Control";
             kv["font_factor"] = "1/003";
+            kv["print_width1"] = "4";
+            kv["print_height1"] = "3";
+            kv["print_width_container_plus1"] = "3";
+            kv["print_height_container_plus1"] = "76";
+            kv["db_version"] = "1";
+
             return kv;
         }
-        public void ShowSettingInControls(Control form_font_size, Control menu_font_size,
-            Control child_width_relative, Control child_height_relative, Control font_name,
-            Control form_back_color, Control menu_back_color)
+        public string SetDefaultSetting()
+        {
+            string error = string.Empty;
+
+            try
+            {
+                Dictionary<string, string> default_setting = new Dictionary<string, string>();
+                string sql = "select key, value from " + setting_table_name;
+                var query_rows = srl_database.SqlQuery<SettingEntity>(db, sql);
+                foreach (var row in query_rows)
+                {
+                    default_setting[class_mgnt.GetProperty("key", row).ToString()] = class_mgnt.GetProperty("value", row).ToString();
+                }
+                default_setting.Remove("default_setting");
+                default_setting.Remove("db_version");
+                string default_setting_json = Newtonsoft.Json.JsonConvert.SerializeObject(default_setting);
+
+                sql = "select value from " + setting_table_name + " where key='default_setting' ";
+                var query = srl_database.SqlQuery<string>(db, sql).DefaultIfEmpty(null).FirstOrDefault();
+
+                if (query == null)
+                {
+                    sql = "insert into " + setting_table_name + " (key, value) values ('default_setting', '" + default_setting_json + "') ";
+                    srl_database.ExecuteQuery(db, sql);
+                }
+                else
+                {
+                    sql = "update " + setting_table_name + " set value='" + default_setting_json + "' where  key ='default_setting' ";
+                    srl_database.ExecuteQuery(db, sql);
+                }
+            }
+            catch (Exception exc)
+            {
+                error = exc.Message;
+            }
+            return error;
+
+        }
+        public string RestoreDefaultSetting()
+        {
+            string error = string.Empty;
+
+            try
+            {
+                string sql = "select value from " + setting_table_name + " where key='default_setting' ";
+                var query = srl_database.SqlQuery<string>(db, sql).DefaultIfEmpty(null).FirstOrDefault();
+                if (query == null)
+                {
+                    error = "no app default setting found";
+                    return error;
+
+                }
+                if (!new SRL.Json().IsJson(query))
+                {
+                    error = "app default setting not saved in json format";
+                    return error;
+                }
+
+
+                Dictionary<string, string> default_setting = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(query);
+                default_setting["default_setting"] = query;
+                default_setting["db_version"] = SqlQuerySettingTable("db_version");
+                InitiateSetting(default_setting);
+            }
+            catch (Exception exc)
+            {
+                error = exc.Message;
+            }
+            return error;
+
+        }
+        public void ShowSettingInControls(Control form_font_size = null, Control menu_font_size = null,
+            Control child_width_relative = null, Control child_height_relative = null, Control font_name = null,
+            Control form_back_color = null, Control menu_back_color = null, Control font_factor = null,
+            Control print_width1 = null, Control print_height1 = null, Control print_width_container_plus1 = null,
+            Control print_height_container_plus1 = null, Control db_version = null)
         {
             if (form_font_size != null) form_font_size.Text = SqlQuerySettingTable("form_font_size");
             if (menu_font_size != null) menu_font_size.Text = SqlQuerySettingTable("menu_font_size");
@@ -197,12 +211,22 @@ namespace SRL
             if (font_name != null) font_name.Text = SqlQuerySettingTable("font_name");
             if (form_back_color != null) form_back_color.BackColor = Color.FromName(SqlQuerySettingTable("form_back_color"));
             if (menu_back_color != null) menu_back_color.BackColor = Color.FromName(SqlQuerySettingTable("menu_back_color"));
+            if (font_factor != null) font_factor.Text = SqlQuerySettingTable("font_factor");
+            if (print_width1 != null) print_width1.Text = SqlQuerySettingTable("print_width1");
+            if (print_height1 != null) print_height1.Text = SqlQuerySettingTable("print_height1");
+            if (print_width_container_plus1 != null) print_width_container_plus1.Text = SqlQuerySettingTable("print_width_container_plus1");
+            if (print_height_container_plus1 != null) print_height_container_plus1.Text = SqlQuerySettingTable("print_height_container_plus1");
+            if (db_version != null) db_version.Text = SqlQuerySettingTable("db_version");
         }
-        public string UpdateSetting(string form_font_size, string menu_font_size,
-            string child_width_relative, string child_height_relative, string font_name,
-            string form_back_color, string menu_back_color)
+
+        public string UpdateSetting(string form_font_size = null, string menu_font_size = null,
+            string child_width_relative = null, string child_height_relative = null, string font_name = null,
+            string form_back_color = null, string menu_back_color = null, string font_factor = null,
+            string print_width1 = null, string print_height1 = null, string print_width_container_plus1 = null,
+            string print_height_container_plus1 = null)
         {
             string error = string.Empty;
+
             if (form_font_size != null) error = ExecuteUpdateSettingTable("form_font_size", form_font_size);
             if (menu_font_size != null) error = ExecuteUpdateSettingTable("menu_font_size", menu_font_size);
             if (child_width_relative != null) error = ExecuteUpdateSettingTable("child_width_relative", child_width_relative);
@@ -210,13 +234,19 @@ namespace SRL
             if (font_name != null) error = ExecuteUpdateSettingTable("font_name", font_name);
             if (form_back_color != null) error = ExecuteUpdateSettingTable("form_back_color", form_back_color);
             if (menu_back_color != null) error = ExecuteUpdateSettingTable("menu_back_color", menu_back_color);
+            if (font_factor != null) error = ExecuteUpdateSettingTable("font_factor", font_factor);
+            if (print_width1 != null) error = ExecuteUpdateSettingTable("print_width1", print_width1);
+            if (print_height1 != null) error = ExecuteUpdateSettingTable("print_height1", print_height1);
+            if (print_width_container_plus1 != null) error = ExecuteUpdateSettingTable("print_width_container_plus1", print_width_container_plus1);
+            if (print_height_container_plus1 != null) error = ExecuteUpdateSettingTable("print_height_container_plus1", print_height_container_plus1);
+
             return error;
         }
 
-        private string ExecuteUpdateSettingTable(string key, string value)
+        public string ExecuteUpdateSettingTable(string key, string value)
         {
             string sql = "update " + setting_table_name + " set value='" + value + "' where key='" + key + "'";
-            return new SRL.Database().ExecuteQuery(db, sql);
+            return srl_database.ExecuteQuery(db, sql);
         }
         public bool CheckSettingIsSet()
         {
@@ -224,46 +254,11 @@ namespace SRL
             int row_count = db.Set<SettingEntity>().Count();
             return query == null || query == "false" ? false : true;
         }
-        public void StartSetting(Control form, Control menuContainor, bool isfont = true, bool isform_back_color = true,
-            bool ismenu_back_color = true, bool isrelative = true, bool isAliagn = true)
-        {
-            if (isfont)
-            {
-                string font = SqlQuerySettingTable("font_name");
-
-                string query = SqlQuerySettingTable("form_font_size");
-                form.Font = new Font(font, float.Parse(query));
-
-                query = SqlQuerySettingTable("menu_font_size");
-                menuContainor.Font = new Font(font, float.Parse(query));
-            }
-            if (isform_back_color)
-            {
-                string query = SqlQuerySettingTable("form_back_color");
-                form.BackColor = Color.FromName(query);
-            }
-
-            if (ismenu_back_color)
-            {
-                string query = SqlQuerySettingTable("menu_back_color");
-                menuContainor.BackColor = Color.FromName(query);
-            }
-            var wintool = new WinTools();
-            if (isrelative)
-            {
-                string width = SqlQuerySettingTable("child_width_relative");
-                string height = SqlQuerySettingTable("child_height_relative");
-                wintool.AdjustChildToParent(form, menuContainor, double.Parse(width), double.Parse(height));
-            }
-            if (isAliagn) wintool.AliagnChildToParent(form, menuContainor);
-
-        }
-
         private string SqlQuerySettingTable(string key, string default_if_empty = null)
         {
 
             string sql = "select value from " + setting_table_name + " where key='" + key + "'";
-            var query = new SRL.Database().SqlQuery<string>(db, sql).DefaultIfEmpty(default_if_empty).FirstOrDefault();
+            var query = srl_database.SqlQuery<string>(db, sql).DefaultIfEmpty(default_if_empty).FirstOrDefault();
             return query;
 
         }
@@ -424,6 +419,7 @@ namespace SRL
     }
     public class WinUI
     {
+
         public class PictureBoxHover
         {
             int width_magnify = 0;
@@ -624,7 +620,6 @@ namespace SRL
         }
 
     }
-
     public class WinTools
     {
         public class ComboItem
@@ -651,9 +646,9 @@ namespace SRL
             return instance;
         }
 
-      
 
-      
+
+
         /// <summary>
         /// this method make app slow. use it in your app rather than reference from SRL
         /// </summary>
@@ -762,6 +757,23 @@ namespace SRL
 
         public class Media
         {
+
+            public float GetScreenDpi(Control control, out float dpiX, out float dpiY)
+            {
+                Graphics graphics = control.CreateGraphics();
+                dpiX = graphics.DpiX;
+                dpiY = graphics.DpiY;
+                return (dpiX + dpiY) / 2;
+            }
+            public float GetScreenDpi(Control control)
+            {
+                float dpiX, dpiY;
+                Graphics graphics = control.CreateGraphics();
+                dpiX = graphics.DpiX;
+                dpiY = graphics.DpiY;
+                return (dpiX + dpiY) / 2;
+            }
+
             private Image CaptureScreen(Form form)
             {
                 Bitmap memoryImage;
@@ -776,22 +788,29 @@ namespace SRL
         }
         public class Modal : Form
         {
-            public Modal(UserControl user_control, string title, int width_=1000, int height_=500)
+            public struct FormBorderSizes { public int top, bottom, left, right; }
+            public FormBorderSizes GetFormBorderSizes(Form form)
+            {
+                Rectangle screenRectangle = RectangleToScreen(form.ClientRectangle);
+                FormBorderSizes borders = new FormBorderSizes();
+                borders.top = screenRectangle.Top - form.Top;
+                borders.bottom = form.Bottom - screenRectangle.Bottom;
+                borders.left = screenRectangle.Left - form.Left;
+                borders.right = form.Right - screenRectangle.Right;
+                return borders;
+            }
+            public Modal(UserControl user_control, string title, int width_ = 1000, int height_ = 500)
             {
                 this.Text = title;
 
-                this.Width = width_;
-                this.Height = height_;
                 this.StartPosition = FormStartPosition.CenterScreen;
 
-                Panel pnlModal = new Panel();
+                var borders = GetFormBorderSizes(this);
 
-                pnlModal.Width = this.Width - 100;
-                pnlModal.Height = this.Height - 100;
+                this.Width = width_ + borders.right + borders.left;
+                this.Height = height_ + borders.top + borders.bottom;
 
-                new WinTools().AddChildToParentControlsAliagn(this, pnlModal, true);
-
-                new WinTools().AddChildToParentControlsAliagn(pnlModal, user_control, true);
+                new WinTools().AddChildToParentControlsAliagn(this, user_control);
             }
 
 
@@ -837,7 +856,10 @@ namespace SRL
                 MaskDatePattern = 4,
 
                 [Description("عدد اعشاری مجاز است")]
-                DecimalInput = 5
+                DecimalInput = 5,
+
+                [Description("عدد اعشاری اجباری است")]
+                DecimalInput_NotNull = 6
 
             }
 
@@ -890,6 +912,10 @@ namespace SRL
                         break;
                     case ErrorTypes.DecimalInput:
                         control.KeyPress += new System.Windows.Forms.KeyPressEventHandler(decimal_input_KeyPress);
+                        break;
+                    case ErrorTypes.DecimalInput_NotNull:
+                        control.KeyPress += new System.Windows.Forms.KeyPressEventHandler(decimal_input_KeyPress);
+                        control.Validating += new System.ComponentModel.CancelEventHandler(not_null_Validating);
                         break;
                 }
 
@@ -956,7 +982,6 @@ namespace SRL
             }
             private void not_null_mobile_pattern_Validating(object sender, CancelEventArgs e)
             {
-
                 Control control = sender as Control;
                 bool status = control.Text.Any() ?
                    ((control.Text.Length != 11 || control.Text.Substring(0, 1) != "0") ? true : false)
@@ -1131,14 +1156,140 @@ namespace SRL
     }
     public class Convertor
     {
-        public List<string> EnglishToPersianDate(DateTime d)
+        /* input image with width = height is suggested to get the best result */
+        /* png support in icon was introduced in Windows Vista */
+        public bool ConvertImageToIcon(System.IO.Stream input_stream, System.IO.Stream output_stream, int size, bool keep_aspect_ratio = false)
+        {
+            System.Drawing.Bitmap input_bit = (System.Drawing.Bitmap)System.Drawing.Bitmap.FromStream(input_stream);
+            if (input_bit != null)
+            {
+                int width, height;
+                if (keep_aspect_ratio)
+                {
+                    width = size;
+                    height = input_bit.Height / input_bit.Width * size;
+                }
+                else
+                {
+                    width = height = size;
+                }
+                System.Drawing.Bitmap new_bit = new System.Drawing.Bitmap(input_bit, new System.Drawing.Size(width, height));
+                if (new_bit != null)
+                {
+                    // save the resized png into a memory stream for future use
+                    System.IO.MemoryStream mem_data = new System.IO.MemoryStream();
+                    new_bit.Save(mem_data, System.Drawing.Imaging.ImageFormat.Png);
+
+                    System.IO.BinaryWriter icon_writer = new System.IO.BinaryWriter(output_stream);
+                    if (output_stream != null && icon_writer != null)
+                    {
+                        // 0-1 reserved, 0
+                        icon_writer.Write((byte)0);
+                        icon_writer.Write((byte)0);
+
+                        // 2-3 image type, 1 = icon, 2 = cursor
+                        icon_writer.Write((short)1);
+
+                        // 4-5 number of images
+                        icon_writer.Write((short)1);
+
+                        // image entry 1
+                        // 0 image width
+                        icon_writer.Write((byte)width);
+                        // 1 image height
+                        icon_writer.Write((byte)height);
+
+                        // 2 number of colors
+                        icon_writer.Write((byte)0);
+
+                        // 3 reserved
+                        icon_writer.Write((byte)0);
+
+                        // 4-5 color planes
+                        icon_writer.Write((short)0);
+
+                        // 6-7 bits per pixel
+                        icon_writer.Write((short)32);
+
+                        // 8-11 size of image data
+                        icon_writer.Write((int)mem_data.Length);
+
+                        // 12-15 offset of image data
+                        icon_writer.Write((int)(6 + 16));
+
+                        // write image data
+                        // png data must contain the whole png data file
+                        icon_writer.Write(mem_data.ToArray());
+
+                        icon_writer.Flush();
+
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return false;
+        }
+
+        public bool ConvertImageToIcon(string input_image, string output_icon, int size, bool keep_aspect_ratio = false)
+        {
+            System.IO.FileStream input_stream = new System.IO.FileStream(input_image, System.IO.FileMode.Open);
+            System.IO.FileStream output_stream = new System.IO.FileStream(output_icon, System.IO.FileMode.OpenOrCreate);
+
+            bool result = ConvertImageToIcon(input_stream, output_stream, size, keep_aspect_ratio);
+
+            input_stream.Close();
+            output_stream.Close();
+
+            return result;
+        }
+
+        public int InchToPixel(float inch, float dpi = 96)
+        {
+            return (int)(inch * dpi);
+        }
+        public float PixelToInch(int pixel, float dpi = 96)
+        {
+            return (pixel / dpi);
+        }
+        public float StringToFloat(string str)
+        {
+            return float.Parse(str, NumberStyles.Any);
+        }
+        public Decimal StringToDecimal(string str)
+        {
+            return Decimal.Parse(str, NumberStyles.Any);
+        }
+        public bool StringToFloatTry(string str, out float number)
+        {
+
+            return float.TryParse(str, NumberStyles.Any, CultureInfo.CurrentCulture, out number);
+        }
+        public bool StringToDecimalTry(string str, out Decimal number)
+        {
+            return Decimal.TryParse(str, NumberStyles.Any, CultureInfo.CurrentCulture, out number);
+        }
+        public DateTime EnglishToPersianDateTime(DateTime date)
+        {
+
+            PersianCalendar p = new System.Globalization.PersianCalendar();
+            int year = p.GetYear(date);
+            int month = p.GetMonth(date);
+            int day = p.GetDayOfMonth(date);
+            int h = p.GetHour(date);
+            int m = p.GetMinute(date);
+            int s = p.GetSecond(date);
+            string str = string.Format("{0}/{1}/{2}  {3}:{4}:{5}", year, month, day, h, m, s);
+            return DateTime.Parse(str);
+        }
+        public List<string> EnglishToPersianDateString(DateTime d)
         {
             List<string> date_list = new List<string>();
-            //string GregorianDate = "Thursday, October 24, 2013";
-            //DateTime d = DateTime.Parse(GregorianDate);
             PersianCalendar pc = new PersianCalendar();
             date_list.Add(string.Format("{0}/{1}/{2}", pc.GetYear(d), pc.GetMonth(d), pc.GetDayOfMonth(d)));
-            var persianDate = new DateTime(pc.GetYear(d), pc.GetMonth(d), pc.GetDayOfMonth(d) - 1);
+            int dayOfM = pc.GetDayOfMonth(d);
+            dayOfM = pc.GetDayOfMonth(d) - 1 == 0 ? pc.GetDayOfMonth(d) : pc.GetDayOfMonth(d) - 1;
+            var persianDate = new DateTime(pc.GetYear(d), pc.GetMonth(d), dayOfM);
             date_list.Add(persianDate.ToString("yyyy MMM ddd", CultureInfo.GetCultureInfo("fa-Ir")));
 
             date_list.Add(string.Format("{0}, {1}/{2}/{3} {4}:{5}:{6}\n",
@@ -1373,7 +1524,7 @@ namespace SRL
 
         }
 
-        
+
 
         public void EntityRemoveAll<EntityType>(DbContext db) where EntityType : class
         {
@@ -1580,6 +1731,8 @@ namespace SRL
         /// <param name="control_to_load"></param>
         public void UpdateConnectionString(string conStr, string conStrName, Control control_to_load)
         {
+            //for sqlite: @"metadata=res://*/Model.Model1.csdl|res://*/Model.Model1.ssdl|res://*/Model.Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=C:\Program Files\hesabdari\MyDatabase.sqlite'"
+
             ControlLoader(control_to_load, "connecting database...");
 
             var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
@@ -1876,7 +2029,77 @@ namespace SRL
         {
 
         }
+        /// <summary>
+        /// get full path file and save or replace icon file
+        /// </summary>
+        /// <param name="filePath">@"C:\hesabdari.exe"</param>
+        /// <param name="icon_full_path">@"e:\myfile.ico"</param>
+        public void ExtractFileIcon(string filePath, string icon_full_path)
+        {
+            //@"e:\myfile.ico"
+            //  var filePath = @"C:\Users\lamso1387\Documents\Visual Studio 2012\Projects\hesabdari\hesabdari\bin\Release\hesabdari.exe";
+            var theIcon = Icon.ExtractAssociatedIcon(filePath);
 
+            if (theIcon != null)
+            {
+                // Save it to disk, or do whatever you want with it.
+                using (var stream = new System.IO.FileStream(icon_full_path, System.IO.FileMode.OpenOrCreate))
+                {
+                    theIcon.Save(stream);
+                }
+            }
+        }
+        public void MakeShortcutUrl(string shortcut_name, string shortcut_directory, string full_path_to_file)
+        {
+            using (StreamWriter writer = new StreamWriter(shortcut_directory + "\\" + shortcut_name + ".url"))
+            {
+                writer.WriteLine("[InternetShortcut]");
+                writer.WriteLine("URL=" + full_path_to_file);
+                writer.Flush();
+            }
+        }
+        public void MakeShortcut(string shortcut_name, string shortcut_directory, string full_path_to_file)
+        {
+            WshShell wsh = new WshShell();
+            IWshRuntimeLibrary.IWshShortcut shortcut = wsh.CreateShortcut(
+                shortcut_directory + "\\" + shortcut_name + ".lnk") as IWshRuntimeLibrary.IWshShortcut;
+            // shortcut.Arguments = "c:\\app\\1.docx";
+            shortcut.TargetPath = full_path_to_file;
+            // not sure about what this is for
+            shortcut.WindowStyle = 1;
+            shortcut.Description = full_path_to_file;
+            // shortcut.WorkingDirectory = "c:\\app";
+            string icon_path=Path.GetDirectoryName(full_path_to_file)+"\\"+shortcut_name+".ico";
+            ExtractFileIcon(full_path_to_file, icon_path);
+            shortcut.IconLocation = icon_path;
+            shortcut.Save();
+        }
+        public string ReplaceAllFilesFromDirToDir(string SourceFolderFullPath, string DestinationFolderFullPath)
+        {
+            try
+            {
+
+                foreach (string dirPath in Directory.GetDirectories(SourceFolderFullPath, "*",
+                    SearchOption.AllDirectories))
+                    Directory.CreateDirectory(dirPath.Replace(SourceFolderFullPath, DestinationFolderFullPath));
+
+                CreateFolderOverwrite(DestinationFolderFullPath);
+
+                foreach (string newPath in Directory.GetFiles(SourceFolderFullPath, "*.*",
+                    SearchOption.AllDirectories))
+                    System.IO.File.Copy(newPath, newPath.Replace(SourceFolderFullPath, DestinationFolderFullPath), true);
+                return "";
+            }
+            catch (Exception exc)
+            {
+                return exc.Message;
+            }
+
+        }
+        public void CreateFolderOverwrite(string FolderFullPath)
+        {
+            System.IO.Directory.CreateDirectory(FolderFullPath);
+        }
         public string GetFilePathInRoot(string fileName)
         {
             string path = Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory);
@@ -1887,12 +2110,28 @@ namespace SRL
 
             return path;
         }
+
+        public string GetDesktopDirectory()
+        {
+            return Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+
+        }
+        public string GetCurrentDirectory()
+        {
+            //System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+            //System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            //System.IO.Directory.GetCurrentDirectory(); 
+            //Thread.GetDomain().BaseDirectory
+            //Environment.CurrentDirectory
+            return System.AppDomain.CurrentDomain.BaseDirectory;
+
+        }
         public IEnumerable<string> GetFileLines(string fileFullName)
         {
 
             string path = @fileFullName;
 
-            var get_line = File.ReadLines(path);
+            var get_line = System.IO.File.ReadLines(path);
 
             return get_line;
         }
@@ -1900,7 +2139,7 @@ namespace SRL
         {
             string path = @fileFullName;
 
-            var get_line = File.ReadLines(path).Skip(line - 1);
+            var get_line = System.IO.File.ReadLines(path).Skip(line - 1);
 
             return get_line.Count() < 1 ? "" : get_line.First();
         }
@@ -1909,45 +2148,21 @@ namespace SRL
         {
             string path = @fileFullName;
 
-            string[] arrLine = File.ReadAllLines(path);
+            string[] arrLine = System.IO.File.ReadAllLines(path);
             while (arrLine.Count() < line)
             {
                 TextWriter tw = new StreamWriter(path, true);
                 tw.WriteLine("empty line created");
                 tw.Close();
-                arrLine = File.ReadAllLines(path);
+                arrLine = System.IO.File.ReadAllLines(path);
             }
             arrLine[line - 1] = content;
-            File.WriteAllLines(path, arrLine);
+            System.IO.File.WriteAllLines(path, arrLine);
 
         }
 
 
-        /// <summary>
-        /// Copy all the files in folder and Replaces any files with the same name
-        /// </summary>
-        /// <param name="SourcePath">full SourcePath</param>
-        /// <param name="DestinationPath">full DestinationPath</param>
-        /// <returns>returns "true" or error message</returns>
-        public string CopyFolderAndReplaceSameFileName(string SourcePath, string DestinationPath)
-        {
-            try
-            {
-                foreach (string dirPath in Directory.GetDirectories(SourcePath, "*",
-                    SearchOption.AllDirectories))
-                    Directory.CreateDirectory(dirPath.Replace(SourcePath, DestinationPath));
-
-                //Copy all the files & Replaces any files with the same name
-                foreach (string newPath in Directory.GetFiles(SourcePath, "*.*",
-                    SearchOption.AllDirectories))
-                    File.Copy(newPath, newPath.Replace(SourcePath, DestinationPath), true);
-                return "true";
-            }
-            catch (Exception exc)
-            {
-                return exc.Message;
-            }
-        }
 
     }
+
 }
