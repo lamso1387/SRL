@@ -4,16 +4,50 @@
         <name>SRL</name>
     </assembly>
     <members>
+        <member name="F:SRL.Setup.components">
+            <summary>
+            Required designer variable.
+            </summary>
+        </member>
+        <member name="M:SRL.Setup.Dispose(System.Boolean)">
+            <summary>
+            Clean up any resources being used.
+            </summary>
+            <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        </member>
+        <member name="M:SRL.Setup.InitializeComponent">
+            <summary>
+            Required method for Designer support - do not modify
+            the contents of this method with the code editor.
+            </summary>
+        </member>
         <member name="M:SRL.SettingClass`1.#ctor(System.Data.Entity.DbContext)">
             <summary>
             SettingEntity table must have  columns "key" and "value".
             </summary>
             <param name="db_"></param>
         </member>
+        <member name="M:SRL.ChildParent.RefreshFormControls(System.Windows.Forms.Control,System.Collections.Generic.List{System.Type},System.Collections.Generic.List{System.Windows.Forms.Control})">
+            <summary>
+            
+            </summary>
+            <param name="parent_to_refresh"></param>
+            <param name="types_to_refresh"></param>
+            <param name="controls_to_refresh">new List Type() { typeof(Button), typeof(TextBox),... }</param>
+        </member>
         <member name="M:SRL.WinUI.AlterTitleBarColor.#ctor">
             <summary>
             add all of this class code (after constructor) to Form1.cs before it's constructor and call  DisableProcessWindowsGhosting() in that load event.
             </summary>
+        </member>
+        <member name="M:SRL.WinTools.ComboBoxDataBind``1(System.Windows.Forms.ComboBox,System.Collections.Generic.IEnumerable{System.Object},``0)">
+            <summary>
+            this method make app slow. use it in your app rather than reference from SRL
+            </summary>
+            <typeparam name="ValueT"></typeparam>
+            <param name="cb"></param>
+            <param name="enumerable_data_source">enumerable_data_source is IEnumerable query of  new {string Text=?, object Value=? }</param>
+            <param name="empty_row_value">empty row is added to top</param>
         </member>
         <member name="M:SRL.WinTools.UserControlValidation.ControlValidation(System.Windows.Forms.Control,SRL.WinTools.UserControlValidation.ErrorTypes,System.Windows.Forms.ErrorIconAlignment,System.Int32)">
             <summary>
@@ -41,17 +75,16 @@
             <param name="conStrName">e.g. SemnanEntity</param>
             <param name="control_to_load"></param>
         </member>
-        <member name="M:SRL.FileManagement.CopyFolderAndReplaceSameFileName(System.String,System.String)">
+        <member name="M:SRL.FileManagement.ExtractFileIcon(System.String,System.String)">
             <summary>
-            Copy all the files in folder and Replaces any files with the same name
+            get full path file and save or replace icon file
             </summary>
-            <param name="SourcePath">full SourcePath</param>
-            <param name="DestinationPath">full DestinationPath</param>
-            <returns>returns "true" or error message</returns>
+            <param name="filePath">@"C:\hesabdari.exe"</param>
+            <param name="icon_full_path">@"e:\myfile.ico"</param>
         </member>
         <member name="M:SRL.WinLogin.#ctor(System.Data.Entity.DbContext,System.String,SRL.WinSessionId)">
             <summary>
-            user table must have column: ID (long or bigint),username, password, name_family
+            user table must have column: ID (long or bigint),username, password, name, family
             </summary>
             <param name="db_"></param>
             <param name="entity_name_"></param>
