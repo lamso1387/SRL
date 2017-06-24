@@ -489,8 +489,8 @@ namespace SRL
                         catch
                         {
                             
-                                pic = CreateNonIndexedImage(pic);
-                                pic.SetPixel(w, h, newC);
+                            //    pic = CreateNonIndexedImage(pic);
+                             //   pic.SetPixel(w, h, newC);
                             
                         }
                     }
