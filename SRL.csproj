@@ -75,9 +75,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="tools\Setup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="tools\Setup.designer.cs">
+      <DependentUpon>Setup.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublicForm.aspx.cs" />
     <Compile Include="Public.cs" />
+    <Compile Include="tools\TextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="tools\WinLogin.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -138,11 +147,26 @@
     <None Include="doc\google map.rtf" />
     <None Include="doc\select2.rtf" />
     <None Include="doc\sqlite.docx" />
+    <None Include="tools\app.manifest" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="tools\Setup.resx">
+      <DependentUpon>Setup.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="tools\WinLogin.resx">
       <DependentUpon>WinLogin.cs</DependentUpon>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="IWshRuntimeLibrary">
+      <Guid>{F935DC20-1CF0-11D0-ADB9-00C04FD58A0B}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
