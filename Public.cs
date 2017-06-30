@@ -55,7 +55,18 @@ namespace SRL
 
         }
 
-
+        /// <summary>
+        /// full example for format:  .ToString("yyyy/MM/dd HH:mm:ss tt")
+        /// hh is for 12 hour and HH is for 24 hour
+        /// MM is for month and mm is for minute
+        /// </summary>
+        /// <param name="dt"></param>
+        /// <param name="format"></param>
+        /// <returns></returns>
+        public string DateTimeToSring(DateTime? dt, string format)
+        {
+          return  dt.Value.ToString(format);
+        }
         public string GetCurrentKeyboardShort()
         {
 
@@ -462,16 +473,16 @@ namespace SRL
             }
             public Bitmap CreateNonIndexedImage(Image src)
             {
-                
-                    Bitmap newBmp = new Bitmap(src.Width, src.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-                    using (Graphics gfx = Graphics.FromImage(newBmp))
-                    {
-                        gfx.DrawImage(src, 0, 0);
-                    }
+                Bitmap newBmp = new Bitmap(src.Width, src.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-                    return newBmp;
-                
+                using (Graphics gfx = Graphics.FromImage(newBmp))
+                {
+                    gfx.DrawImage(src, 0, 0);
+                }
+
+                return newBmp;
+
             }
             public void SetPictueBoxOpacity(PictureBox pb, int opc)
             {
@@ -488,10 +499,10 @@ namespace SRL
                         }
                         catch
                         {
-                            
-                               pic = CreateNonIndexedImage(pic);
-                               pic.SetPixel(w, h, newC);
-                            
+
+                            pic = CreateNonIndexedImage(pic);
+                            pic.SetPixel(w, h, newC);
+
                         }
                     }
                 }
@@ -602,7 +613,7 @@ namespace SRL
         }
         public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, string basic_back_color_name)
         {
-            foreach (ToolStripMenuItem item in menu_strip.Items)
+            foreach (ToolStripMenuItem item in menu_strip.Items.OfType<ToolStripMenuItem>())
             {
                 item.BackColor = default(Color);
 
@@ -612,7 +623,7 @@ namespace SRL
         }
         public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, Color back_color, Color fore_color)
         {
-            foreach (ToolStripMenuItem item in menu_strip.Items)
+            foreach (ToolStripMenuItem item in menu_strip.Items.OfType<ToolStripMenuItem>())
             {
                 item.BackColor = default(Color);
                 item.ForeColor = default(Color);
@@ -669,6 +680,22 @@ namespace SRL
             data_source.Insert(0, new { Text = "", Value = empty_row_value });
             cb.DataSource = data_source;
 
+        }
+        /// <summary>
+        /// return "" if control is empty or text with format if control is not empty
+        /// </summary>
+        /// <param name="control"></param>
+        /// <returns></returns>
+        public string GetRawStringMaskedTextBox(MaskedTextBox control)
+        {
+            string raw_text = "";
+            MaskFormat format = control.TextMaskFormat;
+            control.TextMaskFormat = MaskFormat.ExcludePromptAndLiterals;
+            if (control.Text.Any())
+                control.TextMaskFormat = format;
+            raw_text = control.Text;
+            control.TextMaskFormat = format;
+            return raw_text;
         }
         public void MakeComboBoxSizable(ComboBox cb, int height, Padding pad)
         {
@@ -803,7 +830,7 @@ namespace SRL
                 borders.right = form.Right - screenRectangle.Right;
                 return borders;
             }
-            public Modal(UserControl user_control, string title, int width_ = 1000, int height_ = 500)
+            public Modal(Control user_control, string title, int width_ = 1000, int height_ = 500)
             {
                 this.Text = title;
 
@@ -965,23 +992,20 @@ namespace SRL
             private void mask_date_pattern_Validating(object sender, CancelEventArgs e)
             {
                 MaskedTextBox control = sender as MaskedTextBox;
-                MaskFormat format = control.TextMaskFormat;
-                control.TextMaskFormat = MaskFormat.ExcludePromptAndLiterals;
-                if (control.Text.Any())
-                    control.TextMaskFormat = MaskFormat.IncludeLiterals;
 
                 var dt = new DateTime();
-                if (control.Text.Any())
+
+                if (new WinTools().GetRawStringMaskedTextBox(control).Any())
                     if (!DateTime.TryParse(control.Text, out dt))
                     {
                         e.Cancel = force_cancel;
                         var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.MaskDatePattern);
 
                         errorProvider1.SetError(control, msg);
-                        control.TextMaskFormat = format;
+
                         return;
                     }
-                control.TextMaskFormat = format;
+
                 errorProvider1.SetError(control, "");
             }
             private void not_null_mobile_pattern_Validating(object sender, CancelEventArgs e)
@@ -2073,7 +2097,7 @@ namespace SRL
             shortcut.WindowStyle = 1;
             shortcut.Description = full_path_to_file;
             // shortcut.WorkingDirectory = "c:\\app";
-            string icon_path=Path.GetDirectoryName(full_path_to_file)+"\\"+shortcut_name+".ico";
+            string icon_path = Path.GetDirectoryName(full_path_to_file) + "\\" + shortcut_name + ".ico";
             ExtractFileIcon(full_path_to_file, icon_path);
             shortcut.IconLocation = icon_path;
             shortcut.Save();
