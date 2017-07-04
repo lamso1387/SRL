@@ -2251,12 +2251,13 @@ namespace SRL
         }
         public string GetCurrentDirectory()
         {
-            //System.IO.Path.GetDirectoryName(Application.ExecutablePath);
-            //System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            //System.IO.Directory.GetCurrentDirectory(); 
-            //Thread.GetDomain().BaseDirectory
-            //Environment.CurrentDirectory
-            return System.AppDomain.CurrentDomain.BaseDirectory;
+            //System.IO.Path.GetDirectoryName(Application.ExecutablePath);  c:\users\1\documents\visual studio 2015\Projects\test_licence\test_licence\bin\Debug
+            //System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location); c:\users\1\documents\visual studio 2015\Projects\test_licence\test_licence\bin\Debug
+            //System.IO.Directory.GetCurrentDirectory();    C:\Users\1\documents\visual studio 2015\Projects\test_licence\test_licence\bin\Debug
+            //Thread.GetDomain().BaseDirectory  c:\users\1\documents\visual studio 2015\Projects\test_licence\test_licence\bin\Debug\
+            //Environment.CurrentDirectory   C:\Users\1\documents\visual studio 2015\Projects\test_licence\test_licence\bin\Debug
+            //Application.StartupPath  C:\Users\1\documents\visual studio 2015\Projects\test_licence\test_licence\bin\Debug
+            return System.AppDomain.CurrentDomain.BaseDirectory; // c:\users\1\documents\visual studio 2015\Projects\test_licence\test_licence\bin\Debug\
 
         }
         public IEnumerable<string> GetFileLines(string fileFullName)
