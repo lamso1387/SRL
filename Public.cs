@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 using System.ComponentModel;
 using IWshRuntimeLibrary;
 
-using QLicense.Windows.Controls;
+//using QLicense.Windows.Controls;
 using System.Xml;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Xml;
@@ -75,7 +75,7 @@ namespace SRL
         /// <returns></returns>
         public string DateTimeToSring(DateTime? dt, string format)
         {
-          return  dt.Value.ToString(format);
+            return dt.Value.ToString(format);
         }
         public string GetCurrentKeyboardShort()
         {
@@ -99,8 +99,8 @@ namespace SRL
     {
         class DefaultSetting
         {
-           public string key {get;set;}
-           public string value { get; set; }
+            public string key { get; set; }
+            public string value { get; set; }
         }
         SRL.Database srl_database = new Database();
         SRL.ClassManagement<SettingEntity> class_mgnt = new SRL.ClassManagement<SettingEntity>();
@@ -159,7 +159,7 @@ namespace SRL
 
             try
             {
-            
+
                 Dictionary<string, string> default_setting = new Dictionary<string, string>();
                 string sql = "select key, value from " + setting_table_name;
                 var query_rows = srl_database.SqlQuery<DefaultSetting>(db, sql);
@@ -186,7 +186,7 @@ namespace SRL
                 }
             }
             catch (Exception exc)
-           {
+            {
                 error = exc.Message;
             }
             return error;
@@ -704,7 +704,7 @@ namespace SRL
             // DataGridView columns (column additions or name changes and so on).
             void mDataGridView_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
             {
-                bool click_cell =allow_all_cell_click ? true: (e.RowIndex == -1 && e.ColumnIndex == -1);
+                bool click_cell = allow_all_cell_click ? true : (e.RowIndex == -1 && e.ColumnIndex == -1);
                 if (e.Button == MouseButtons.Right && click_cell)
                 {
                     mCheckedListBox.Items.Clear();
@@ -716,7 +716,7 @@ namespace SRL
                     mCheckedListBox.Height = (PreferredHeight < PopupMaxHeight) ? PreferredHeight : PopupMaxHeight;
                     mCheckedListBox.Width = this.PopupWidth;
                     int x_location = e.X;
-                    if (mDataGridView.RightToLeft == RightToLeft.Yes) x_location +=  mDataGridView.Width;
+                    if (mDataGridView.RightToLeft == RightToLeft.Yes) x_location += mDataGridView.Width;
 
                     mPopup.Show(mDataGridView.PointToScreen(new Point(x_location, e.Y)));
                 }
@@ -741,7 +741,7 @@ namespace SRL
                 mPopup.Items.Add(mControlHost);
             }
 
-            public DataGridViewColumnSelector(DataGridView dgv, bool all_cell_click=false)
+            public DataGridViewColumnSelector(DataGridView dgv, bool all_cell_click = false)
                 : this()
             {
                 this.DataGridView = dgv;
@@ -2412,21 +2412,23 @@ namespace SRL
                 string txtLicInfo = ex.Message;
             }
         }
+       
 
 
-
-        public void CheckLicense<LicenseT>(string app_name, string license_cer__full_file_name,
-            QLicense.Windows.Controls.LicenseInfoControl licInfo, dynamic frmActivation)
+        public void CheckLicense<LicenseT>(Assembly _assembly, string app_name, string license_cer__full_file_name,
+            dynamic licInfo, dynamic frmActivation)
         {
+
             byte[] _certPubicKeyData;
             //Initialize variables with default values
-            LicenseEntity _lic = null;
+             LicenseEntity _lic = null;
             // AppLicenseClass _lic = null;
             string _msg = string.Empty;
             LicenseStatus _status = LicenseStatus.UNDEFINED;
 
             //Read public key from assembly
-            Assembly _assembly = Assembly.GetExecutingAssembly();
+          //  Assembly _assembly = Assembly.GetExecutingAssembly();
+
             using (MemoryStream _mem = new MemoryStream())
             {
                 _assembly.GetManifestResourceStream(app_name + "." + license_cer__full_file_name).CopyTo(_mem);
@@ -2438,7 +2440,7 @@ namespace SRL
             if (System.IO.File.Exists("license.lic"))
             {
                 _lic = //(AppLicenseClass)QLicenseClass.LicenseHandler.ParseLicenseFromBASE64String(
-                    LicenseHandler.ParseLicenseFromBASE64String(
+                   LicenseHandler.ParseLicenseFromBASE64String(
                     typeof(LicenseT),
                     System.IO.File.ReadAllText("license.lic"),
                     _certPubicKeyData,
@@ -2469,22 +2471,22 @@ namespace SRL
                     //and also popup the activation form for user to activate your application
                     MessageBox.Show(_msg, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                 //   using (frmActivation frm = new frmActivation(app_name))
-                  //  {
+                    //   using (frmActivation frm = new frmActivation(app_name))
+                    //  {
                     frmActivation.CertificatePublicKeyData = _certPubicKeyData;
                     frmActivation.ShowDialog();
 
-                        //Exit the application after activation to reload the license file 
-                        //Actually it is not nessessary, you may just call the API to reload the license file
-                        //Here just simplied the demo process
+                    //Exit the application after activation to reload the license file 
+                    //Actually it is not nessessary, you may just call the API to reload the license file
+                    //Here just simplied the demo process
 
-                        Application.Exit();
-                 //   }
+                    Application.Exit();
+                    //   }
                     break;
             }
         }
 
-
+        
         class BASE36
         {
             private const string _charList = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -2971,6 +2973,381 @@ namespace SRL
             Volume = 2
         }
 
+
+        public class LicenseActivate
+        {
+
+            public bool ShowMessageAfterValidation { get; set; }
+
+            public string LicenseBASE64String(string txtLicense)
+            {
+                return txtLicense.Trim();
+            }
+
+            public LicenseActivate(bool ShowMessageAfterValidation_)
+            {
+
+                ShowMessageAfterValidation = ShowMessageAfterValidation_;
+            }
+
+            public string ShowUID(string AppName)
+            {
+                return LicenseHandler.GenerateUID(AppName);
+            }
+
+            public bool ValidateLicense(string txtLicense, Type LicenseObjectType, byte[] CertificatePublicKeyData)
+            {
+                if (string.IsNullOrWhiteSpace(txtLicense))
+                {
+                    MessageBox.Show("Please input license", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+
+                //Check the activation string
+                LicenseStatus _licStatus = LicenseStatus.UNDEFINED;
+                string _msg = string.Empty;
+                LicenseEntity _lic = LicenseHandler.ParseLicenseFromBASE64String(LicenseObjectType, txtLicense.Trim(), CertificatePublicKeyData, out _licStatus, out _msg);
+                switch (_licStatus)
+                {
+                    case LicenseStatus.VALID:
+                        if (ShowMessageAfterValidation)
+                        {
+                            MessageBox.Show(_msg, "License is valid", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+
+                        return true;
+
+                    case LicenseStatus.CRACKED:
+                    case LicenseStatus.INVALID:
+                    case LicenseStatus.UNDEFINED:
+                        if (ShowMessageAfterValidation)
+                        {
+                            MessageBox.Show(_msg, "License is INVALID", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+
+                        return false;
+
+                    default:
+                        return false;
+                }
+            }
+            public void CopyToClipboard(string txtUID)
+            {
+                Clipboard.SetText(txtUID);
+            }
+        }
+
+        public class LicenseInfo
+        {
+            public string DateFormat { get; set; }
+
+            public string DateTimeFormat { get; set; }
+
+            public LicenseInfo()
+            {
+            }
+
+            public string ShowTextOnly(string text)
+            {
+                return text.Trim();
+            }
+
+            public void ShowLicenseInfo(LicenseEntity license)
+            {
+                ShowLicenseInfo(license, string.Empty);
+            }
+
+
+            public string ShowLicenseInfo(LicenseEntity license, string additionalInfo)
+            {
+                try
+                {
+                    StringBuilder _sb = new StringBuilder(512);
+
+                    Type _typeLic = license.GetType();
+                    PropertyInfo[] _props = _typeLic.GetProperties();
+
+                    object _value = null;
+                    string _formatedValue = string.Empty;
+                    foreach (PropertyInfo _p in _props)
+                    {
+                        try
+                        {
+                            ShowInLicenseInfoAttribute _showAttr = (ShowInLicenseInfoAttribute)Attribute.GetCustomAttribute(_p, typeof(ShowInLicenseInfoAttribute));
+                            if (_showAttr != null && _showAttr.ShowInLicenseInfo)
+                            {
+                                _value = _p.GetValue(license, null);
+                                _sb.Append(_showAttr.DisplayAs);
+                                _sb.Append(": ");
+
+                                //Append value and apply the format   
+                                if (_value != null)
+                                {
+                                    switch (_showAttr.DataFormatType)
+                                    {
+                                        case ShowInLicenseInfoAttribute.FormatType.String:
+                                            _formatedValue = _value.ToString();
+                                            break;
+                                        case ShowInLicenseInfoAttribute.FormatType.Date:
+                                            if (_p.PropertyType == typeof(DateTime) && !string.IsNullOrWhiteSpace(DateFormat))
+                                            {
+                                                _formatedValue = ((DateTime)_value).ToString(DateFormat);
+                                            }
+                                            else
+                                            {
+                                                _formatedValue = _value.ToString();
+                                            }
+                                            break;
+                                        case ShowInLicenseInfoAttribute.FormatType.DateTime:
+                                            if (_p.PropertyType == typeof(DateTime) && !string.IsNullOrWhiteSpace(DateTimeFormat))
+                                            {
+                                                _formatedValue = ((DateTime)_value).ToString(DateTimeFormat);
+                                            }
+                                            else
+                                            {
+                                                _formatedValue = _value.ToString();
+                                            }
+                                            break;
+                                        case ShowInLicenseInfoAttribute.FormatType.EnumDescription:
+                                            string _name = Enum.GetName(_p.PropertyType, _value);
+                                            if (_name != null)
+                                            {
+                                                FieldInfo _fi = _p.PropertyType.GetField(_name);
+                                                DescriptionAttribute _dna = (DescriptionAttribute)Attribute.GetCustomAttribute(_fi, typeof(DescriptionAttribute));
+                                                if (_dna != null)
+                                                    _formatedValue = _dna.Description;
+                                                else
+                                                    _formatedValue = _value.ToString();
+                                            }
+                                            else
+                                            {
+                                                _formatedValue = _value.ToString();
+                                            }
+                                            break;
+                                    }
+
+                                    _sb.Append(_formatedValue);
+                                }
+
+                                _sb.Append("\r\n");
+                            }
+                        }
+                        catch
+                        {
+                            //Ignore exeption
+                        }
+                    }
+
+
+                    if (string.IsNullOrWhiteSpace(additionalInfo))
+                    {
+                        _sb.Append(additionalInfo.Trim());
+                    }
+
+                    return _sb.ToString();
+                }
+                catch (Exception ex)
+                {
+                    return ex.Message;
+                }
+            }
+        }
+
+        public partial class LicenseStringContainer
+        {
+            public string LicenseString  {get;  set ; }
+
+
+            public string LicenseStringset (string txtLicense)
+            {
+                LicenseString = txtLicense;
+                return LicenseString;
+            }
+
+            public LicenseStringContainer()
+            {
+
+            }
+            
+
+            private void SaveToFile(SaveFileDialog dlgSaveFile, string txtLicense)
+            {
+                if (dlgSaveFile.ShowDialog() == DialogResult.OK)
+                {
+                    //Save license data into local file
+                    System.IO.File.WriteAllText(dlgSaveFile.FileName, txtLicense.Trim(), Encoding.UTF8);
+                }
+            }
+        }
+
+        public class LicenseSettingsValidatingEventArgs : EventArgs
+        {
+            public LicenseEntity License { get; set; }
+            public bool CancelGenerating { get; set; }
+        }
+
+        public class LicenseGeneratedEventArgs
+        {
+            public string LicenseBASE64String { get; set; }
+        }
+
+
+        public delegate void LicenseSettingsValidatingHandler(object sender, LicenseSettingsValidatingEventArgs e);
+        public delegate void LicenseGeneratedHandler(object sender, LicenseGeneratedEventArgs e);
+
+        public  class LicenseSettingsControl
+        {
+            PropertyGrid pgLicenseSettings;
+            public byte[] CertificatePrivateKeyData { set; private get; }
+            public LicenseSettingsControl(PropertyGrid pgLicenseSettings_, byte[] CertificatePrivateKeyData_)
+            {
+                pgLicenseSettings = pgLicenseSettings_;
+                CertificatePrivateKeyData = CertificatePrivateKeyData_;
+            }
+
+            public event LicenseSettingsValidatingHandler OnLicenseSettingsValidating;
+            public event LicenseGeneratedHandler OnLicenseGenerated;
+
+            protected LicenseEntity _lic;
+
+            public LicenseEntity License
+            {
+                set
+                {
+                    _lic = value;
+                    pgLicenseSettings.SelectedObject = _lic;
+                }
+            }
+
+            
+
+            public SecureString CertificatePassword { set; private get; }
+
+            public bool AllowVolumeLicenseSet(bool value, GroupBox grpbxLicenseType, RadioButton rdoSingleLicense)
+            {
+                
+                    if (!value)
+                    {
+                        rdoSingleLicense.Checked = true;
+                    }
+
+                    grpbxLicenseType.Enabled = value;
+                
+
+                return grpbxLicenseType.Enabled;
+            }
+
+
+
+
+            private void LicenseTypeRadioButtonsCheckedChanged(TextBox txtUID, RadioButton rdoSingleLicense)
+            {
+                txtUID.Text = string.Empty;
+
+                txtUID.Enabled = rdoSingleLicense.Checked;
+            }
+
+            private void GenLicense(RadioButton rdoSingleLicense, TextBox txtUID, RadioButton rdoVolumeLicense)
+            {
+                if (_lic == null) throw new ArgumentException("LicenseEntity is invalid");
+
+                if (rdoSingleLicense.Checked)
+                {
+                    if (LicenseHandler.ValidateUIDFormat(txtUID.Text.Trim()))
+                    {
+                        _lic.Type = LicenseTypes.Single;
+                        _lic.UID = txtUID.Text.Trim();
+                    }
+                    else
+                    {
+                        MessageBox.Show("License UID is blank or invalid", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                }
+                else if (rdoVolumeLicense.Checked)
+                {
+                    _lic.Type = LicenseTypes.Volume;
+                    _lic.UID = string.Empty;
+                }
+
+                _lic.CreateDateTime = DateTime.Now;
+
+                if (OnLicenseSettingsValidating != null)
+                {
+                    LicenseSettingsValidatingEventArgs _args = new LicenseSettingsValidatingEventArgs() { License = _lic, CancelGenerating = false };
+
+                    OnLicenseSettingsValidating(this, _args);
+
+                    if (_args.CancelGenerating)
+                    {
+                        return;
+                    }
+                }
+
+                if (OnLicenseGenerated != null)
+                {
+                    string _licStr = LicenseHandler.GenerateLicenseBASE64String(_lic, CertificatePrivateKeyData, CertificatePassword);
+
+                    OnLicenseGenerated(this, new LicenseGeneratedEventArgs() { LicenseBASE64String = _licStr });
+                }
+            }
+        }
+
+
+        public partial class ActivationTool<LicenseT> where LicenseT : LicenseEntity
+        {
+            private byte[] _certPubicKeyData;
+            private SecureString _certPwd = new SecureString();
+
+            public ActivationTool(LicenseT licenseT)
+            {
+
+                _certPwd.AppendChar('2');
+                _certPwd.AppendChar('0');
+                _certPwd.AppendChar('5');
+                _certPwd.AppendChar('0');
+                _certPwd.AppendChar('1');
+                _certPwd.AppendChar('3');
+                _certPwd.AppendChar('0');
+                _certPwd.AppendChar('3');
+                _certPwd.AppendChar('5');
+                _certPwd.AppendChar('1');
+
+                Assembly _assembly = Assembly.GetExecutingAssembly();
+                using (MemoryStream _mem = new MemoryStream())
+                {
+                    _assembly.GetManifestResourceStream("DemoActivationTool.LicenseSign.pfx").CopyTo(_mem);
+
+                    _certPubicKeyData = _mem.ToArray();
+                }
+
+                //Initialize the path for the certificate to sign the XML license file
+                LicenseSettingsControl setting = new LicenseSettingsControl(new PropertyGrid(), _certPubicKeyData);
+                setting.CertificatePassword = _certPwd;
+
+                //Initialize a new license object
+                setting.License = licenseT;
+            }
+            
+
+            private void licSettings_OnLicenseGenerated(LicenseStringContainer licString, LicenseGeneratedEventArgs e)
+            {
+                //Event raised when license string is generated. Just show it in the text box
+                licString.LicenseString = e.LicenseBASE64String;
+            }
+
+
+            private void btnGenSvrMgmLic_Click(LicenseStringContainer licString, LicenseT licenseT)
+            {
+                //Event raised when "Generate License" button is clicked. 
+                //Call the core library to generate the license
+                licString.LicenseString = LicenseHandler.GenerateLicenseBASE64String(
+                   licenseT,
+                    _certPubicKeyData,
+                    _certPwd);
+            }
+
+        }
 
 
     }
