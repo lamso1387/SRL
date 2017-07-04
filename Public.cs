@@ -2308,7 +2308,18 @@ namespace SRL
             System.IO.File.WriteAllLines(path, arrLine);
 
         }
-
+        public void CopyToClipboard(string content)
+        {
+            Clipboard.SetText(content);
+        }
+        public void SaveToFileDialog(SaveFileDialog dlgSaveFile, string content)
+        {
+            if (dlgSaveFile.ShowDialog() == DialogResult.OK)
+            {
+                //Save license data into local file
+                System.IO.File.WriteAllText(dlgSaveFile.FileName, content.Trim(), Encoding.UTF8);
+            }
+        }
 
 
     }
@@ -2319,7 +2330,7 @@ namespace SRL
         public string DateFormat { get; set; }
 
         public string DateTimeFormat { get; set; }
-        public void ShowLicenseInfo(LicenseEntity license, string additionalInfo)
+        public string ShowLicenseInfo(LicenseEntity license, string additionalInfo)
         {
             try
             {
@@ -2405,42 +2416,37 @@ namespace SRL
                     _sb.Append(additionalInfo.Trim());
                 }
 
-                string txtLicInfo = _sb.ToString();
+                return _sb.ToString();
             }
             catch (Exception ex)
             {
-                string txtLicInfo = ex.Message;
+                return ex.Message;
             }
         }
-       
 
 
-        public void CheckLicense<LicenseT>(Assembly _assembly, string app_name, string license_cer__full_file_name,
-            dynamic licInfo, dynamic frmActivation)
+
+        public bool CheckLicense<LicenseT>(Assembly _assembly, string app_name, string license_cer__full_file_name,
+             out byte[] _certPubicKeyData, out string license_) where LicenseT : LicenseEntity
         {
-
-            byte[] _certPubicKeyData;
+            license_ = "";
             //Initialize variables with default values
-             LicenseEntity _lic = null;
+            LicenseEntity _lic = null;
             // AppLicenseClass _lic = null;
             string _msg = string.Empty;
             LicenseStatus _status = LicenseStatus.UNDEFINED;
 
             //Read public key from assembly
-          //  Assembly _assembly = Assembly.GetExecutingAssembly();
+            //  Assembly _assembly = Assembly.GetExecutingAssembly();
 
-            using (MemoryStream _mem = new MemoryStream())
-            {
-                _assembly.GetManifestResourceStream(app_name + "." + license_cer__full_file_name).CopyTo(_mem);
+            _certPubicKeyData = GetPubicKeyData(_assembly, app_name, license_cer__full_file_name);
 
-                _certPubicKeyData = _mem.ToArray();
-            }
 
             //Check if the XML license file exists
             if (System.IO.File.Exists("license.lic"))
             {
-                _lic = //(AppLicenseClass)QLicenseClass.LicenseHandler.ParseLicenseFromBASE64String(
-                   LicenseHandler.ParseLicenseFromBASE64String(
+                _lic = (LicenseT)LicenseHandler.ParseLicenseFromBASE64String(
+                 //  LicenseHandler.ParseLicenseFromBASE64String(
                     typeof(LicenseT),
                     System.IO.File.ReadAllText("license.lic"),
                     _certPubicKeyData,
@@ -2462,31 +2468,30 @@ namespace SRL
                     //TODO: Also, you can set feature switch here based on the different properties you added to your license entity 
 
                     //Here for demo, just show the license information and RETURN without additional checking       
-                    ShowLicenseInfo(_lic, "");
+                   license_= ShowLicenseInfo(_lic, "");
 
-                    return;
+                    return true;
 
                 default:
                     //for the other status of license file, show the warning message
                     //and also popup the activation form for user to activate your application
                     MessageBox.Show(_msg, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-                    //   using (frmActivation frm = new frmActivation(app_name))
-                    //  {
-                    frmActivation.CertificatePublicKeyData = _certPubicKeyData;
-                    frmActivation.ShowDialog();
-
-                    //Exit the application after activation to reload the license file 
-                    //Actually it is not nessessary, you may just call the API to reload the license file
-                    //Here just simplied the demo process
-
-                    Application.Exit();
-                    //   }
-                    break;
+                    return false; 
             }
         }
 
-        
+        public byte[] GetPubicKeyData(Assembly _assembly_, string app_name_, string license_cer__full_file_name_)
+        {
+            using (MemoryStream _mem_ = new MemoryStream())
+            {
+                _assembly_.GetManifestResourceStream(app_name_ + "." + license_cer__full_file_name_).CopyTo(_mem_);
+
+                return _mem_.ToArray();
+            }
+
+        }
+
+
         class BASE36
         {
             private const string _charList = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -3031,10 +3036,7 @@ namespace SRL
                         return false;
                 }
             }
-            public void CopyToClipboard(string txtUID)
-            {
-                Clipboard.SetText(txtUID);
-            }
+
         }
 
         public class LicenseInfo
@@ -3153,12 +3155,12 @@ namespace SRL
             }
         }
 
-        public partial class LicenseStringContainer
+        public class LicenseStringContainer
         {
-            public string LicenseString  {get;  set ; }
+            public string LicenseString { get; set; }
 
 
-            public string LicenseStringset (string txtLicense)
+            public string LicenseStringset(string txtLicense)
             {
                 LicenseString = txtLicense;
                 return LicenseString;
@@ -3168,16 +3170,9 @@ namespace SRL
             {
 
             }
-            
 
-            private void SaveToFile(SaveFileDialog dlgSaveFile, string txtLicense)
-            {
-                if (dlgSaveFile.ShowDialog() == DialogResult.OK)
-                {
-                    //Save license data into local file
-                    System.IO.File.WriteAllText(dlgSaveFile.FileName, txtLicense.Trim(), Encoding.UTF8);
-                }
-            }
+
+
         }
 
         public class LicenseSettingsValidatingEventArgs : EventArgs
@@ -3195,7 +3190,7 @@ namespace SRL
         public delegate void LicenseSettingsValidatingHandler(object sender, LicenseSettingsValidatingEventArgs e);
         public delegate void LicenseGeneratedHandler(object sender, LicenseGeneratedEventArgs e);
 
-        public  class LicenseSettingsControl
+        public class LicenseSettingsControl
         {
             PropertyGrid pgLicenseSettings;
             public byte[] CertificatePrivateKeyData { set; private get; }
@@ -3219,20 +3214,20 @@ namespace SRL
                 }
             }
 
-            
+
 
             public SecureString CertificatePassword { set; private get; }
 
             public bool AllowVolumeLicenseSet(bool value, GroupBox grpbxLicenseType, RadioButton rdoSingleLicense)
             {
-                
-                    if (!value)
-                    {
-                        rdoSingleLicense.Checked = true;
-                    }
 
-                    grpbxLicenseType.Enabled = value;
-                
+                if (!value)
+                {
+                    rdoSingleLicense.Checked = true;
+                }
+
+                grpbxLicenseType.Enabled = value;
+
 
                 return grpbxLicenseType.Enabled;
             }
@@ -3247,16 +3242,18 @@ namespace SRL
                 txtUID.Enabled = rdoSingleLicense.Checked;
             }
 
-            private void GenLicense(RadioButton rdoSingleLicense, TextBox txtUID, RadioButton rdoVolumeLicense)
+            public void GetLicense(LicenseTypes license_type, string UID_, out string licence)
             {
+                licence = "";
+
                 if (_lic == null) throw new ArgumentException("LicenseEntity is invalid");
 
-                if (rdoSingleLicense.Checked)
+                if (license_type == LicenseTypes.Single)
                 {
-                    if (LicenseHandler.ValidateUIDFormat(txtUID.Text.Trim()))
+                    if (LicenseHandler.ValidateUIDFormat(UID_.Trim()))
                     {
                         _lic.Type = LicenseTypes.Single;
-                        _lic.UID = txtUID.Text.Trim();
+                        _lic.UID = UID_.Trim();
                     }
                     else
                     {
@@ -3264,7 +3261,7 @@ namespace SRL
                         return;
                     }
                 }
-                else if (rdoVolumeLicense.Checked)
+                else if (license_type == LicenseTypes.Volume)
                 {
                     _lic.Type = LicenseTypes.Volume;
                     _lic.UID = string.Empty;
@@ -3284,58 +3281,43 @@ namespace SRL
                     }
                 }
 
-                if (OnLicenseGenerated != null)
-                {
-                    string _licStr = LicenseHandler.GenerateLicenseBASE64String(_lic, CertificatePrivateKeyData, CertificatePassword);
+                string _licStr = LicenseHandler.GenerateLicenseBASE64String(_lic, CertificatePrivateKeyData, CertificatePassword);
 
-                    OnLicenseGenerated(this, new LicenseGeneratedEventArgs() { LicenseBASE64String = _licStr });
-                }
+               
+
+                licence = _licStr;
+                return;
+
             }
         }
 
 
-        public partial class ActivationTool<LicenseT> where LicenseT : LicenseEntity
+        public class ActivationTool<LicenseT> where LicenseT : LicenseEntity
         {
-            private byte[] _certPubicKeyData;
-            private SecureString _certPwd = new SecureString();
+            public byte[] _certPubicKeyData;
+            private SecureString _certPwd;
 
-            public ActivationTool(LicenseT licenseT)
+            public ActivationTool(Assembly _assembly, LicenseT licenseT,
+                SecureString _certPwd_, string activation_app_name)
             {
 
-                _certPwd.AppendChar('2');
-                _certPwd.AppendChar('0');
-                _certPwd.AppendChar('5');
-                _certPwd.AppendChar('0');
-                _certPwd.AppendChar('1');
-                _certPwd.AppendChar('3');
-                _certPwd.AppendChar('0');
-                _certPwd.AppendChar('3');
-                _certPwd.AppendChar('5');
-                _certPwd.AppendChar('1');
+                //_certPwd.AppendChar('2');
+                //_certPwd.AppendChar('0');
+                //_certPwd.AppendChar('5');
+                //_certPwd.AppendChar('0');
+                //_certPwd.AppendChar('1');
+                //_certPwd.AppendChar('3');
+                //_certPwd.AppendChar('0');
+                //_certPwd.AppendChar('3');
+                //_certPwd.AppendChar('5');
+                //_certPwd.AppendChar('1');
 
-                Assembly _assembly = Assembly.GetExecutingAssembly();
-                using (MemoryStream _mem = new MemoryStream())
-                {
-                    _assembly.GetManifestResourceStream("DemoActivationTool.LicenseSign.pfx").CopyTo(_mem);
+                _certPwd = _certPwd_;
 
-                    _certPubicKeyData = _mem.ToArray();
-                }
 
-                //Initialize the path for the certificate to sign the XML license file
-                LicenseSettingsControl setting = new LicenseSettingsControl(new PropertyGrid(), _certPubicKeyData);
-                setting.CertificatePassword = _certPwd;
+                _certPubicKeyData = new SRL.LicenseClass().GetPubicKeyData(_assembly, activation_app_name, "LicenseSign.pfx");
 
-                //Initialize a new license object
-                setting.License = licenseT;
             }
-            
-
-            private void licSettings_OnLicenseGenerated(LicenseStringContainer licString, LicenseGeneratedEventArgs e)
-            {
-                //Event raised when license string is generated. Just show it in the text box
-                licString.LicenseString = e.LicenseBASE64String;
-            }
-
 
             private void btnGenSvrMgmLic_Click(LicenseStringContainer licString, LicenseT licenseT)
             {
