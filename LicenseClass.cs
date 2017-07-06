@@ -459,11 +459,13 @@ namespace SRL
         #endregion
 
 
-        public bool ValidateLicense(string txtLicense, Type LicenseObjectType)
+        public bool ValidateLicense(string txtLicense, Type LicenseObjectType, out string message)
         {
+            message = "";
             if (string.IsNullOrWhiteSpace(txtLicense))
             {
-                MessageBox.Show("Please input license", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                message = "Please input license";
+                MessageBox.Show(message, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
 
@@ -477,7 +479,9 @@ namespace SRL
                 case LicenseStatus.VALID:
                     if (ShowMessageAfterValidation)
                     {
-                        MessageBox.Show(_msg, "License is valid", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        message = "License is valid .";
+                        MessageBox.Show(_msg, message, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        message += _msg;
                     }
 
                     return true;
@@ -487,7 +491,9 @@ namespace SRL
                 case LicenseStatus.UNDEFINED:
                     if (ShowMessageAfterValidation)
                     {
-                        MessageBox.Show(_msg, "License is INVALID", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        message = "License is INVALID .";
+                        MessageBox.Show(_msg, message, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        message += _msg;
                     }
 
                     return false;

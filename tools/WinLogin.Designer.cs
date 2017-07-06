@@ -38,6 +38,7 @@
             // 
             // btnEnter
             // 
+            this.btnEnter.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnEnter.Location = new System.Drawing.Point(191, 94);
             this.btnEnter.Margin = new System.Windows.Forms.Padding(4);
             this.btnEnter.Name = "btnEnter";
