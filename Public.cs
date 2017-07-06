@@ -2307,6 +2307,18 @@ namespace SRL
             System.IO.File.WriteAllLines(path, arrLine);
 
         }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="fileFullName">Path.Combine(Application.StartupPath, fileName)</param>
+        /// <param name="content"></param>
+        public void SaveToFile(string fileFullName, string content)
+        {
+           System.IO.File.WriteAllText(fileFullName, content);
+
+        }
+
+       
         public void CopyToClipboard(string content)
         {
             Clipboard.SetText(content);
@@ -2322,7 +2334,6 @@ namespace SRL
 
 
     }
-
 
  
 }

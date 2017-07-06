@@ -31,9 +31,232 @@ namespace SRL
 {
     public class LicenseClass
     {
+        public byte[] CertificatePublicKeyData { private get; set; }
+        public bool ShowMessageAfterValidation { get; set; }
+
         public string DateFormat { get; set; }
 
         public string DateTimeFormat { get; set; }
+
+
+        public LicenseClass(bool ShowMessageAfterValidation_ = true)
+        {
+            ShowMessageAfterValidation = ShowMessageAfterValidation_;
+        }
+
+        #region check license is valid
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="LicenseT">LicenseT must inherite : LicenseEntity . see examples</typeparam>
+        /// <param name="_assembly">Assembly.GetExecutingAssembly()</param>
+        /// <param name="app_name">e.g. "hesabdari"</param>
+        /// <param name="license_cer_full_file_name">e.g "LicenseVerify.cer" file must be Embedded Resource Build Action and Do not copy to output directory</param>
+        /// <param name="license_key"> get it from a file or db. send null if license file or license column not exist </param>
+        /// <param name="license_info">show it in textbox if true returns</param>
+        /// <returns></returns>
+        public bool CheckLicense<LicenseT>(Assembly _assembly, string app_name, string license_cer_full_file_name, string license_key,
+            out string license_info) where LicenseT : LicenseEntity
+        {
+            license_info = "";
+            //Initialize variables with default values
+            LicenseT _lic = null;
+            string _msg = string.Empty;
+            LicenseStatus _status = LicenseStatus.UNDEFINED;
+
+            //Read public key from assembly
+            CertificatePublicKeyData = GetPubicKeyData(_assembly, app_name, license_cer_full_file_name);
+
+
+            //Check if the XML license file exists
+            if (!string.IsNullOrWhiteSpace(license_key))
+            {
+                _lic = (LicenseT)ParseLicenseFromBASE64String(
+                    typeof(LicenseT),
+                    license_key,
+                    out _status,
+                    out _msg);
+            }
+            else
+            {
+                _status = LicenseStatus.INVALID;
+                _msg = "Your copy of this application is not activated";
+            }
+
+            switch (_status)
+            {
+                case LicenseStatus.VALID:
+
+                    //TODO: If license is valid, you can do extra checking here
+                    //TODO: E.g., check license expiry date if you have added expiry date property to your license entity
+                    //TODO: Also, you can set feature switch here based on the different properties you added to your license entity 
+
+                    //Here for demo, just show the license information and RETURN without additional checking       
+                    license_info = ShowLicenseInfo(_lic, "");
+
+                    return true;
+
+                default:
+                    //for the other status of license file, show the warning message
+                    //and also popup the activation form for user to activate your application
+                    MessageBox.Show(_msg, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// app should has a class for example AppLicenseClass that inherites from LicenseEntity. see AppLicenseExample1 and AppLicenseExample2
+        /// </summary>
+        public abstract class LicenseEntity
+        {
+            [Browsable(false)]
+            [XmlIgnore]
+            [ShowInLicenseInfo(false)]
+            public string AppName { get; protected set; }
+
+            [Browsable(false)]
+            [XmlElement("UID")]
+            [ShowInLicenseInfo(false)]
+            public string UID { get; set; }
+
+            [Browsable(false)]
+            [XmlElement("Type")]
+            [ShowInLicenseInfo(true, "Type", ShowInLicenseInfoAttribute.FormatType.EnumDescription)]
+            public LicenseTypes Type { get; set; }
+
+            [Browsable(false)]
+            [XmlElement("CreateDateTime")]
+            [ShowInLicenseInfo(true, "Creation Time", ShowInLicenseInfoAttribute.FormatType.DateTime)]
+            public DateTime CreateDateTime { get; set; }
+
+            /// <summary>
+            /// For child class to do extra validation for those extended properties
+            /// </summary>
+            /// <param name="validationMsg"></param>
+            /// <returns></returns>
+            public abstract LicenseStatus DoExtraValidation(out string validationMsg);
+
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="_assembly_"></param>
+        /// <param name="app_name_"></param>
+        /// <param name="license_full_file_name_">e.g. "LicenseSign.pfx" or "LicenseVerify.cer"</param>
+        /// <returns></returns>    
+        public byte[] GetPubicKeyData(Assembly _assembly_, string app_name_, string license_full_file_name_)
+        {
+            using (MemoryStream _mem_ = new MemoryStream())
+            {
+                _assembly_.GetManifestResourceStream(app_name_ + "." + license_full_file_name_).CopyTo(_mem_);
+
+                return _mem_.ToArray();
+            }
+
+        }
+
+        public LicenseEntity ParseLicenseFromBASE64String(Type licenseObjType, string licenseString, out LicenseStatus licStatus, out string validationMsg)
+        {
+            validationMsg = string.Empty;
+            licStatus = LicenseStatus.UNDEFINED;
+
+            if (string.IsNullOrWhiteSpace(licenseString))
+            {
+                licStatus = LicenseStatus.CRACKED;
+                return null;
+            }
+
+            string _licXML = string.Empty;
+            LicenseEntity _lic = null;
+
+            try
+            {
+                //Get RSA key from certificate
+                X509Certificate2 cert = new X509Certificate2(CertificatePublicKeyData);
+                RSACryptoServiceProvider rsaKey = (RSACryptoServiceProvider)cert.PublicKey.Key;
+
+                XmlDocument xmlDoc = new XmlDocument();
+
+                // Load an XML file into the XmlDocument object.
+                xmlDoc.PreserveWhitespace = true;
+                xmlDoc.LoadXml(Encoding.UTF8.GetString(Convert.FromBase64String(licenseString)));
+
+                // Verify the signature of the signed XML.            
+                if (VerifyXml(xmlDoc, rsaKey))
+                {
+                    XmlNodeList nodeList = xmlDoc.GetElementsByTagName("Signature");
+                    xmlDoc.DocumentElement.RemoveChild(nodeList[0]);
+
+                    _licXML = xmlDoc.OuterXml;
+
+                    //Deserialize license
+                    XmlSerializer _serializer = new XmlSerializer(typeof(LicenseEntity), new Type[] { licenseObjType });
+                    using (StringReader _reader = new StringReader(_licXML))
+                    {
+                        _lic = (LicenseEntity)_serializer.Deserialize(_reader);
+                    }
+
+                    licStatus = _lic.DoExtraValidation(out validationMsg);
+                }
+                else
+                {
+                    licStatus = LicenseStatus.INVALID;
+                }
+            }
+            catch
+            {
+                licStatus = LicenseStatus.CRACKED;
+            }
+
+            return _lic;
+        }
+
+        /// <summary>
+        /// Verify the signature of an XML file against an asymmetric algorithm and return the result.
+        /// </summary>
+        /// <param name="Doc"></param>
+        /// <param name="Key"></param>
+        /// <returns></returns>
+        private static Boolean VerifyXml(XmlDocument Doc, RSA Key)
+        {
+            // Check arguments.
+            if (Doc == null)
+                throw new ArgumentException("Doc");
+            if (Key == null)
+                throw new ArgumentException("Key");
+
+            // Create a new SignedXml object and pass it
+            // the XML document class.
+            SignedXml signedXml = new SignedXml(Doc);
+
+            // Find the "Signature" node and create a new
+            // XmlNodeList object.
+            XmlNodeList nodeList = Doc.GetElementsByTagName("Signature");
+
+            // Throw an exception if no signature was found.
+            if (nodeList.Count <= 0)
+            {
+                throw new CryptographicException("Verification failed: No Signature was found in the document.");
+            }
+
+            // This example only supports one signature for
+            // the entire XML document.  Throw an exception 
+            // if more than one signature was found.
+            if (nodeList.Count >= 2)
+            {
+                throw new CryptographicException("Verification failed: More that one signature was found for the document.");
+            }
+
+            // Load the first <signature> node.  
+            signedXml.LoadXml((XmlElement)nodeList[0]);
+
+            // Check the signature and return the result.
+            return signedXml.CheckSignature(Key);
+        }
+
         public string ShowLicenseInfo(LicenseEntity license, string additionalInfo)
         {
             try
@@ -128,72 +351,268 @@ namespace SRL
             }
         }
 
+        #endregion
 
-
-        public bool CheckLicense<LicenseT>(Assembly _assembly, string app_name, string license_cer__full_file_name,
-             out byte[] _certPubicKeyData, out string license_) where LicenseT : LicenseEntity
+        #region get uid
+        public string ShowUID(string AppName)
         {
-            license_ = "";
-            //Initialize variables with default values
-            LicenseEntity _lic = null;
-            // AppLicenseClass _lic = null;
+            return GenerateUID(AppName);
+        }
+
+        /// <summary>
+        /// Combine appName, CPU ID, Disk C Volume Serial Number and Motherboard Serial Number as device Id
+        /// </summary>
+        /// <returns></returns>
+        public static string GenerateUID(string appName)
+        {
+            //Combine the IDs and get bytes
+            string _id = string.Concat(appName, GetProcessorId(), GetMotherboardID(), GetDiskVolumeSerialNumber());
+            byte[] _byteIds = Encoding.UTF8.GetBytes(_id);
+
+            //Use MD5 to get the fixed length checksum of the ID string
+            MD5CryptoServiceProvider _md5 = new MD5CryptoServiceProvider();
+            byte[] _checksum = _md5.ComputeHash(_byteIds);
+
+            //Convert checksum into 4 ulong parts and use BASE36 to encode both
+            string _part1Id = BASE36.Encode(BitConverter.ToUInt32(_checksum, 0));
+            string _part2Id = BASE36.Encode(BitConverter.ToUInt32(_checksum, 4));
+            string _part3Id = BASE36.Encode(BitConverter.ToUInt32(_checksum, 8));
+            string _part4Id = BASE36.Encode(BitConverter.ToUInt32(_checksum, 12));
+
+            //Concat these 4 part into one string
+            string uid = string.Format("{0}-{1}-{2}-{3}", _part1Id, _part2Id, _part3Id, _part4Id);
+            return uid;
+        }
+
+        /// <summary>
+        /// Get volume serial number of drive C
+        /// </summary>
+        /// <returns></returns>
+        private static string GetDiskVolumeSerialNumber()
+        {
+            try
+            {
+                ManagementObject _disk = new ManagementObject(@"Win32_LogicalDisk.deviceid=""c:""");
+                _disk.Get();
+                return _disk["VolumeSerialNumber"].ToString();
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Get CPU ID
+        /// </summary>
+        /// <returns></returns>
+        private static string GetProcessorId()
+        {
+            try
+            {
+                ManagementObjectSearcher _mbs = new ManagementObjectSearcher("Select ProcessorId From Win32_processor");
+                ManagementObjectCollection _mbsList = _mbs.Get();
+                string _id = string.Empty;
+                foreach (ManagementObject _mo in _mbsList)
+                {
+                    _id = _mo["ProcessorId"].ToString();
+                    break;
+                }
+
+                return _id;
+
+            }
+            catch
+            {
+                return string.Empty;
+            }
+
+        }
+
+        /// <summary>
+        /// Get motherboard serial number
+        /// </summary>
+        /// <returns></returns>
+        private static string GetMotherboardID()
+        {
+
+            try
+            {
+                ManagementObjectSearcher _mbs = new ManagementObjectSearcher("Select SerialNumber From Win32_BaseBoard");
+                ManagementObjectCollection _mbsList = _mbs.Get();
+                string _id = string.Empty;
+                foreach (ManagementObject _mo in _mbsList)
+                {
+                    _id = _mo["SerialNumber"].ToString();
+                    break;
+                }
+
+                return _id;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+
+        }
+
+        #endregion
+
+
+        public bool ValidateLicense(string txtLicense, Type LicenseObjectType)
+        {
+            if (string.IsNullOrWhiteSpace(txtLicense))
+            {
+                MessageBox.Show("Please input license", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            //Check the activation string
+            LicenseStatus _licStatus = LicenseStatus.UNDEFINED;
             string _msg = string.Empty;
-            LicenseStatus _status = LicenseStatus.UNDEFINED;
 
-            //Read public key from assembly
-            //  Assembly _assembly = Assembly.GetExecutingAssembly();
-
-            _certPubicKeyData = GetPubicKeyData(_assembly, app_name, license_cer__full_file_name);
-
-
-            //Check if the XML license file exists
-            if (System.IO.File.Exists("license.lic"))
-            {
-                _lic = (LicenseT)LicenseHandler.ParseLicenseFromBASE64String(
-                    //  LicenseHandler.ParseLicenseFromBASE64String(
-                    typeof(LicenseT),
-                    System.IO.File.ReadAllText("license.lic"),
-                    _certPubicKeyData,
-                    out _status,
-                    out _msg);
-            }
-            else
-            {
-                _status = LicenseStatus.INVALID;
-                _msg = "Your copy of this application is not activated";
-            }
-
-            switch (_status)
+            LicenseEntity _lic = ParseLicenseFromBASE64String(LicenseObjectType, txtLicense.Trim(), out _licStatus, out _msg);
+            switch (_licStatus)
             {
                 case LicenseStatus.VALID:
-
-                    //TODO: If license is valid, you can do extra checking here
-                    //TODO: E.g., check license expiry date if you have added expiry date property to your license entity
-                    //TODO: Also, you can set feature switch here based on the different properties you added to your license entity 
-
-                    //Here for demo, just show the license information and RETURN without additional checking       
-                    license_ = ShowLicenseInfo(_lic, "");
+                    if (ShowMessageAfterValidation)
+                    {
+                        MessageBox.Show(_msg, "License is valid", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
 
                     return true;
 
+                case LicenseStatus.CRACKED:
+                case LicenseStatus.INVALID:
+                case LicenseStatus.UNDEFINED:
+                    if (ShowMessageAfterValidation)
+                    {
+                        MessageBox.Show(_msg, "License is INVALID", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+
+                    return false;
+
                 default:
-                    //for the other status of license file, show the warning message
-                    //and also popup the activation form for user to activate your application
-                    MessageBox.Show(_msg, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return false;
             }
         }
 
-        public byte[] GetPubicKeyData(Assembly _assembly_, string app_name_, string license_cer__full_file_name_)
-        {
-            using (MemoryStream _mem_ = new MemoryStream())
-            {
-                _assembly_.GetManifestResourceStream(app_name_ + "." + license_cer__full_file_name_).CopyTo(_mem_);
 
-                return _mem_.ToArray();
+        private static IEnumerable<string> SplitInParts(string input, int partLength)
+        {
+            if (input == null)
+                throw new ArgumentNullException("input");
+            if (partLength <= 0)
+                throw new ArgumentException("Part length has to be positive.", "partLength");
+
+            for (int i = 0; i < input.Length; i += partLength)
+                yield return input.Substring(i, Math.Min(partLength, input.Length - i));
+        }
+
+       
+        public static byte[] GetUIDInBytes(string UID)
+        {
+            //Split 4 part Id into 4 ulong
+            string[] _ids = UID.Split('-');
+
+            if (_ids.Length != 4) throw new ArgumentException("Wrong UID");
+
+            //Combine 4 part Id into one byte array
+            byte[] _value = new byte[16];
+            Buffer.BlockCopy(BitConverter.GetBytes(BASE36.Decode(_ids[0])), 0, _value, 0, 8);
+            Buffer.BlockCopy(BitConverter.GetBytes(BASE36.Decode(_ids[1])), 0, _value, 8, 8);
+            Buffer.BlockCopy(BitConverter.GetBytes(BASE36.Decode(_ids[2])), 0, _value, 16, 8);
+            Buffer.BlockCopy(BitConverter.GetBytes(BASE36.Decode(_ids[3])), 0, _value, 24, 8);
+
+            return _value;
+        }
+
+        public static bool ValidateUIDFormat(string UID)
+        {
+            if (!string.IsNullOrWhiteSpace(UID))
+            {
+                string[] _ids = UID.Split('-');
+
+                return (_ids.Length == 4);
+            }
+            else
+            {
+                return false;
             }
 
         }
+      
+
+     
+
+        public static string GenerateLicenseBASE64String(LicenseEntity lic, byte[] certPrivateKeyData, SecureString certFilePwd)
+        {
+            //Serialize license object into XML                    
+            XmlDocument _licenseObject = new XmlDocument();
+            using (StringWriter _writer = new StringWriter())
+            {
+                XmlSerializer _serializer = new XmlSerializer(typeof(LicenseEntity), new Type[] { lic.GetType() });
+
+                _serializer.Serialize(_writer, lic);
+
+                _licenseObject.LoadXml(_writer.ToString());
+            }
+
+            //Get RSA key from certificate
+            X509Certificate2 cert = new X509Certificate2(certPrivateKeyData, certFilePwd);
+
+            RSACryptoServiceProvider rsaKey = (RSACryptoServiceProvider)cert.PrivateKey;
+
+            //Sign the XML
+            SignXML(_licenseObject, rsaKey);
+
+            //Convert the signed XML into BASE64 string            
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(_licenseObject.OuterXml));
+        }
+
+
+        // Sign an XML file. 
+        // This document cannot be verified unless the verifying 
+        // code has the key with which it was signed.
+        private static void SignXML(XmlDocument xmlDoc, RSA Key)
+        {
+            // Check arguments.
+            if (xmlDoc == null)
+                throw new ArgumentException("xmlDoc");
+            if (Key == null)
+                throw new ArgumentException("Key");
+
+            // Create a SignedXml object.
+            SignedXml signedXml = new SignedXml(xmlDoc);
+
+            // Add the key to the SignedXml document.
+            signedXml.SigningKey = Key;
+
+            // Create a reference to be signed.
+            Reference reference = new Reference();
+            reference.Uri = "";
+
+            // Add an enveloped transformation to the reference.
+            XmlDsigEnvelopedSignatureTransform env = new XmlDsigEnvelopedSignatureTransform();
+            reference.AddTransform(env);
+
+            // Add the reference to the SignedXml object.
+            signedXml.AddReference(reference);
+
+            // Compute the signature.
+            signedXml.ComputeSignature();
+
+            // Get the XML representation of the signature and save
+            // it to an XmlElement object.
+            XmlElement xmlDigitalSignature = signedXml.GetXml();
+
+            // Append the element to the XML document.
+            xmlDoc.DocumentElement.AppendChild(xmlDoc.ImportNode(xmlDigitalSignature, true));
+
+        }
+
+
+
 
 
         class BASE36
@@ -238,7 +657,7 @@ namespace SRL
             }
         }
 
-        class HardwareInfo
+        class HardwareInfo2
         {
             /// <summary>
             /// Get volume serial number of drive C
@@ -449,37 +868,118 @@ namespace SRL
             }
         }
 
-
-        public abstract class LicenseEntity
+        
+        public class AppLicenseExample1 : LicenseEntity
         {
-            [Browsable(false)]
-            [XmlIgnore]
-            [ShowInLicenseInfo(false)]
-            public string AppName { get; protected set; }
+            [DisplayName("license_key")]
+            [Category("License Options")]
+            [XmlElement("license_key")]
+            [ShowInLicenseInfo(true, "license_key", ShowInLicenseInfoAttribute.FormatType.String)]
+            public string license_key { get; set; }
 
-            [Browsable(false)]
-            [XmlElement("UID")]
-            [ShowInLicenseInfo(false)]
-            public string UID { get; set; }
 
-            [Browsable(false)]
-            [XmlElement("Type")]
-            [ShowInLicenseInfo(true, "Type", ShowInLicenseInfoAttribute.FormatType.EnumDescription)]
-            public LicenseTypes Type { get; set; }
+            public AppLicenseExample1()
+            {
+                //Initialize app name for the license
+                this.AppName = "test_licence";
+            }
 
-            [Browsable(false)]
-            [XmlElement("CreateDateTime")]
-            [ShowInLicenseInfo(true, "Creation Time", ShowInLicenseInfoAttribute.FormatType.DateTime)]
-            public DateTime CreateDateTime { get; set; }
+            public override LicenseStatus DoExtraValidation(out string validationMsg)
+            {
+                LicenseStatus _licStatus = LicenseStatus.UNDEFINED;
+                validationMsg = string.Empty;
 
-            /// <summary>
-            /// For child class to do extra validation for those extended properties
-            /// </summary>
-            /// <param name="validationMsg"></param>
-            /// <returns></returns>
-            public abstract LicenseStatus DoExtraValidation(out string validationMsg);
+                switch (this.Type)
+                {
+                    case SRL.LicenseClass.LicenseTypes.Single:
+                        //For Single License, check whether UID is matched
+                        //  string genereted_UID = LicenseHandler.GenerateUID(this.AppName);
+                        string genereted_UID = GenerateUID(this.AppName);
+                        if (this.UID == genereted_UID)
+                        {
+                            _licStatus = LicenseStatus.VALID;
+                        }
+                        else
+                        {
+                            validationMsg = "کلید امنیتی برای این کپی غیر مجاز است";
+                            _licStatus = LicenseStatus.INVALID;
+                        }
+                        break;
+                    case LicenseTypes.Volume:
+                        //No UID checking for Volume License
+                        _licStatus = LicenseStatus.VALID;
+                        break;
+                    default:
+                        validationMsg = "کلید امنیتی اشتباه است";
+                        _licStatus = LicenseStatus.INVALID;
+                        break;
+                }
 
+                return _licStatus;
+            }
         }
+
+        public class AppLicenseExample2 : LicenseEntity
+        {
+            [DisplayName("Enable Feature 01")]
+            [Category("License Options")]
+            [XmlElement("EnableFeature01")]
+            [ShowInLicenseInfo(true, "Enable Feature 01", ShowInLicenseInfoAttribute.FormatType.String)]
+            public bool EnableFeature01 { get; set; }
+
+            [DisplayName("Enable Feature 02")]
+            [Category("License Options")]
+            [XmlElement("EnableFeature02")]
+            [ShowInLicenseInfo(true, "Enable Feature 02", ShowInLicenseInfoAttribute.FormatType.String)]
+            public bool EnableFeature02 { get; set; }
+
+
+            [DisplayName("Enable Feature 03")]
+            [Category("License Options")]
+            [XmlElement("EnableFeature03")]
+            [ShowInLicenseInfo(true, "Enable Feature 03", ShowInLicenseInfoAttribute.FormatType.String)]
+            public bool EnableFeature03 { get; set; }
+
+            public AppLicenseExample2()
+            {
+                //Initialize app name for the license
+                this.AppName = "hesabdari";
+            }
+
+            public override LicenseStatus DoExtraValidation(out string validationMsg)
+            {
+                LicenseStatus _licStatus = LicenseStatus.UNDEFINED;
+                validationMsg = string.Empty;
+
+                switch (this.Type)
+                {
+                    case LicenseTypes.Single:
+                        //For Single License, check whether UID is matched
+                        // if (this.UID == LicenseHandler.GenerateUID(this.AppName))
+                        if (this.UID == GenerateUID(this.AppName))
+                        {
+                            _licStatus = LicenseStatus.VALID;
+                        }
+                        else
+                        {
+                            validationMsg = "The license is NOT for this copy!";
+                            _licStatus = LicenseStatus.INVALID;
+                        }
+                        break;
+                    case LicenseTypes.Volume:
+                        //No UID checking for Volume License
+                        _licStatus = LicenseStatus.VALID;
+                        break;
+                    default:
+                        validationMsg = "Invalid license";
+                        _licStatus = LicenseStatus.INVALID;
+                        break;
+                }
+
+                return _licStatus;
+            }
+        }
+
 
         /// <summary>
         /// Usage Guide:
@@ -488,182 +988,7 @@ namespace SRL
         /// Then export the cert with private key from key store with a password
         /// Also export another cert with only public key
         /// </summary>
-        public class LicenseHandler
-        {
-
-            public static string GenerateUID(string appName)
-            {
-                return HardwareInfo.GenerateUID(appName);
-            }
-
-            public static string GenerateLicenseBASE64String(LicenseEntity lic, byte[] certPrivateKeyData, SecureString certFilePwd)
-            {
-                //Serialize license object into XML                    
-                XmlDocument _licenseObject = new XmlDocument();
-                using (StringWriter _writer = new StringWriter())
-                {
-                    XmlSerializer _serializer = new XmlSerializer(typeof(LicenseEntity), new Type[] { lic.GetType() });
-
-                    _serializer.Serialize(_writer, lic);
-
-                    _licenseObject.LoadXml(_writer.ToString());
-                }
-
-                //Get RSA key from certificate
-                X509Certificate2 cert = new X509Certificate2(certPrivateKeyData, certFilePwd);
-
-                RSACryptoServiceProvider rsaKey = (RSACryptoServiceProvider)cert.PrivateKey;
-
-                //Sign the XML
-                SignXML(_licenseObject, rsaKey);
-
-                //Convert the signed XML into BASE64 string            
-                return Convert.ToBase64String(Encoding.UTF8.GetBytes(_licenseObject.OuterXml));
-            }
-
-
-
-            public static LicenseEntity ParseLicenseFromBASE64String(Type licenseObjType, string licenseString, byte[] certPubKeyData, out LicenseStatus licStatus, out string validationMsg)
-            {
-                validationMsg = string.Empty;
-                licStatus = LicenseStatus.UNDEFINED;
-
-                if (string.IsNullOrWhiteSpace(licenseString))
-                {
-                    licStatus = LicenseStatus.CRACKED;
-                    return null;
-                }
-
-                string _licXML = string.Empty;
-                LicenseEntity _lic = null;
-
-                try
-                {
-                    //Get RSA key from certificate
-                    X509Certificate2 cert = new X509Certificate2(certPubKeyData);
-                    RSACryptoServiceProvider rsaKey = (RSACryptoServiceProvider)cert.PublicKey.Key;
-
-                    XmlDocument xmlDoc = new XmlDocument();
-
-                    // Load an XML file into the XmlDocument object.
-                    xmlDoc.PreserveWhitespace = true;
-                    xmlDoc.LoadXml(Encoding.UTF8.GetString(Convert.FromBase64String(licenseString)));
-
-                    // Verify the signature of the signed XML.            
-                    if (VerifyXml(xmlDoc, rsaKey))
-                    {
-                        XmlNodeList nodeList = xmlDoc.GetElementsByTagName("Signature");
-                        xmlDoc.DocumentElement.RemoveChild(nodeList[0]);
-
-                        _licXML = xmlDoc.OuterXml;
-
-                        //Deserialize license
-                        XmlSerializer _serializer = new XmlSerializer(typeof(LicenseEntity), new Type[] { licenseObjType });
-                        using (StringReader _reader = new StringReader(_licXML))
-                        {
-                            _lic = (LicenseEntity)_serializer.Deserialize(_reader);
-                        }
-
-                        licStatus = _lic.DoExtraValidation(out validationMsg);
-                    }
-                    else
-                    {
-                        licStatus = LicenseStatus.INVALID;
-                    }
-                }
-                catch
-                {
-                    licStatus = LicenseStatus.CRACKED;
-                }
-
-                return _lic;
-            }
-
-            // Sign an XML file. 
-            // This document cannot be verified unless the verifying 
-            // code has the key with which it was signed.
-            private static void SignXML(XmlDocument xmlDoc, RSA Key)
-            {
-                // Check arguments.
-                if (xmlDoc == null)
-                    throw new ArgumentException("xmlDoc");
-                if (Key == null)
-                    throw new ArgumentException("Key");
-
-                // Create a SignedXml object.
-                SignedXml signedXml = new SignedXml(xmlDoc);
-
-                // Add the key to the SignedXml document.
-                signedXml.SigningKey = Key;
-
-                // Create a reference to be signed.
-                Reference reference = new Reference();
-                reference.Uri = "";
-
-                // Add an enveloped transformation to the reference.
-                XmlDsigEnvelopedSignatureTransform env = new XmlDsigEnvelopedSignatureTransform();
-                reference.AddTransform(env);
-
-                // Add the reference to the SignedXml object.
-                signedXml.AddReference(reference);
-
-                // Compute the signature.
-                signedXml.ComputeSignature();
-
-                // Get the XML representation of the signature and save
-                // it to an XmlElement object.
-                XmlElement xmlDigitalSignature = signedXml.GetXml();
-
-                // Append the element to the XML document.
-                xmlDoc.DocumentElement.AppendChild(xmlDoc.ImportNode(xmlDigitalSignature, true));
-
-            }
-
-            // Verify the signature of an XML file against an asymmetric 
-            // algorithm and return the result.
-            private static Boolean VerifyXml(XmlDocument Doc, RSA Key)
-            {
-                // Check arguments.
-                if (Doc == null)
-                    throw new ArgumentException("Doc");
-                if (Key == null)
-                    throw new ArgumentException("Key");
-
-                // Create a new SignedXml object and pass it
-                // the XML document class.
-                SignedXml signedXml = new SignedXml(Doc);
-
-                // Find the "Signature" node and create a new
-                // XmlNodeList object.
-                XmlNodeList nodeList = Doc.GetElementsByTagName("Signature");
-
-                // Throw an exception if no signature was found.
-                if (nodeList.Count <= 0)
-                {
-                    throw new CryptographicException("Verification failed: No Signature was found in the document.");
-                }
-
-                // This example only supports one signature for
-                // the entire XML document.  Throw an exception 
-                // if more than one signature was found.
-                if (nodeList.Count >= 2)
-                {
-                    throw new CryptographicException("Verification failed: More that one signature was found for the document.");
-                }
-
-                // Load the first <signature> node.  
-                signedXml.LoadXml((XmlElement)nodeList[0]);
-
-                // Check the signature and return the result.
-                return signedXml.CheckSignature(Key);
-            }
-
-            public static bool ValidateUIDFormat(string UID)
-            {
-                return HardwareInfo.ValidateUIDFormat(UID);
-            }
-        }
-
+      
         public enum LicenseStatus
         {
             UNDEFINED = 0,
@@ -683,65 +1008,6 @@ namespace SRL
         }
 
 
-        public class LicenseActivate
-        {
-
-            public bool ShowMessageAfterValidation { get; set; }
-
-            public string LicenseBASE64String(string txtLicense)
-            {
-                return txtLicense.Trim();
-            }
-
-            public LicenseActivate(bool ShowMessageAfterValidation_)
-            {
-
-                ShowMessageAfterValidation = ShowMessageAfterValidation_;
-            }
-
-            public string ShowUID(string AppName)
-            {
-                return LicenseHandler.GenerateUID(AppName);
-            }
-
-            public bool ValidateLicense(string txtLicense, Type LicenseObjectType, byte[] CertificatePublicKeyData)
-            {
-                if (string.IsNullOrWhiteSpace(txtLicense))
-                {
-                    MessageBox.Show("Please input license", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return false;
-                }
-
-                //Check the activation string
-                LicenseStatus _licStatus = LicenseStatus.UNDEFINED;
-                string _msg = string.Empty;
-                LicenseEntity _lic = LicenseHandler.ParseLicenseFromBASE64String(LicenseObjectType, txtLicense.Trim(), CertificatePublicKeyData, out _licStatus, out _msg);
-                switch (_licStatus)
-                {
-                    case LicenseStatus.VALID:
-                        if (ShowMessageAfterValidation)
-                        {
-                            MessageBox.Show(_msg, "License is valid", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        }
-
-                        return true;
-
-                    case LicenseStatus.CRACKED:
-                    case LicenseStatus.INVALID:
-                    case LicenseStatus.UNDEFINED:
-                        if (ShowMessageAfterValidation)
-                        {
-                            MessageBox.Show(_msg, "License is INVALID", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        }
-
-                        return false;
-
-                    default:
-                        return false;
-                }
-            }
-
-        }
 
         public class LicenseInfo
         {
@@ -954,7 +1220,8 @@ namespace SRL
 
                 if (license_type == LicenseTypes.Single)
                 {
-                    if (LicenseHandler.ValidateUIDFormat(UID_.Trim()))
+                    // if (LicenseHandler.ValidateUIDFormat(UID_.Trim()))
+                    if (ValidateUIDFormat(UID_.Trim()))
                     {
                         _lic.Type = LicenseTypes.Single;
                         _lic.UID = UID_.Trim();
@@ -985,7 +1252,8 @@ namespace SRL
                     }
                 }
 
-                string _licStr = LicenseHandler.GenerateLicenseBASE64String(_lic, CertificatePrivateKeyData, CertificatePassword);
+                // string _licStr = LicenseHandler.GenerateLicenseBASE64String(_lic, CertificatePrivateKeyData, CertificatePassword);
+                string _licStr = GenerateLicenseBASE64String(_lic, CertificatePrivateKeyData, CertificatePassword);
 
 
 
@@ -1027,7 +1295,8 @@ namespace SRL
             {
                 //Event raised when "Generate License" button is clicked. 
                 //Call the core library to generate the license
-                licString.LicenseString = LicenseHandler.GenerateLicenseBASE64String(
+                // licString.LicenseString = LicenseHandler.GenerateLicenseBASE64String(
+                licString.LicenseString = GenerateLicenseBASE64String(
                    licenseT,
                     _certPubicKeyData,
                     _certPwd);

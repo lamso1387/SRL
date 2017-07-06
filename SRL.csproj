@@ -156,7 +156,9 @@
     <None Include="doc\google map.rtf" />
     <None Include="doc\select2.rtf" />
     <None Include="doc\sqlite.docx" />
-    <None Include="tools\app.manifest" />
+    <None Include="tools\app.manifest">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="tools\Setup.resx">
