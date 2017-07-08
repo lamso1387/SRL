@@ -31,19 +31,72 @@ namespace SRL
 {
     public class LicenseClass
     {
-        public byte[] CertificatePublicKeyData { private get; set; }
+        public byte[] CertificatePublicKeyData { get; set; }
+        public byte[] CertificatePrivateKeyData { set; get; }
+        public SecureString CertificatePassword = new SecureString();
+        public string license_password
+        {
+            set
+            {
+                SetCertificatePassword(value);
+            }
+        }
         public bool ShowMessageAfterValidation { get; set; }
+        public bool IsMobileUidInput { get; set; }
 
         public string DateFormat { get; set; }
 
         public string DateTimeFormat { get; set; }
 
 
-        public LicenseClass(bool ShowMessageAfterValidation_ = true)
+
+        PropertyGrid pgLicenseSettings;
+
+        public LicenseEntity License { get; set; }
+
+        public string LicenseInfo { get; set; }
+
+        public delegate void LicenseSettingsValidatingHandler(object sender, LicenseSettingsValidatingEventArgs e);
+
+        public event LicenseSettingsValidatingHandler OnLicenseSettingsValidating;
+        public event LicenseGeneratedHandler OnLicenseGenerated;
+
+        /// <summary>
+        /// use it for checking license
+        /// </summary>
+        /// <param name="ShowMessageAfterValidation_"></param>
+        public LicenseClass(bool ShowMessageAfterValidation_, bool is_mobile_uid_input_)
         {
             ShowMessageAfterValidation = ShowMessageAfterValidation_;
+            IsMobileUidInput = is_mobile_uid_input_;
         }
 
+
+        /// <summary>
+        /// use it for activating license
+        /// </summary>
+        /// <param name="_assembly"></param>
+        /// <param name="license_full_file_name">e.g. "LicenseSign.pfx"</param>
+        /// <param name="license_password"></param>
+        public LicenseClass(Assembly _assembly, string license_pfx_full_file_name, bool is_mobile_uid_input_, string license_password = null)
+        {
+            IsMobileUidInput = is_mobile_uid_input_;
+            SetCertificatePassword(license_password);
+            CertificatePrivateKeyData = GetPubicKeyData(_assembly, license_pfx_full_file_name);
+
+        }
+
+        private void SetCertificatePassword(string license_password)
+        {
+            if (license_password == null) return;
+            SecureString secure_pass = new SecureString();
+            foreach (var item in license_password.ToCharArray())
+            {
+                secure_pass.AppendChar(item);
+            }
+
+            CertificatePassword = secure_pass;
+        }
         #region check license is valid
 
         /// <summary>
@@ -54,19 +107,17 @@ namespace SRL
         /// <param name="app_name">e.g. "hesabdari"</param>
         /// <param name="license_cer_full_file_name">e.g "LicenseVerify.cer" file must be Embedded Resource Build Action and Do not copy to output directory</param>
         /// <param name="license_key"> get it from a file or db. send null if license file or license column not exist </param>
-        /// <param name="license_info">show it in textbox if true returns</param>
         /// <returns></returns>
-        public bool CheckLicense<LicenseT>(Assembly _assembly, string app_name, string license_cer_full_file_name, string license_key,
-            out string license_info) where LicenseT : LicenseEntity
+        public bool CheckLicense<LicenseT>(Assembly _assembly, string license_cer_full_file_name, string license_key) where LicenseT : LicenseEntity
         {
-            license_info = "";
+            LicenseInfo = "";
             //Initialize variables with default values
             LicenseT _lic = null;
             string _msg = string.Empty;
             LicenseStatus _status = LicenseStatus.UNDEFINED;
 
             //Read public key from assembly
-            CertificatePublicKeyData = GetPubicKeyData(_assembly, app_name, license_cer_full_file_name);
+            CertificatePublicKeyData = GetPubicKeyData(_assembly, license_cer_full_file_name);
 
 
             //Check if the XML license file exists
@@ -93,7 +144,7 @@ namespace SRL
                     //TODO: Also, you can set feature switch here based on the different properties you added to your license entity 
 
                     //Here for demo, just show the license information and RETURN without additional checking       
-                    license_info = ShowLicenseInfo(_lic, "");
+                    LicenseInfo = ShowLicenseInfo(_lic, "");
 
                     return true;
 
@@ -105,15 +156,27 @@ namespace SRL
             }
         }
 
+
         /// <summary>
         /// app should has a class for example AppLicenseClass that inherites from LicenseEntity. see AppLicenseExample1 and AppLicenseExample2
         /// </summary>
         public abstract class LicenseEntity
         {
+            [DisplayName("UserMobile")]
+            [Category("License Options")]
+            [XmlElement("UserMobile")]
+            [ShowInLicenseInfo(true, "UserMobile", ShowInLicenseInfoAttribute.FormatType.String)]
+            public string UserMobile { get; set; }
+
             [Browsable(false)]
             [XmlIgnore]
             [ShowInLicenseInfo(false)]
-            public string AppName { get; protected set; }
+            public string AppName { get; set; }
+
+            [Browsable(false)]
+            [XmlIgnore]
+            [ShowInLicenseInfo(false)]
+            public string UserEmail { get; set; }
 
             [Browsable(false)]
             [XmlElement("UID")]
@@ -135,23 +198,23 @@ namespace SRL
             /// </summary>
             /// <param name="validationMsg"></param>
             /// <returns></returns>
-            public abstract LicenseStatus DoExtraValidation(out string validationMsg);
+            public abstract LicenseStatus DoExtraValidation(bool is_mobile_uid_input, out string validationMsg);
 
         }
 
 
         /// <summary>
-        /// 
+        /// returns public key if .cer or private key if .pfx is given
         /// </summary>
         /// <param name="_assembly_"></param>
         /// <param name="app_name_"></param>
         /// <param name="license_full_file_name_">e.g. "LicenseSign.pfx" or "LicenseVerify.cer"</param>
         /// <returns></returns>    
-        public byte[] GetPubicKeyData(Assembly _assembly_, string app_name_, string license_full_file_name_)
+        public byte[] GetPubicKeyData(Assembly _assembly_, string license_full_file_name_)
         {
             using (MemoryStream _mem_ = new MemoryStream())
             {
-                _assembly_.GetManifestResourceStream(app_name_ + "." + license_full_file_name_).CopyTo(_mem_);
+                _assembly_.GetManifestResourceStream(_assembly_.GetName().Name + "." + license_full_file_name_).CopyTo(_mem_);
 
                 return _mem_.ToArray();
             }
@@ -199,15 +262,16 @@ namespace SRL
                         _lic = (LicenseEntity)_serializer.Deserialize(_reader);
                     }
 
-                    licStatus = _lic.DoExtraValidation(out validationMsg);
+                    licStatus = _lic.DoExtraValidation(IsMobileUidInput, out validationMsg);
                 }
                 else
                 {
                     licStatus = LicenseStatus.INVALID;
                 }
             }
-            catch
+            catch (Exception exc)
             {
+                validationMsg = exc.Message;
                 licStatus = LicenseStatus.CRACKED;
             }
 
@@ -351,22 +415,188 @@ namespace SRL
             }
         }
 
+        public bool ValidateLicense(string txtLicense, Type LicenseObjectType, out string message)
+        {
+            message = "";
+            if (string.IsNullOrWhiteSpace(txtLicense))
+            {
+                message = "Please input license";
+                MessageBox.Show(message, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            //Check the activation string
+            LicenseStatus _licStatus = LicenseStatus.UNDEFINED;
+            string _msg = string.Empty;
+
+            LicenseEntity _lic = ParseLicenseFromBASE64String(LicenseObjectType, txtLicense.Trim(), out _licStatus, out _msg);
+            switch (_licStatus)
+            {
+                case LicenseStatus.VALID:
+                    if (ShowMessageAfterValidation)
+                    {
+                        message = "License is valid .";
+                        MessageBox.Show(_msg, message, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        message += _msg;
+                    }
+                    LicenseInfo = ShowLicenseInfo(_lic, "");
+                    return true;
+
+                case LicenseStatus.CRACKED:
+                case LicenseStatus.INVALID:
+                case LicenseStatus.UNDEFINED:
+                    if (ShowMessageAfterValidation)
+                    {
+                        message = "License is INVALID .";
+                        MessageBox.Show(_msg, message, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        message += _msg;
+                    }
+
+                    return false;
+
+                default:
+                    return false;
+            }
+        }
+
+        public void SaveLicenseToFileInRoot(string file_name, string license_key, out string message)
+        {
+            message = "License accepted, the application will be close. Please restart it later";
+            new FileManagement().SaveToFile(Path.Combine(Application.StartupPath, file_name), license_key.Trim());
+            MessageBox.Show(message, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+
+        /// <summary>
+        /// This attribute defines whether the property of LicenseEntity object will be shown in LicenseInfoControl
+        /// </summary>
+        [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
+        public class ShowInLicenseInfoAttribute : Attribute
+        {
+            public enum FormatType
+            {
+                String,
+                Date,
+                DateTime,
+                EnumDescription,
+            }
+
+            protected bool _showInLicenseInfo = true;
+            protected string _displayAs = string.Empty;
+            protected FormatType _formatType = FormatType.String;
+
+            public ShowInLicenseInfoAttribute()
+            {
+            }
+
+            public ShowInLicenseInfoAttribute(bool showInLicenseInfo)
+            {
+                if (showInLicenseInfo)
+                {
+                    throw new Exception("When ShowInLicenseInfo is True, DisplayAs MUST have a value");
+                }
+                _showInLicenseInfo = showInLicenseInfo;
+            }
+
+            public ShowInLicenseInfoAttribute(bool showInLicenseInfo, string displayAs)
+            {
+                _showInLicenseInfo = showInLicenseInfo;
+                _displayAs = displayAs;
+            }
+            public ShowInLicenseInfoAttribute(bool showInLicenseInfo, string displayAs, FormatType dataFormatType)
+            {
+                _showInLicenseInfo = showInLicenseInfo;
+                _displayAs = displayAs;
+                _formatType = dataFormatType;
+            }
+
+            public bool ShowInLicenseInfo
+            {
+                get
+                {
+                    return _showInLicenseInfo;
+                }
+            }
+
+            public string DisplayAs
+            {
+                get
+                {
+                    return _displayAs;
+                }
+            }
+
+            public FormatType DataFormatType
+            {
+                get
+                {
+                    return _formatType;
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Usage Guide:
+        /// Command for creating the certificate
+        /// >> makecert -pe -ss My -sr CurrentUser -$ commercial -n "CN=<YourCertName>" -sky Signature
+        /// Then export the cert with private key from key store with a password
+        /// Also export another cert with only public key
+        /// </summary>
+        public enum LicenseStatus
+        {
+            UNDEFINED = 0,
+            VALID = 1,
+            INVALID = 2,
+            CRACKED = 4
+        }
+
+        public enum LicenseTypes
+        {
+            [Description("Unknown")]
+            Unknown = 0,
+            [Description("Single")]
+            Single = 1,
+            [Description("Volume")]
+            Volume = 2
+        }
+
+        public class LicenseGeneratedEventArgs
+        {
+            public string LicenseBASE64String { get; set; }
+        }
+        public delegate void LicenseGeneratedHandler(object sender, LicenseGeneratedEventArgs e);
+
+
         #endregion
 
         #region get uid
-        public string ShowUID(string AppName)
+
+
+        public string GetUID(string app_name, string mobile)
         {
-            return GenerateUID(AppName);
+            if (mobile.Length == 11)
+            {
+                return GenerateUID(app_name, IsMobileUidInput ? mobile : null);
+            }
+            else return "";
         }
+
 
         /// <summary>
         /// Combine appName, CPU ID, Disk C Volume Serial Number and Motherboard Serial Number as device Id
+        /// if user_mobile is set, it is first input for device Id
         /// </summary>
+        /// <param name="appName"></param>
+        /// <param name="user_mobile">if set, it is first input for device Id</param>
         /// <returns></returns>
-        public static string GenerateUID(string appName)
+        public static string GenerateUID(string appName, string user_mobile = null)
         {
             //Combine the IDs and get bytes
-            string _id = string.Concat(appName, GetProcessorId(), GetMotherboardID(), GetDiskVolumeSerialNumber());
+            string _id = user_mobile == null ?
+                string.Concat(appName, GetProcessorId(), GetMotherboardID(), GetDiskVolumeSerialNumber()) :
+            string.Concat(user_mobile, appName, GetProcessorId(), GetMotherboardID(), GetDiskVolumeSerialNumber());
+
             byte[] _byteIds = Encoding.UTF8.GetBytes(_id);
 
             //Use MD5 to get the fixed length checksum of the ID string
@@ -383,6 +613,7 @@ namespace SRL
             string uid = string.Format("{0}-{1}-{2}-{3}", _part1Id, _part2Id, _part3Id, _part4Id);
             return uid;
         }
+
 
         /// <summary>
         /// Get volume serial number of drive C
@@ -456,66 +687,11 @@ namespace SRL
 
         }
 
-        #endregion
-
-
-        public bool ValidateLicense(string txtLicense, Type LicenseObjectType, out string message)
-        {
-            message = "";
-            if (string.IsNullOrWhiteSpace(txtLicense))
-            {
-                message = "Please input license";
-                MessageBox.Show(message, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-
-            //Check the activation string
-            LicenseStatus _licStatus = LicenseStatus.UNDEFINED;
-            string _msg = string.Empty;
-
-            LicenseEntity _lic = ParseLicenseFromBASE64String(LicenseObjectType, txtLicense.Trim(), out _licStatus, out _msg);
-            switch (_licStatus)
-            {
-                case LicenseStatus.VALID:
-                    if (ShowMessageAfterValidation)
-                    {
-                        message = "License is valid .";
-                        MessageBox.Show(_msg, message, MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        message += _msg;
-                    }
-
-                    return true;
-
-                case LicenseStatus.CRACKED:
-                case LicenseStatus.INVALID:
-                case LicenseStatus.UNDEFINED:
-                    if (ShowMessageAfterValidation)
-                    {
-                        message = "License is INVALID .";
-                        MessageBox.Show(_msg, message, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        message += _msg;
-                    }
-
-                    return false;
-
-                default:
-                    return false;
-            }
-        }
-
-
-        private static IEnumerable<string> SplitInParts(string input, int partLength)
-        {
-            if (input == null)
-                throw new ArgumentNullException("input");
-            if (partLength <= 0)
-                throw new ArgumentException("Part length has to be positive.", "partLength");
-
-            for (int i = 0; i < input.Length; i += partLength)
-                yield return input.Substring(i, Math.Min(partLength, input.Length - i));
-        }
-
-       
+        /// <summary>
+        /// not usable in main license proccess
+        /// </summary>
+        /// <param name="UID"></param>
+        /// <returns></returns>
         public static byte[] GetUIDInBytes(string UID)
         {
             //Split 4 part Id into 4 ulong
@@ -532,93 +708,6 @@ namespace SRL
 
             return _value;
         }
-
-        public static bool ValidateUIDFormat(string UID)
-        {
-            if (!string.IsNullOrWhiteSpace(UID))
-            {
-                string[] _ids = UID.Split('-');
-
-                return (_ids.Length == 4);
-            }
-            else
-            {
-                return false;
-            }
-
-        }
-      
-
-     
-
-        public static string GenerateLicenseBASE64String(LicenseEntity lic, byte[] certPrivateKeyData, SecureString certFilePwd)
-        {
-            //Serialize license object into XML                    
-            XmlDocument _licenseObject = new XmlDocument();
-            using (StringWriter _writer = new StringWriter())
-            {
-                XmlSerializer _serializer = new XmlSerializer(typeof(LicenseEntity), new Type[] { lic.GetType() });
-
-                _serializer.Serialize(_writer, lic);
-
-                _licenseObject.LoadXml(_writer.ToString());
-            }
-
-            //Get RSA key from certificate
-            X509Certificate2 cert = new X509Certificate2(certPrivateKeyData, certFilePwd);
-
-            RSACryptoServiceProvider rsaKey = (RSACryptoServiceProvider)cert.PrivateKey;
-
-            //Sign the XML
-            SignXML(_licenseObject, rsaKey);
-
-            //Convert the signed XML into BASE64 string            
-            return Convert.ToBase64String(Encoding.UTF8.GetBytes(_licenseObject.OuterXml));
-        }
-
-
-        // Sign an XML file. 
-        // This document cannot be verified unless the verifying 
-        // code has the key with which it was signed.
-        private static void SignXML(XmlDocument xmlDoc, RSA Key)
-        {
-            // Check arguments.
-            if (xmlDoc == null)
-                throw new ArgumentException("xmlDoc");
-            if (Key == null)
-                throw new ArgumentException("Key");
-
-            // Create a SignedXml object.
-            SignedXml signedXml = new SignedXml(xmlDoc);
-
-            // Add the key to the SignedXml document.
-            signedXml.SigningKey = Key;
-
-            // Create a reference to be signed.
-            Reference reference = new Reference();
-            reference.Uri = "";
-
-            // Add an enveloped transformation to the reference.
-            XmlDsigEnvelopedSignatureTransform env = new XmlDsigEnvelopedSignatureTransform();
-            reference.AddTransform(env);
-
-            // Add the reference to the SignedXml object.
-            signedXml.AddReference(reference);
-
-            // Compute the signature.
-            signedXml.ComputeSignature();
-
-            // Get the XML representation of the signature and save
-            // it to an XmlElement object.
-            XmlElement xmlDigitalSignature = signedXml.GetXml();
-
-            // Append the element to the XML document.
-            xmlDoc.DocumentElement.AppendChild(xmlDoc.ImportNode(xmlDigitalSignature, true));
-
-        }
-
-
-
 
 
         class BASE36
@@ -662,219 +751,185 @@ namespace SRL
                 return new string(charArray);
             }
         }
+        #endregion
 
-        class HardwareInfo2
+        #region activate license
+
+        public void LicenseSettingsControl<LicenseT>(PropertyGrid pgLicenseSettings_) where LicenseT : LicenseEntity
         {
-            /// <summary>
-            /// Get volume serial number of drive C
-            /// </summary>
-            /// <returns></returns>
-            private static string GetDiskVolumeSerialNumber()
+            pgLicenseSettings = pgLicenseSettings_;
+            var class_mgnt = new SRL.ClassManagement<LicenseT>();
+            License = class_mgnt.CreateInstance();
+            pgLicenseSettings.SelectedObject = License;
+        }
+
+        public void GetLicense(LicenseTypes license_type, string UID_, out string licence, out string message)
+        {
+            licence = "";
+            message = "";
+
+            if (License == null) throw new ArgumentException("LicenseEntity is invalid");
+
+            if (license_type == LicenseTypes.Single)
             {
-                try
+                if (ValidateUIDFormat(UID_.Trim()))
                 {
-                    ManagementObject _disk = new ManagementObject(@"Win32_LogicalDisk.deviceid=""c:""");
-                    _disk.Get();
-                    return _disk["VolumeSerialNumber"].ToString();
-                }
-                catch
-                {
-                    return string.Empty;
-                }
-            }
-
-            /// <summary>
-            /// Get CPU ID
-            /// </summary>
-            /// <returns></returns>
-            private static string GetProcessorId()
-            {
-                try
-                {
-                    ManagementObjectSearcher _mbs = new ManagementObjectSearcher("Select ProcessorId From Win32_processor");
-                    ManagementObjectCollection _mbsList = _mbs.Get();
-                    string _id = string.Empty;
-                    foreach (ManagementObject _mo in _mbsList)
-                    {
-                        _id = _mo["ProcessorId"].ToString();
-                        break;
-                    }
-
-                    return _id;
-
-                }
-                catch
-                {
-                    return string.Empty;
-                }
-
-            }
-
-            /// <summary>
-            /// Get motherboard serial number
-            /// </summary>
-            /// <returns></returns>
-            private static string GetMotherboardID()
-            {
-
-                try
-                {
-                    ManagementObjectSearcher _mbs = new ManagementObjectSearcher("Select SerialNumber From Win32_BaseBoard");
-                    ManagementObjectCollection _mbsList = _mbs.Get();
-                    string _id = string.Empty;
-                    foreach (ManagementObject _mo in _mbsList)
-                    {
-                        _id = _mo["SerialNumber"].ToString();
-                        break;
-                    }
-
-                    return _id;
-                }
-                catch
-                {
-                    return string.Empty;
-                }
-
-            }
-
-            private static IEnumerable<string> SplitInParts(string input, int partLength)
-            {
-                if (input == null)
-                    throw new ArgumentNullException("input");
-                if (partLength <= 0)
-                    throw new ArgumentException("Part length has to be positive.", "partLength");
-
-                for (int i = 0; i < input.Length; i += partLength)
-                    yield return input.Substring(i, Math.Min(partLength, input.Length - i));
-            }
-
-            /// <summary>
-            /// Combine CPU ID, Disk C Volume Serial Number and Motherboard Serial Number as device Id
-            /// </summary>
-            /// <returns></returns>
-            public static string GenerateUID(string appName)
-            {
-                //Combine the IDs and get bytes
-                string _id = string.Concat(appName, GetProcessorId(), GetMotherboardID(), GetDiskVolumeSerialNumber());
-                byte[] _byteIds = Encoding.UTF8.GetBytes(_id);
-
-                //Use MD5 to get the fixed length checksum of the ID string
-                MD5CryptoServiceProvider _md5 = new MD5CryptoServiceProvider();
-                byte[] _checksum = _md5.ComputeHash(_byteIds);
-
-                //Convert checksum into 4 ulong parts and use BASE36 to encode both
-                string _part1Id = BASE36.Encode(BitConverter.ToUInt32(_checksum, 0));
-                string _part2Id = BASE36.Encode(BitConverter.ToUInt32(_checksum, 4));
-                string _part3Id = BASE36.Encode(BitConverter.ToUInt32(_checksum, 8));
-                string _part4Id = BASE36.Encode(BitConverter.ToUInt32(_checksum, 12));
-
-                //Concat these 4 part into one string
-                string uid = string.Format("{0}-{1}-{2}-{3}", _part1Id, _part2Id, _part3Id, _part4Id);
-                return uid;
-            }
-
-            public static byte[] GetUIDInBytes(string UID)
-            {
-                //Split 4 part Id into 4 ulong
-                string[] _ids = UID.Split('-');
-
-                if (_ids.Length != 4) throw new ArgumentException("Wrong UID");
-
-                //Combine 4 part Id into one byte array
-                byte[] _value = new byte[16];
-                Buffer.BlockCopy(BitConverter.GetBytes(BASE36.Decode(_ids[0])), 0, _value, 0, 8);
-                Buffer.BlockCopy(BitConverter.GetBytes(BASE36.Decode(_ids[1])), 0, _value, 8, 8);
-                Buffer.BlockCopy(BitConverter.GetBytes(BASE36.Decode(_ids[2])), 0, _value, 16, 8);
-                Buffer.BlockCopy(BitConverter.GetBytes(BASE36.Decode(_ids[3])), 0, _value, 24, 8);
-
-                return _value;
-            }
-
-            public static bool ValidateUIDFormat(string UID)
-            {
-                if (!string.IsNullOrWhiteSpace(UID))
-                {
-                    string[] _ids = UID.Split('-');
-
-                    return (_ids.Length == 4);
+                    License.Type = LicenseTypes.Single;
+                    License.UID = UID_.Trim();
                 }
                 else
                 {
-                    return false;
+                    message = "License UID is blank or invalid";
+                    MessageBox.Show(message, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
-
             }
+            else if (license_type == LicenseTypes.Volume)
+            {
+                License.Type = LicenseTypes.Volume;
+                License.UID = string.Empty;
+            }
+
+            License.CreateDateTime = DateTime.Now;
+
+            if (OnLicenseSettingsValidating != null)
+            {
+                LicenseSettingsValidatingEventArgs _args = new LicenseSettingsValidatingEventArgs() { License_ = License, CancelGenerating = false };
+
+                OnLicenseSettingsValidating(this, _args);
+
+                if (_args.CancelGenerating)
+                {
+                    return;
+                }
+            }
+
+            string _licStr = GenerateLicenseBASE64String(License, CertificatePrivateKeyData, CertificatePassword);
+
+            licence = _licStr;
+            return;
+
+        }
+
+        public static bool ValidateUIDFormat(string UID)
+        {
+            if (!string.IsNullOrWhiteSpace(UID))
+            {
+                string[] _ids = UID.Split('-');
+
+                return (_ids.Length == 4);
+            }
+            else
+            {
+                return false;
+            }
+
+        }
+
+        public class LicenseSettingsValidatingEventArgs : EventArgs
+        {
+            public LicenseEntity License_ { get; set; }
+            public bool CancelGenerating { get; set; }
+        }
+
+        public static string GenerateLicenseBASE64String(LicenseEntity lic, byte[] certPrivateKeyData, SecureString certFilePwd)
+        {
+            //Serialize license object into XML                    
+            XmlDocument _licenseObject = new XmlDocument();
+            using (StringWriter _writer = new StringWriter())
+            {
+                XmlSerializer _serializer = new XmlSerializer(typeof(LicenseEntity), new Type[] { lic.GetType() });
+
+                _serializer.Serialize(_writer, lic);
+
+                _licenseObject.LoadXml(_writer.ToString());
+            }
+
+            //Get RSA key from certificate
+            X509Certificate2 cert = new X509Certificate2(certPrivateKeyData, certFilePwd);
+
+            RSACryptoServiceProvider rsaKey = (RSACryptoServiceProvider)cert.PrivateKey;
+
+            //Sign the XML
+            SignXML(_licenseObject, rsaKey);
+
+            //Convert the signed XML into BASE64 string            
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(_licenseObject.OuterXml));
         }
 
         /// <summary>
-        /// This attribute defines whether the property of LicenseEntity object will be shown in LicenseInfoControl
+        /// Sign an XML file. This document cannot be verified unless the verifying code has the key with which it was signed.
         /// </summary>
-        [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
-        public class ShowInLicenseInfoAttribute : Attribute
+        /// <param name="xmlDoc"></param>
+        /// <param name="Key"></param>
+        private static void SignXML(XmlDocument xmlDoc, RSA Key)
         {
-            public enum FormatType
-            {
-                String,
-                Date,
-                DateTime,
-                EnumDescription,
-            }
+            // Check arguments.
+            if (xmlDoc == null)
+                throw new ArgumentException("xmlDoc");
+            if (Key == null)
+                throw new ArgumentException("Key");
 
-            protected bool _showInLicenseInfo = true;
-            protected string _displayAs = string.Empty;
-            protected FormatType _formatType = FormatType.String;
+            // Create a SignedXml object.
+            SignedXml signedXml = new SignedXml(xmlDoc);
 
-            public ShowInLicenseInfoAttribute()
-            {
-            }
+            // Add the key to the SignedXml document.
+            signedXml.SigningKey = Key;
 
-            public ShowInLicenseInfoAttribute(bool showInLicenseInfo)
-            {
-                if (showInLicenseInfo)
-                {
-                    throw new Exception("When ShowInLicenseInfo is True, DisplayAs MUST have a value");
-                }
-                _showInLicenseInfo = showInLicenseInfo;
-            }
+            // Create a reference to be signed.
+            Reference reference = new Reference();
+            reference.Uri = "";
 
-            public ShowInLicenseInfoAttribute(bool showInLicenseInfo, string displayAs)
-            {
-                _showInLicenseInfo = showInLicenseInfo;
-                _displayAs = displayAs;
-            }
-            public ShowInLicenseInfoAttribute(bool showInLicenseInfo, string displayAs, FormatType dataFormatType)
-            {
-                _showInLicenseInfo = showInLicenseInfo;
-                _displayAs = displayAs;
-                _formatType = dataFormatType;
-            }
+            // Add an enveloped transformation to the reference.
+            XmlDsigEnvelopedSignatureTransform env = new XmlDsigEnvelopedSignatureTransform();
+            reference.AddTransform(env);
 
-            public bool ShowInLicenseInfo
-            {
-                get
-                {
-                    return _showInLicenseInfo;
-                }
-            }
+            // Add the reference to the SignedXml object.
+            signedXml.AddReference(reference);
 
-            public string DisplayAs
-            {
-                get
-                {
-                    return _displayAs;
-                }
-            }
+            // Compute the signature.
+            signedXml.ComputeSignature();
 
-            public FormatType DataFormatType
-            {
-                get
-                {
-                    return _formatType;
-                }
-            }
+            // Get the XML representation of the signature and save
+            // it to an XmlElement object.
+            XmlElement xmlDigitalSignature = signedXml.GetXml();
+
+            // Append the element to the XML document.
+            xmlDoc.DocumentElement.AppendChild(xmlDoc.ImportNode(xmlDigitalSignature, true));
+
         }
 
-        
+
+        #endregion
+
+        #region volume License
+
+        public bool AllowVolumeLicenseSet(bool value, GroupBox grpbxLicenseType, RadioButton rdoSingleLicense)
+        {
+
+            if (!value)
+            {
+                rdoSingleLicense.Checked = true;
+            }
+
+            grpbxLicenseType.Enabled = value;
+
+
+            return grpbxLicenseType.Enabled;
+        }
+
+        private void LicenseTypeRadioButtonsCheckedChanged(TextBox txtUID, RadioButton rdoSingleLicense)
+        {
+            txtUID.Text = string.Empty;
+
+            txtUID.Enabled = rdoSingleLicense.Checked;
+        }
+
+
+        #endregion
+
+        #region examples
+
         public class AppLicenseExample1 : LicenseEntity
         {
             [DisplayName("license_key")]
@@ -887,10 +942,10 @@ namespace SRL
             public AppLicenseExample1()
             {
                 //Initialize app name for the license
-                this.AppName = "test_licence";
+                this.AppName = Assembly.GetExecutingAssembly().GetName().Name; ;
             }
 
-            public override LicenseStatus DoExtraValidation(out string validationMsg)
+            public override LicenseStatus DoExtraValidation(bool is_mobile_uid_input, out string validationMsg)
             {
                 LicenseStatus _licStatus = LicenseStatus.UNDEFINED;
                 validationMsg = string.Empty;
@@ -899,8 +954,8 @@ namespace SRL
                 {
                     case SRL.LicenseClass.LicenseTypes.Single:
                         //For Single License, check whether UID is matched
-                        //  string genereted_UID = LicenseHandler.GenerateUID(this.AppName);
-                        string genereted_UID = GenerateUID(this.AppName);
+
+                        string genereted_UID = GenerateUID(this.AppName, is_mobile_uid_input ? this.UserMobile : null);
                         if (this.UID == genereted_UID)
                         {
                             _licStatus = LicenseStatus.VALID;
@@ -949,10 +1004,10 @@ namespace SRL
             public AppLicenseExample2()
             {
                 //Initialize app name for the license
-                this.AppName = "hesabdari";
+                this.AppName = Assembly.GetExecutingAssembly().GetName().Name;
             }
 
-            public override LicenseStatus DoExtraValidation(out string validationMsg)
+            public override LicenseStatus DoExtraValidation(bool is_mobile_uid_input, out string validationMsg)
             {
                 LicenseStatus _licStatus = LicenseStatus.UNDEFINED;
                 validationMsg = string.Empty;
@@ -961,8 +1016,8 @@ namespace SRL
                 {
                     case LicenseTypes.Single:
                         //For Single License, check whether UID is matched
-                        // if (this.UID == LicenseHandler.GenerateUID(this.AppName))
-                        if (this.UID == GenerateUID(this.AppName))
+
+                        if (this.UID == GenerateUID(this.AppName, is_mobile_uid_input ? this.UserMobile : null))
                         {
                             _licStatus = LicenseStatus.VALID;
                         }
@@ -986,329 +1041,7 @@ namespace SRL
             }
         }
 
-
-        /// <summary>
-        /// Usage Guide:
-        /// Command for creating the certificate
-        /// >> makecert -pe -ss My -sr CurrentUser -$ commercial -n "CN=<YourCertName>" -sky Signature
-        /// Then export the cert with private key from key store with a password
-        /// Also export another cert with only public key
-        /// </summary>
-      
-        public enum LicenseStatus
-        {
-            UNDEFINED = 0,
-            VALID = 1,
-            INVALID = 2,
-            CRACKED = 4
-        }
-
-        public enum LicenseTypes
-        {
-            [Description("Unknown")]
-            Unknown = 0,
-            [Description("Single")]
-            Single = 1,
-            [Description("Volume")]
-            Volume = 2
-        }
-
-
-
-        public class LicenseInfo
-        {
-            public string DateFormat { get; set; }
-
-            public string DateTimeFormat { get; set; }
-
-            public LicenseInfo()
-            {
-            }
-
-            public string ShowTextOnly(string text)
-            {
-                return text.Trim();
-            }
-
-            public void ShowLicenseInfo(LicenseEntity license)
-            {
-                ShowLicenseInfo(license, string.Empty);
-            }
-
-
-            public string ShowLicenseInfo(LicenseEntity license, string additionalInfo)
-            {
-                try
-                {
-                    StringBuilder _sb = new StringBuilder(512);
-
-                    Type _typeLic = license.GetType();
-                    PropertyInfo[] _props = _typeLic.GetProperties();
-
-                    object _value = null;
-                    string _formatedValue = string.Empty;
-                    foreach (PropertyInfo _p in _props)
-                    {
-                        try
-                        {
-                            ShowInLicenseInfoAttribute _showAttr = (ShowInLicenseInfoAttribute)Attribute.GetCustomAttribute(_p, typeof(ShowInLicenseInfoAttribute));
-                            if (_showAttr != null && _showAttr.ShowInLicenseInfo)
-                            {
-                                _value = _p.GetValue(license, null);
-                                _sb.Append(_showAttr.DisplayAs);
-                                _sb.Append(": ");
-
-                                //Append value and apply the format   
-                                if (_value != null)
-                                {
-                                    switch (_showAttr.DataFormatType)
-                                    {
-                                        case ShowInLicenseInfoAttribute.FormatType.String:
-                                            _formatedValue = _value.ToString();
-                                            break;
-                                        case ShowInLicenseInfoAttribute.FormatType.Date:
-                                            if (_p.PropertyType == typeof(DateTime) && !string.IsNullOrWhiteSpace(DateFormat))
-                                            {
-                                                _formatedValue = ((DateTime)_value).ToString(DateFormat);
-                                            }
-                                            else
-                                            {
-                                                _formatedValue = _value.ToString();
-                                            }
-                                            break;
-                                        case ShowInLicenseInfoAttribute.FormatType.DateTime:
-                                            if (_p.PropertyType == typeof(DateTime) && !string.IsNullOrWhiteSpace(DateTimeFormat))
-                                            {
-                                                _formatedValue = ((DateTime)_value).ToString(DateTimeFormat);
-                                            }
-                                            else
-                                            {
-                                                _formatedValue = _value.ToString();
-                                            }
-                                            break;
-                                        case ShowInLicenseInfoAttribute.FormatType.EnumDescription:
-                                            string _name = Enum.GetName(_p.PropertyType, _value);
-                                            if (_name != null)
-                                            {
-                                                FieldInfo _fi = _p.PropertyType.GetField(_name);
-                                                DescriptionAttribute _dna = (DescriptionAttribute)Attribute.GetCustomAttribute(_fi, typeof(DescriptionAttribute));
-                                                if (_dna != null)
-                                                    _formatedValue = _dna.Description;
-                                                else
-                                                    _formatedValue = _value.ToString();
-                                            }
-                                            else
-                                            {
-                                                _formatedValue = _value.ToString();
-                                            }
-                                            break;
-                                    }
-
-                                    _sb.Append(_formatedValue);
-                                }
-
-                                _sb.Append("\r\n");
-                            }
-                        }
-                        catch
-                        {
-                            //Ignore exeption
-                        }
-                    }
-
-
-                    if (string.IsNullOrWhiteSpace(additionalInfo))
-                    {
-                        _sb.Append(additionalInfo.Trim());
-                    }
-
-                    return _sb.ToString();
-                }
-                catch (Exception ex)
-                {
-                    return ex.Message;
-                }
-            }
-        }
-
-        public class LicenseStringContainer
-        {
-            public string LicenseString { get; set; }
-
-
-            public string LicenseStringset(string txtLicense)
-            {
-                LicenseString = txtLicense;
-                return LicenseString;
-            }
-
-            public LicenseStringContainer()
-            {
-
-            }
-
-
-
-        }
-
-        public class LicenseSettingsValidatingEventArgs : EventArgs
-        {
-            public LicenseEntity License { get; set; }
-            public bool CancelGenerating { get; set; }
-        }
-
-        public class LicenseGeneratedEventArgs
-        {
-            public string LicenseBASE64String { get; set; }
-        }
-
-
-        public delegate void LicenseSettingsValidatingHandler(object sender, LicenseSettingsValidatingEventArgs e);
-        public delegate void LicenseGeneratedHandler(object sender, LicenseGeneratedEventArgs e);
-
-        public class LicenseSettingsControl
-        {
-            PropertyGrid pgLicenseSettings;
-            public byte[] CertificatePrivateKeyData { set; private get; }
-            public LicenseSettingsControl(PropertyGrid pgLicenseSettings_, byte[] CertificatePrivateKeyData_)
-            {
-                pgLicenseSettings = pgLicenseSettings_;
-                CertificatePrivateKeyData = CertificatePrivateKeyData_;
-            }
-
-            public event LicenseSettingsValidatingHandler OnLicenseSettingsValidating;
-            public event LicenseGeneratedHandler OnLicenseGenerated;
-
-            protected LicenseEntity _lic;
-
-            public LicenseEntity License
-            {
-                set
-                {
-                    _lic = value;
-                    pgLicenseSettings.SelectedObject = _lic;
-                }
-            }
-
-
-
-            public SecureString CertificatePassword { set; private get; }
-
-            public bool AllowVolumeLicenseSet(bool value, GroupBox grpbxLicenseType, RadioButton rdoSingleLicense)
-            {
-
-                if (!value)
-                {
-                    rdoSingleLicense.Checked = true;
-                }
-
-                grpbxLicenseType.Enabled = value;
-
-
-                return grpbxLicenseType.Enabled;
-            }
-
-
-
-
-            private void LicenseTypeRadioButtonsCheckedChanged(TextBox txtUID, RadioButton rdoSingleLicense)
-            {
-                txtUID.Text = string.Empty;
-
-                txtUID.Enabled = rdoSingleLicense.Checked;
-            }
-
-            public void GetLicense(LicenseTypes license_type, string UID_, out string licence)
-            {
-                licence = "";
-
-                if (_lic == null) throw new ArgumentException("LicenseEntity is invalid");
-
-                if (license_type == LicenseTypes.Single)
-                {
-                    // if (LicenseHandler.ValidateUIDFormat(UID_.Trim()))
-                    if (ValidateUIDFormat(UID_.Trim()))
-                    {
-                        _lic.Type = LicenseTypes.Single;
-                        _lic.UID = UID_.Trim();
-                    }
-                    else
-                    {
-                        MessageBox.Show("License UID is blank or invalid", string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-                }
-                else if (license_type == LicenseTypes.Volume)
-                {
-                    _lic.Type = LicenseTypes.Volume;
-                    _lic.UID = string.Empty;
-                }
-
-                _lic.CreateDateTime = DateTime.Now;
-
-                if (OnLicenseSettingsValidating != null)
-                {
-                    LicenseSettingsValidatingEventArgs _args = new LicenseSettingsValidatingEventArgs() { License = _lic, CancelGenerating = false };
-
-                    OnLicenseSettingsValidating(this, _args);
-
-                    if (_args.CancelGenerating)
-                    {
-                        return;
-                    }
-                }
-
-                // string _licStr = LicenseHandler.GenerateLicenseBASE64String(_lic, CertificatePrivateKeyData, CertificatePassword);
-                string _licStr = GenerateLicenseBASE64String(_lic, CertificatePrivateKeyData, CertificatePassword);
-
-
-
-                licence = _licStr;
-                return;
-
-            }
-        }
-
-
-        public class ActivationTool<LicenseT> where LicenseT : LicenseEntity
-        {
-            public byte[] _certPubicKeyData;
-            private SecureString _certPwd;
-
-            public ActivationTool(Assembly _assembly, LicenseT licenseT,
-                SecureString _certPwd_, string activation_app_name)
-            {
-
-                //_certPwd.AppendChar('2');
-                //_certPwd.AppendChar('0');
-                //_certPwd.AppendChar('5');
-                //_certPwd.AppendChar('0');
-                //_certPwd.AppendChar('1');
-                //_certPwd.AppendChar('3');
-                //_certPwd.AppendChar('0');
-                //_certPwd.AppendChar('3');
-                //_certPwd.AppendChar('5');
-                //_certPwd.AppendChar('1');
-
-                _certPwd = _certPwd_;
-
-
-                _certPubicKeyData = new SRL.LicenseClass().GetPubicKeyData(_assembly, activation_app_name, "LicenseSign.pfx");
-
-            }
-
-            private void btnGenSvrMgmLic_Click(LicenseStringContainer licString, LicenseT licenseT)
-            {
-                //Event raised when "Generate License" button is clicked. 
-                //Call the core library to generate the license
-                // licString.LicenseString = LicenseHandler.GenerateLicenseBASE64String(
-                licString.LicenseString = GenerateLicenseBASE64String(
-                   licenseT,
-                    _certPubicKeyData,
-                    _certPwd);
-            }
-
-        }
+        #endregion
 
 
     }

@@ -84,6 +84,24 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="LicenseClass.cs" />
+    <Compile Include="license\WinLicenseActivation.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="license\WinLicenseActivation.designer.cs">
+      <DependentUpon>WinLicenseActivation.cs</DependentUpon>
+    </Compile>
+    <Compile Include="license\WinLicenseAdminActivator.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="license\WinLicenseAdminActivator.designer.cs">
+      <DependentUpon>WinLicenseAdminActivator.cs</DependentUpon>
+    </Compile>
+    <Compile Include="license\WinLicenseForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="license\WinLicenseForm.designer.cs">
+      <DependentUpon>WinLicenseForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="tools\Setup.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -161,6 +179,15 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="license\WinLicenseActivation.resx">
+      <DependentUpon>WinLicenseActivation.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="license\WinLicenseAdminActivator.resx">
+      <DependentUpon>WinLicenseAdminActivator.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="license\WinLicenseForm.resx">
+      <DependentUpon>WinLicenseForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="tools\Setup.resx">
       <DependentUpon>Setup.cs</DependentUpon>
     </EmbeddedResource>

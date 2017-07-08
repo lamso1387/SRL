@@ -986,7 +986,7 @@ namespace SRL
         public class UserControlValidation : UserControl
         {
             ErrorProvider errorProvider1;
-            UserControl user_control;
+            Control user_control;
             bool force_cancel = true;
 
             public enum ErrorTypes
@@ -1013,7 +1013,7 @@ namespace SRL
             }
 
 
-            public UserControlValidation(UserControl uc, ErrorProvider errorProvider, bool force_cancel_)
+            public UserControlValidation(Control uc, ErrorProvider errorProvider, bool force_cancel_)
             {
                 errorProvider1 = errorProvider;
                 user_control = uc;
@@ -1022,13 +1022,17 @@ namespace SRL
 
             public void CheckAllField(List<Control> controls, out bool validation_result)
             {
+                validation_result = false;
                 bool main_force_cancel = force_cancel;
                 force_cancel = true;
                 foreach (Control control in controls)
                 {
                     control.Focus();
                 }
-                validation_result = user_control.ValidateChildren(ValidationConstraints.Enabled);
+                if (user_control is UserControl)
+                    validation_result = ((UserControl)user_control).ValidateChildren(ValidationConstraints.Enabled);
+                else if (user_control is Form)
+                    validation_result = ((Form)user_control).ValidateChildren(ValidationConstraints.Enabled);
                 force_cancel = main_force_cancel;
                 // user_control.Validate();
             }
@@ -1231,6 +1235,33 @@ namespace SRL
                 response["emailError"] = ex.Message;
             }
         }
+
+        public string SendEmail(string username, string toMail, string subject, string body,  string fromMail, string password)
+        {
+            string error = "";
+            try
+            {
+                System.Net.Mail.MailMessage mailMessage = new System.Net.Mail.MailMessage();
+                System.Net.Mail.MailAddress from = new System.Net.Mail.MailAddress(fromMail);
+                mailMessage.To.Add(toMail);
+                mailMessage.From = from;
+                mailMessage.Subject = subject;
+                mailMessage.Body = body;
+                SRL.Convertor convertor = new SRL.Convertor();
+                System.Net.Mail.SmtpClient smtpClient = new System.Net.Mail.SmtpClient("smtp.gmail.com");
+                smtpClient.Port = 587;
+                smtpClient.Credentials = new System.Net.NetworkCredential(fromMail, password);
+                smtpClient.EnableSsl = true;
+                smtpClient.Send(mailMessage);
+            }
+            catch (Exception ex)
+            {
+                error= ex.Message;
+            }
+            return error;
+        }
+
+
         public bool RedirectIfNotLogin(System.Web.UI.Page page, Dictionary<string, object> response, string redirect)
         {
             var usernameSession = page.Session["username"];
