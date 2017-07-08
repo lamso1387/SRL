@@ -40,6 +40,15 @@
             this.label3 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.tbpass = new System.Windows.Forms.TextBox();
+            this.btnDesktop = new System.Windows.Forms.Button();
+            this.button4 = new System.Windows.Forms.Button();
+            this.tbEmail = new System.Windows.Forms.TextBox();
+            this.label5 = new System.Windows.Forms.Label();
+            this.tbEmailMes = new System.Windows.Forms.TextBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.tbsubject = new System.Windows.Forms.TextBox();
+            this.label7 = new System.Windows.Forms.Label();
+            this.tbFileName = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // propertyGrid1
@@ -48,7 +57,7 @@
             this.propertyGrid1.Location = new System.Drawing.Point(20, 120);
             this.propertyGrid1.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
             this.propertyGrid1.Name = "propertyGrid1";
-            this.propertyGrid1.Size = new System.Drawing.Size(642, 340);
+            this.propertyGrid1.Size = new System.Drawing.Size(642, 364);
             this.propertyGrid1.TabIndex = 0;
             // 
             // button1
@@ -65,11 +74,11 @@
             // textBox2
             // 
             this.textBox2.Font = new System.Drawing.Font("Times New Roman", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
-            this.textBox2.Location = new System.Drawing.Point(719, 61);
+            this.textBox2.Location = new System.Drawing.Point(719, 44);
             this.textBox2.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
             this.textBox2.Multiline = true;
             this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(342, 478);
+            this.textBox2.Size = new System.Drawing.Size(342, 283);
             this.textBox2.TabIndex = 3;
             // 
             // button2
@@ -96,10 +105,10 @@
             // 
             // button3
             // 
-            this.button3.Location = new System.Drawing.Point(986, 551);
+            this.button3.Location = new System.Drawing.Point(986, 341);
             this.button3.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
             this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(75, 46);
+            this.button3.Size = new System.Drawing.Size(75, 31);
             this.button3.TabIndex = 10;
             this.button3.Text = "کپی";
             this.button3.UseVisualStyleBackColor = true;
@@ -139,7 +148,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(833, 29);
+            this.label3.Location = new System.Drawing.Point(987, 12);
             this.label3.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(74, 26);
@@ -168,11 +177,119 @@
             this.tbpass.TabIndex = 15;
             this.tbpass.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
+            // btnDesktop
+            // 
+            this.btnDesktop.Location = new System.Drawing.Point(856, 341);
+            this.btnDesktop.Name = "btnDesktop";
+            this.btnDesktop.Size = new System.Drawing.Size(106, 31);
+            this.btnDesktop.TabIndex = 17;
+            this.btnDesktop.Text = "خروجی دسکتاپ";
+            this.btnDesktop.UseVisualStyleBackColor = true;
+            this.btnDesktop.Click += new System.EventHandler(this.btnDesktop_Click);
+            // 
+            // button4
+            // 
+            this.button4.Location = new System.Drawing.Point(719, 341);
+            this.button4.Name = "button4";
+            this.button4.Size = new System.Drawing.Size(115, 31);
+            this.button4.TabIndex = 18;
+            this.button4.Text = "ارسال به ایمیل";
+            this.button4.UseVisualStyleBackColor = true;
+            this.button4.Click += new System.EventHandler(this.button4_Click);
+            // 
+            // tbEmail
+            // 
+            this.tbEmail.Font = new System.Drawing.Font("Times New Roman", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
+            this.tbEmail.Location = new System.Drawing.Point(721, 382);
+            this.tbEmail.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            this.tbEmail.Multiline = true;
+            this.tbEmail.Name = "tbEmail";
+            this.tbEmail.Size = new System.Drawing.Size(268, 27);
+            this.tbEmail.TabIndex = 19;
+            this.tbEmail.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(995, 381);
+            this.label5.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(38, 26);
+            this.label5.TabIndex = 20;
+            this.label5.Text = "ایمیل";
+            // 
+            // tbEmailMes
+            // 
+            this.tbEmailMes.Font = new System.Drawing.Font("Arial", 8F, System.Drawing.FontStyle.Bold);
+            this.tbEmailMes.Location = new System.Drawing.Point(721, 455);
+            this.tbEmailMes.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            this.tbEmailMes.Multiline = true;
+            this.tbEmailMes.Name = "tbEmailMes";
+            this.tbEmailMes.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            this.tbEmailMes.Size = new System.Drawing.Size(340, 101);
+            this.tbEmailMes.TabIndex = 21;
+            this.tbEmailMes.Text = "کد فعالسازی شما در فایل پیوست با نام زیر قرار دارد:\r\nlicense.lic\r\nاین فایل را دان" +
+    "لود کنید و در پوشه نرم افزار جایی که فایل اجرایی .exe قرار دارد کپی کنید\r\nسپس نر" +
+    "م افزار را باز کنید";
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(992, 416);
+            this.label6.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(72, 26);
+            this.label6.TabIndex = 23;
+            this.label6.Text = "عنوان و متن";
+            // 
+            // tbsubject
+            // 
+            this.tbsubject.Font = new System.Drawing.Font("Times New Roman", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
+            this.tbsubject.Location = new System.Drawing.Point(721, 416);
+            this.tbsubject.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            this.tbsubject.Multiline = true;
+            this.tbsubject.Name = "tbsubject";
+            this.tbsubject.Size = new System.Drawing.Size(268, 27);
+            this.tbsubject.TabIndex = 22;
+            this.tbsubject.Text = "کد فعالسازی نرم افزار";
+            this.tbsubject.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(995, 562);
+            this.label7.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(50, 26);
+            this.label7.TabIndex = 25;
+            this.label7.Text = "نام فایل";
+            // 
+            // tbFileName
+            // 
+            this.tbFileName.Font = new System.Drawing.Font("Times New Roman", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
+            this.tbFileName.Location = new System.Drawing.Point(721, 563);
+            this.tbFileName.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            this.tbFileName.Multiline = true;
+            this.tbFileName.Name = "tbFileName";
+            this.tbFileName.Size = new System.Drawing.Size(268, 27);
+            this.tbFileName.TabIndex = 24;
+            this.tbFileName.Text = "license.lic";
+            this.tbFileName.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            // 
             // WinLicenseAdminActivator
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 26F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1073, 605);
+            this.Controls.Add(this.label7);
+            this.Controls.Add(this.tbFileName);
+            this.Controls.Add(this.label6);
+            this.Controls.Add(this.tbsubject);
+            this.Controls.Add(this.tbEmailMes);
+            this.Controls.Add(this.label5);
+            this.Controls.Add(this.tbEmail);
+            this.Controls.Add(this.button4);
+            this.Controls.Add(this.btnDesktop);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.tbpass);
             this.Controls.Add(this.label3);
@@ -210,5 +327,14 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.TextBox tbpass;
+        private System.Windows.Forms.Button btnDesktop;
+        private System.Windows.Forms.Button button4;
+        private System.Windows.Forms.TextBox tbEmail;
+        private System.Windows.Forms.Label label5;
+        private System.Windows.Forms.TextBox tbEmailMes;
+        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.TextBox tbsubject;
+        private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.TextBox tbFileName;
     }
 }

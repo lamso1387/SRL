@@ -26,7 +26,7 @@ using System.Xml.Serialization;
 using System.Security;
 using System.Management;
 using System.Security.Cryptography.X509Certificates;
-
+using System.Net.Mail;
 
 namespace SRL
 {
@@ -1236,7 +1236,7 @@ namespace SRL
             }
         }
 
-        public string SendEmail(string username, string toMail, string subject, string body,  string fromMail, string password)
+        public string SendEmail(string username, string toMail, string subject, string body,  string fromMail, string password, string attach_text_file_content=null, string attach_text_file_name=null)
         {
             string error = "";
             try
@@ -1247,6 +1247,10 @@ namespace SRL
                 mailMessage.From = from;
                 mailMessage.Subject = subject;
                 mailMessage.Body = body;
+
+                if(attach_text_file_content !=null)
+                mailMessage.Attachments.Add(Attachment.CreateAttachmentFromString(attach_text_file_content,attach_text_file_name));
+
                 SRL.Convertor convertor = new SRL.Convertor();
                 System.Net.Mail.SmtpClient smtpClient = new System.Net.Mail.SmtpClient("smtp.gmail.com");
                 smtpClient.Port = 587;
@@ -1260,7 +1264,7 @@ namespace SRL
             }
             return error;
         }
-
+        
 
         public bool RedirectIfNotLogin(System.Web.UI.Page page, Dictionary<string, object> response, string redirect)
         {
