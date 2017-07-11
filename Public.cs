@@ -460,11 +460,11 @@ namespace SRL
                 height_magnify = height_magnify_;
                 opacity = opacity_;
                 cursor = cursor_;
-                pb.MouseHover += new System.EventHandler(pb_MouseHover);
+                pb.MouseEnter += new System.EventHandler(pb_MouseEnter);
                 pb.MouseLeave += new System.EventHandler(pb_MouseLeave);
             }
 
-            private void pb_MouseHover(object sender, EventArgs e)
+            private void pb_MouseEnter(object sender, EventArgs e)
             {
                 PictureBox pb = sender as PictureBox;
 

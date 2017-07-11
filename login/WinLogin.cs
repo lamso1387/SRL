@@ -99,4 +99,11 @@ namespace SRL
         public string role { get; set; }
 
     }
+
+    public enum UserRoles
+    {
+    admin,
+    user
+
+    }
 }

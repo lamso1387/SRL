@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Data.Entity;
 
+
 namespace SRL
 {
     public partial class WinLoginUser : UserControl
@@ -58,7 +59,7 @@ namespace SRL
             if (!CheckUsernameUnique(out user_id_dup)) return;
 
             string sql = "insert into " + entity_name + "(name,family,username,password, role)" +
-                     " values ('" + tbname.Text + "','" + tbFamily.Text + "','" + tbUsername.Text + "','" + tbPass.Text + "','" + cbRole.Text + "')";
+                     " values ('" + tbname.Text + "','" + tbFamily.Text + "','" + tbUsername.Text + "','" + tbPass.Text + "','" + tbRole.Text + "')";
             string err = srl_db.ExecuteQuery(db, sql);
             if (err != "") MessageBox.Show(err);
             LoadUsersInDgv(dgvUsers);
@@ -87,7 +88,7 @@ namespace SRL
             tbFamily.Text = row.Cells["family"].Value.ToString();
             tbUsername.Text = row.Cells["username"].Value.ToString();
             tbPass.Text = tbPassRep.Text = row.Cells["password"].Value.ToString();
-            cbRole.Text = row.Cells["role"].Value.ToString();
+            tbRole.Text = row.Cells["role"].Value.ToString();
         }
 
         private void EditUser()
@@ -97,7 +98,7 @@ namespace SRL
             if (!CheckUsernameUnique(out user_id_dup, id_edit)) return;
 
             string err = srl_db.ExecuteQuery(db, "update " + entity_name + " set name='" + tbname.Text +
-            "' , family='" + tbFamily.Text + "' , username='" + tbUsername.Text + "' , password='" + tbPass.Text + "' , role='" + cbRole.Text + "' " +
+            "' , family='" + tbFamily.Text + "' , username='" + tbUsername.Text + "' , password='" + tbPass.Text + "' , role='" + tbRole.Text + "' " +
                 " where ID=" + id_edit.ToString());
             if (err != "") MessageBox.Show(err);
             LoadUsersInDgv(dgvUsers);
@@ -105,7 +106,9 @@ namespace SRL
         private void ClearFields()
         {
             new SRL.ChildParent().RefreshFormControls(this, new List<Type> { typeof(TextBox), typeof(ComboBox) });
+            tbRole.Text = UserRoles.user.ToString();
         }
+
 
         private void WinLoginUser_Load(object sender, EventArgs e)
         {
@@ -116,12 +119,16 @@ namespace SRL
 
                 srl_valid.ControlValidation(item, WinTools.UserControlValidation.ErrorTypes.NotNull);
             }
-            srl_valid.ControlValidation(cbRole, WinTools.UserControlValidation.ErrorTypes.NotNull);
+            srl_valid.ControlValidation(tbRole, WinTools.UserControlValidation.ErrorTypes.NotNull);
+
         }
+
+        
 
         private void btnDel_Click(object sender, EventArgs e)
         {
             if (dgvUsers.SelectedRows.Count < 1) return;
+            if (dgvUsers.SelectedRows[0].Cells["role"].Value.ToString() == UserRoles.admin.ToString()) return;
             long id_del = (long)dgvUsers.SelectedRows[0].Cells["id"].Value;
             DeleteUser(id_del);
             LoadUsersInDgv(dgvUsers);
@@ -131,7 +138,7 @@ namespace SRL
         {
             if (tbPass.Text != tbPassRep.Text) return;
             bool res = false;
-            srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, tbPass, cbRole }, out res);
+            srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, tbPass, tbRole }, out res);
             if (res)
             {
                 AddNewUser();
@@ -143,9 +150,13 @@ namespace SRL
         private void dgvUsers_SelectionChanged(object sender, EventArgs e)
         {
             ClearFields();
+            int row_selected_count=dgvUsers.SelectedRows.Count;
+            btnEdit.Enabled = row_selected_count > 0;
+            btnAdd.Enabled = !btnEdit.Enabled;            
 
-            btnEdit.Enabled = dgvUsers.SelectedRows.Count > 0;
-            btnAdd.Enabled = !btnEdit.Enabled;
+            btnDel.Enabled = true;
+            if (row_selected_count > 0)
+                btnDel.Enabled = dgvUsers.SelectedRows[0].Cells["role"].Value.ToString() == UserRoles.admin.ToString() ? false : true;
             if (btnAdd.Enabled) ClearFields();
             if (dgvUsers.SelectedRows.Count < 1) return;
 
@@ -163,15 +174,12 @@ namespace SRL
             if (tbPass.Text != tbPassRep.Text) return;
 
             bool res = false;
-            srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, tbPass, cbRole }, out res);
+            srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, tbPass, tbRole }, out res);
             if (res)
             {
                 EditUser();
                 
             }
-
-
-
 
         }
 
