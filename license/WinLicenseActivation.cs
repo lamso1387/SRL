@@ -37,6 +37,7 @@ namespace SRL
             lblAppname.Text += assembly.GetName().Name;
             control_validation = new SRL.WinTools.UserControlValidation(this, errorProvider1, false);
             control_validation.ControlValidation(tbMobile, SRL.WinTools.UserControlValidation.ErrorTypes.MobilePattern);
+            control_validation.ControlValidation(tbEmail, WinTools.UserControlValidation.ErrorTypes.EmailPattern_NotNull);
 
         }
 
@@ -50,7 +51,7 @@ namespace SRL
         private void button2_Click(object sender, EventArgs e)
         {
             bool control_is_valid=false;
-            control_validation.CheckAllField(new List<Control> { tbMobile },out  control_is_valid);
+            control_validation.CheckAllField(new List<Control> { tbMobile, tbEmail },out  control_is_valid);
             if (control_is_valid)
             {
                 string message = "";
@@ -79,19 +80,24 @@ namespace SRL
 
         private void btnSenddata_Click(object sender, EventArgs e)
         {
-            SRL.Security sec = new SRL.Security();
-            StringBuilder sb = new StringBuilder();
-            sb.Append("\n app_name: ");
-            sb.Append(assembly.GetName().Name);
-            sb.Append("\n uid: ");
-            sb.Append(tbUid.Text);
-            sb.Append("\n mobile: ");
-            sb.Append(tbMobile.Text);
-            sb.Append("\n email: ");
-            sb.Append(tbEmail.Text);
-            string error = sec.SendEmail("lamso1387", "soheillamso@gmail.com", "فعالسازی نرم افزار",sb.ToString(), "KhaneBazaar@gmail.com", "2050130351");
-            if (!string.IsNullOrWhiteSpace(error)) MessageBox.Show(error, "خطا در ارسال:اتصال به اینترنت را بررسی کنید");
-            else MessageBox.Show( "ارسال با موفقیت انجام شد. بعد از تایید، کد به ایمیل شما ارسال میگردد");
+             bool control_is_valid=false;
+            control_validation.CheckAllField(new List<Control> { tbMobile, tbEmail },out  control_is_valid);
+            if (control_is_valid)
+            {
+                SRL.Security sec = new SRL.Security();
+                StringBuilder sb = new StringBuilder();
+                sb.Append("\n app_name: ");
+                sb.Append(assembly.GetName().Name);
+                sb.Append("\n uid: ");
+                sb.Append(tbUid.Text);
+                sb.Append("\n mobile: ");
+                sb.Append(tbMobile.Text);
+                sb.Append("\n email: ");
+                sb.Append(tbEmail.Text);
+                string error = sec.SendEmail("lamso1387", "soheillamso@gmail.com", "فعالسازی نرم افزار", sb.ToString(), "KhaneBazaar@gmail.com", "2050130351");
+                if (!string.IsNullOrWhiteSpace(error)) MessageBox.Show(error, "خطا در ارسال:اتصال به اینترنت را بررسی کنید");
+                else MessageBox.Show("ارسال با موفقیت انجام شد. بعد از تایید، کد به ایمیل شما ارسال میگردد");
+            }
         }
     }
 

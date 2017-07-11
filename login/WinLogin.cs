@@ -12,6 +12,16 @@ using System.Data.Entity;
 namespace SRL
 {
 
+    /// <summary>
+    /// example in app:
+    /// public static string CheckLogin()
+    ///  {
+    ///     Public.srl_session.IsLogined = false;
+    ///     new SRL.WinLogin(new HesabdariEntities(), "personnel", Public.srl_session).ShowDialog();
+    ///     if (!Public.srl_session.IsLogined) Environment.Exit(0);
+    ///     return Public.srl_session.user_name + " " + Public.srl_session.user_family;
+    ///  }
+    /// </summary>
     public partial class WinLogin : Form
     {
         DbContext db;
@@ -19,7 +29,7 @@ namespace SRL
         WinSessionId session;
 
         /// <summary>
-        /// user table must have column: ID (long or bigint),username, password, name, family
+        /// user table must have column: ID (long or bigint),username, password, name, family, role(master, user)
         /// </summary>
         /// <param name="db_"></param>
         /// <param name="entity_name_"></param>
@@ -48,7 +58,7 @@ namespace SRL
                 return;
             }
             session.IsLogined = true;
-            session.user_id = user.First().ID;
+            session.user_id =(long) user.First().ID;
             session.user_name = user.First().name;
             session.user_family = user.First().family;
             this.Close();
@@ -81,11 +91,12 @@ namespace SRL
     }
     public  class UserClass
     {
-        public long ID { get; set; }
+        public Nullable<long> ID { get; set; }
         public string username { get; set; }
         public string name { get; set; }
         public string family { get; set; }
         public string password { get; set; }
+        public string role { get; set; }
 
     }
 }

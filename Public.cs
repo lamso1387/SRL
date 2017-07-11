@@ -118,7 +118,6 @@ namespace SRL
         public void InitiateSetting(Dictionary<string, string> keyValuesetting)
         {
 
-
             srl_database.EntityRemoveAll<SettingEntity>(db);
 
             foreach (var item in keyValuesetting)
@@ -948,14 +947,14 @@ namespace SRL
                 borders.right = form.Right - screenRectangle.Right;
                 return borders;
             }
-            public Modal(Control user_control, string title, int width_ = 1000, int height_ = 500)
+            public Modal(Control user_control, string title, int width_ = 1000, int height_ = 500, Color? back_color=null)
             {
                 this.Text = title;
 
                 this.StartPosition = FormStartPosition.CenterScreen;
 
                 var borders = GetFormBorderSizes(this);
-
+                if (back_color != null) this.BackColor = (Color) back_color;
                 this.Width = width_ + borders.right + borders.left;
                 this.Height = height_ + borders.top + borders.bottom;
 
@@ -1008,7 +1007,10 @@ namespace SRL
                 DecimalInput = 5,
 
                 [Description("عدد اعشاری اجباری است")]
-                DecimalInput_NotNull = 6
+                DecimalInput_NotNull = 6,
+
+                [Description("ایمیل صحیح اجباری است")]
+                EmailPattern_NotNull = 7
 
             }
 
@@ -1069,6 +1071,9 @@ namespace SRL
                     case ErrorTypes.DecimalInput_NotNull:
                         control.KeyPress += new System.Windows.Forms.KeyPressEventHandler(decimal_input_KeyPress);
                         control.Validating += new System.ComponentModel.CancelEventHandler(not_null_Validating);
+                        break;
+                    case ErrorTypes.EmailPattern_NotNull:
+                        control.Validating += new System.ComponentModel.CancelEventHandler(not_null_email_pattern_Validating);
                         break;
                 }
 
@@ -1147,6 +1152,25 @@ namespace SRL
                 }
                 errorProvider1.SetError(control, "");
             }
+
+            private void not_null_email_pattern_Validating(object sender, CancelEventArgs e)
+            {
+                Control control = sender as Control;
+                bool status = control.Text.Any() ?
+                   (!(new SRL.Convertor().IsValidEmail(control.Text)) ? true : false)
+                   : true;
+                if (status)
+                {
+                    e.Cancel = force_cancel;
+                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.EmailPattern_NotNull);
+
+                    errorProvider1.SetError(control, msg);
+
+                    return;
+                }
+                errorProvider1.SetError(control, "");
+            }
+
             private void mobile_pattern_Validating(object sender, CancelEventArgs e)
             {
                 Control control = sender as Control;
@@ -1236,7 +1260,7 @@ namespace SRL
             }
         }
 
-        public string SendEmail(string username, string toMail, string subject, string body,  string fromMail, string password, string attach_text_file_content=null, string attach_text_file_name=null)
+        public string SendEmail(string username, string toMail, string subject, string body, string fromMail, string password, string attach_text_file_content = null, string attach_text_file_name = null)
         {
             string error = "";
             try
@@ -1248,8 +1272,8 @@ namespace SRL
                 mailMessage.Subject = subject;
                 mailMessage.Body = body;
 
-                if(attach_text_file_content !=null)
-                mailMessage.Attachments.Add(Attachment.CreateAttachmentFromString(attach_text_file_content,attach_text_file_name));
+                if (attach_text_file_content != null)
+                    mailMessage.Attachments.Add(Attachment.CreateAttachmentFromString(attach_text_file_content, attach_text_file_name));
 
                 SRL.Convertor convertor = new SRL.Convertor();
                 System.Net.Mail.SmtpClient smtpClient = new System.Net.Mail.SmtpClient("smtp.gmail.com");
@@ -1260,11 +1284,11 @@ namespace SRL
             }
             catch (Exception ex)
             {
-                error= ex.Message;
+                error = ex.Message;
             }
             return error;
         }
-        
+
 
         public bool RedirectIfNotLogin(System.Web.UI.Page page, Dictionary<string, object> response, string redirect)
         {
@@ -1433,14 +1457,39 @@ namespace SRL
         {
             return (pixel / dpi);
         }
-        public float StringToFloat(string str)
+        public float StringToFloat(string value_to_parse, float? default_value = null, string app_decimal_symbol = "/", bool show_alarm_erro=true)
         {
-            return float.Parse(str, NumberStyles.Any);
+            if (string.IsNullOrWhiteSpace(value_to_parse)) return 0;
+
+            float value_parsed=0;
+            bool parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            if (parse_try) return value_parsed;
+
+            string current_decimal_symbol = NumberFormatInfo.CurrentInfo.NumberDecimalSeparator;
+            value_to_parse = value_to_parse.Replace(app_decimal_symbol, current_decimal_symbol);
+            parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            if (parse_try) return value_parsed;
+
+            value_to_parse = value_to_parse.Replace(app_decimal_symbol, ".");
+            parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            if (parse_try) return value_parsed;
+
+            value_to_parse = value_to_parse.Replace(app_decimal_symbol, ",");
+            parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            if (parse_try) return value_parsed;
+
+            if(show_alarm_erro) MessageBox.Show("نماد اعشاری سیستم را به / تغییر دهید. ترجیحا از فرمت فارسی استفاده کنید");
+            if (default_value != null)
+            {
+                value_parsed = (float)default_value;
+                return value_parsed;
+            }
+            if (show_alarm_erro)  MessageBox.Show("متغیر اعشاری دارای مقدار 0 است و خطا ایجاد خواهد شد. فرمت سیستم را بررسی کنید");
+            return value_parsed;
+
+
         }
-        public Decimal StringToDecimal(string str)
-        {
-            return Decimal.Parse(str, NumberStyles.Any);
-        }
+
         public bool StringToFloatTry(string str, out float number)
         {
 
@@ -1585,6 +1634,19 @@ namespace SRL
         {
             national_id = national_id.Length == 8 ? "00" + national_id : (national_id.Length == 9 ? "0" + national_id : national_id);
             return national_id;
+        }
+
+       public bool IsValidEmail(string email)
+        {
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(email);
+                return addr.Address == email;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
     public class Json : ControlLoad
@@ -2349,11 +2411,11 @@ namespace SRL
         /// <param name="content"></param>
         public void SaveToFile(string fileFullName, string content)
         {
-           System.IO.File.WriteAllText(fileFullName, content);
+            System.IO.File.WriteAllText(fileFullName, content);
 
         }
 
-       
+
         public void CopyToClipboard(string content)
         {
             Clipboard.SetText(content);
@@ -2370,6 +2432,6 @@ namespace SRL
 
     }
 
- 
+
 }
 

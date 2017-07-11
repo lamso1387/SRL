@@ -114,11 +114,17 @@
     <Compile Include="tools\TextBoxBorderColor.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="tools\WinLogin.cs">
+    <Compile Include="login\WinLogin.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="tools\WinLogin.Designer.cs">
+    <Compile Include="login\WinLogin.Designer.cs">
       <DependentUpon>WinLogin.cs</DependentUpon>
+    </Compile>
+    <Compile Include="login\WinLoginUser.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="login\WinLoginUser.Designer.cs">
+      <DependentUpon>WinLoginUser.cs</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -191,8 +197,11 @@
     <EmbeddedResource Include="tools\Setup.resx">
       <DependentUpon>Setup.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="tools\WinLogin.resx">
+    <EmbeddedResource Include="login\WinLogin.resx">
       <DependentUpon>WinLogin.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="login\WinLoginUser.resx">
+      <DependentUpon>WinLoginUser.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

@@ -40,10 +40,10 @@
             // 
             this.btnEnter.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnEnter.Location = new System.Drawing.Point(76, 125);
-            this.btnEnter.Margin = new System.Windows.Forms.Padding(5, 5, 5, 5);
+            this.btnEnter.Margin = new System.Windows.Forms.Padding(5);
             this.btnEnter.Name = "btnEnter";
             this.btnEnter.Size = new System.Drawing.Size(164, 41);
-            this.btnEnter.TabIndex = 0;
+            this.btnEnter.TabIndex = 2;
             this.btnEnter.Text = "ورود";
             this.btnEnter.UseVisualStyleBackColor = true;
             this.btnEnter.Click += new System.EventHandler(this.btnEnter_Click);
@@ -55,25 +55,25 @@
             this.label1.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(66, 26);
-            this.label1.TabIndex = 1;
+            this.label1.TabIndex = 4;
             this.label1.Text = "نام کاربری";
             // 
             // tbUsername
             // 
             this.tbUsername.Location = new System.Drawing.Point(76, 14);
-            this.tbUsername.Margin = new System.Windows.Forms.Padding(5, 5, 5, 5);
+            this.tbUsername.Margin = new System.Windows.Forms.Padding(5);
             this.tbUsername.Name = "tbUsername";
             this.tbUsername.Size = new System.Drawing.Size(164, 34);
-            this.tbUsername.TabIndex = 2;
+            this.tbUsername.TabIndex = 0;
             // 
             // tbPassword
             // 
             this.tbPassword.Location = new System.Drawing.Point(76, 62);
-            this.tbPassword.Margin = new System.Windows.Forms.Padding(5, 5, 5, 5);
+            this.tbPassword.Margin = new System.Windows.Forms.Padding(5);
             this.tbPassword.Name = "tbPassword";
             this.tbPassword.PasswordChar = '*';
             this.tbPassword.Size = new System.Drawing.Size(164, 34);
-            this.tbPassword.TabIndex = 3;
+            this.tbPassword.TabIndex = 1;
             // 
             // label2
             // 
@@ -82,7 +82,7 @@
             this.label2.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(57, 26);
-            this.label2.TabIndex = 4;
+            this.label2.TabIndex = 5;
             this.label2.Text = "رمز عبور";
             // 
             // lblExit
@@ -92,13 +92,14 @@
             this.lblExit.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
             this.lblExit.Name = "lblExit";
             this.lblExit.Size = new System.Drawing.Size(43, 26);
-            this.lblExit.TabIndex = 5;
+            this.lblExit.TabIndex = 3;
             this.lblExit.TabStop = true;
             this.lblExit.Text = "خروج";
             this.lblExit.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lblExit_LinkClicked);
             // 
             // WinLogin
             // 
+            this.AcceptButton = this.btnEnter;
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 26F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(348, 228);
@@ -110,7 +111,7 @@
             this.Controls.Add(this.label1);
             this.Controls.Add(this.btnEnter);
             this.Font = new System.Drawing.Font("B Koodak", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
-            this.Margin = new System.Windows.Forms.Padding(5, 5, 5, 5);
+            this.Margin = new System.Windows.Forms.Padding(5);
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "WinLogin";
