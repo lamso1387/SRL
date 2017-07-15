@@ -34,14 +34,35 @@ namespace SRL
         /// <param name="db_"></param>
         /// <param name="entity_name_"></param>
         /// <param name="session_"></param>
-        public WinLogin(DbContext db_, string entity_name_, WinSessionId session_)
+        public WinLogin(DbContext db_, string entity_name_, WinSessionId session_, Color? back_color_=null)
         {
             InitializeComponent();
             db = db_;
             entity_name = entity_name_;
             session = session_;
+            if (back_color_ != null) this.BackColor = (Color) back_color_;
         }
 
+        public Point ChangeLoginFormLocation(int x, int y)
+        {
+            pnlLoginForm.Location = new Point(x, y);
+            return pnlLoginForm.Location;
+        }
+        public void ChangeFootNote(string str, int x, int y)
+        {
+            lblFotNote.Text = str;
+            lblFotNote.Location = new Point(x, y);
+        }
+        public void ChangeTitle(string str, int x, int y)
+        {
+            lblTitle.Text = str;
+            lblTitle.Location = new Point(x, y);
+        }
+        private void WinLogin_Load(object sender, EventArgs e)
+        {
+            new SRL.WinUI.StyleButton(btnEnter, Color.Blue, Color.BlueViolet);
+            
+        }
 
         private void btnEnter_Click(object sender, EventArgs e)
         {
@@ -69,10 +90,7 @@ namespace SRL
             this.Close();
         }
 
-        private void WinLogin_Load(object sender, EventArgs e)
-        {
-           
-        }
+        
     }
 
     public class WinSessionId

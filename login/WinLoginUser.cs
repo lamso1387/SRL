@@ -121,6 +121,11 @@ namespace SRL
             }
             srl_valid.ControlValidation(tbRole, WinTools.UserControlValidation.ErrorTypes.NotNull);
 
+            foreach (var item in new SRL.ChildParent().GetAllChildrenControls(this).OfType<Button>())
+            {
+              //  new SRL.WinUI.StyleButton(item, Color.Blue, Color.Black);
+            }
+
         }
 
         

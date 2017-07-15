@@ -27,34 +27,366 @@ using System.Security;
 using System.Management;
 using System.Security.Cryptography.X509Certificates;
 using System.Net.Mail;
+using System.Drawing.Printing;
+using System.Collections;
+using System.Drawing.Text;
 
 namespace SRL
 {
+    public class Print
+    {
+        public void PrintPaperSize(PrintDialog print_dialog, string paper_name = "Custom", int height = 584, int width = 827)
+        {
+            PaperSize psz = new PaperSize();
+            psz.PaperName = paper_name;
+            psz.Height = height;
+            psz.Width = width;
+
+            print_dialog.Document.DefaultPageSettings.PaperSize = psz;
+
+        }
+
+        public class PrintFromDatagridView
+        {
+            public PrintDialog printDialog = new PrintDialog();
+            public DataGridView dataGridView1;
+            public PrintDocument printDocument1 = new PrintDocument();
+            public PrintPreviewDialog printPriviewDialog = new PrintPreviewDialog();
+
+            #region Member Variables
+            const string strConnectionString = "data source=localhost;Integrated Security=SSPI;Initial Catalog=Northwind;";
+            StringFormat strFormat; //Used to format the grid rows.
+            ArrayList arrColumnLefts = new ArrayList();//Used to save left coordinates of columns
+            ArrayList arrColumnWidths = new ArrayList();//Used to save column widths
+            int iCellHeight = 0; //Used to get/set the datagridview cell height
+            int iTotalWidth = 0; //
+            int iRow = 0;//Used as counter
+            bool bFirstPage = false; //Used to check whether we are printing first page
+            bool bNewPage = false;// Used to check whether we are printing a new page
+            int iHeaderHeight = 0; //Used for the header height
+            #endregion
+
+            public PrintFromDatagridView(DataGridView dataGridView1_)
+            {
+                dataGridView1 = dataGridView1_;
+                printDialog.Document = printDocument1;
+
+                System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.WaitCursor;
+
+
+                printDocument1.BeginPrint += new System.Drawing.Printing.PrintEventHandler(printDocument1_BeginPrint);
+
+                printDocument1.PrintPage += new System.Drawing.Printing.PrintPageEventHandler(printDocument1_PrintPage);
+
+                printPriviewDialog.Document = printDocument1;
+                printPriviewDialog.PrintPreviewControl.Zoom = 1;
+
+            }
+
+
+            #region Print Button Click Event
+
+            public void PrintDialogAndPrint(bool use_EX_dialog)
+            {
+
+                printDialog.Document = printDocument1;
+                printDialog.UseEXDialog = use_EX_dialog;
+
+
+
+                if (DialogResult.OK == printDialog.ShowDialog())
+                {
+                    printDocument1.DocumentName = "Test Page Print";
+                    printDocument1.Print();
+                }
+
+            }
+
+            public DialogResult PrintDialogShow()
+            {
+                return printDialog.ShowDialog();
+
+            }
+
+            public void PrintPreview()
+            {
+                printPriviewDialog.ShowDialog();  // print button do this: pd.Print() but in pdialog.ShowDialog() you should call  pd.Print()
+
+            }
+
+            public void PrintDialogAndPriview()
+            {
+                PrintDialogShow();
+                PrintPreview();
+
+            }
+
+            #endregion
+
+            #region Begin Print Event Handler
+            /// <summary>
+            /// Handles the begin print event of print document
+            /// </summary>
+            /// <param name="sender"></param>
+            /// <param name="e"></param>
+            private void printDocument1_BeginPrint(object sender, System.Drawing.Printing.PrintEventArgs e)
+            {
+                try
+                {
+                    strFormat = new StringFormat();
+                    strFormat.Alignment = StringAlignment.Center;
+                    strFormat.LineAlignment = StringAlignment.Center;
+                    strFormat.Trimming = StringTrimming.EllipsisCharacter;
+
+                    arrColumnLefts.Clear();
+                    arrColumnWidths.Clear();
+                    iCellHeight = 0;
+                    iRow = 0;
+                    bFirstPage = true;
+                    bNewPage = true;
+
+                    // Calculating Total Widths
+                    iTotalWidth = 0;
+                    foreach (DataGridViewColumn dgvGridCol in dataGridView1.Columns)
+                    {
+                        iTotalWidth += dgvGridCol.Width;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            #endregion
+
+            #region Print Page Event
+            /// <summary>
+            /// Handles the print page event of print document
+            /// </summary>
+            /// <param name="sender"></param>
+            /// <param name="e"></param>
+            private void printDocument1_PrintPage(object sender, System.Drawing.Printing.PrintPageEventArgs e)
+            {
+                try
+                {
+                    //Set the left margin
+                    int iLeftMargin = e.MarginBounds.Left;
+                    //Set the top margin
+                    int iTopMargin = e.MarginBounds.Top;
+                    //Whether more pages have to print or not
+                    bool bMorePagesToPrint = false;
+                    int iTmpWidth = 0;
+
+                    //For the first page to print set the cell width and header height
+                    if (bFirstPage)
+                    {
+                        foreach (DataGridViewColumn GridCol in dataGridView1.Columns)
+                        {
+                            iTmpWidth = (int)(Math.Floor((double)((double)GridCol.Width /
+                                           (double)iTotalWidth * (double)iTotalWidth *
+                                           ((double)e.MarginBounds.Width / (double)iTotalWidth))));
+
+                            iHeaderHeight = (int)(e.Graphics.MeasureString(GridCol.HeaderText,
+                                        GridCol.InheritedStyle.Font, iTmpWidth).Height) + 11;
+
+                            // Save width and height of headres
+                            arrColumnLefts.Add(iLeftMargin);
+                            arrColumnWidths.Add(iTmpWidth);
+                            iLeftMargin += iTmpWidth;
+                        }
+                    }
+                    //Loop till all the grid rows not get printed
+                    while (iRow <= dataGridView1.Rows.Count - 1)
+                    {
+                        DataGridViewRow GridRow = dataGridView1.Rows[iRow];
+                        //Set the cell height
+                        iCellHeight = GridRow.Height + 5;
+                        int iCount = 0;
+                        //Check whether the current page settings allo more rows to print
+                        if (iTopMargin + iCellHeight >= e.MarginBounds.Height + e.MarginBounds.Top)
+                        {
+                            bNewPage = true;
+                            bFirstPage = false;
+                            bMorePagesToPrint = true;
+                            break;
+                        }
+                        else
+                        {
+                            if (bNewPage)
+                            {
+                                //Draw Header
+                                e.Graphics.DrawString("Customer Summary 00", new Font(dataGridView1.Font, FontStyle.Bold),
+                                        Brushes.Black, e.MarginBounds.Left, e.MarginBounds.Top -
+                                        e.Graphics.MeasureString("Customer Summary 11", new Font(dataGridView1.Font,
+                                        FontStyle.Bold), e.MarginBounds.Width).Height - 13);
+
+                                String strDate = DateTime.Now.ToLongDateString() + " " + DateTime.Now.ToShortTimeString();
+                                //Draw Date
+                                e.Graphics.DrawString(strDate, new Font(dataGridView1.Font, FontStyle.Bold),
+                                        Brushes.Black, e.MarginBounds.Left + (e.MarginBounds.Width -
+                                        e.Graphics.MeasureString(strDate, new Font(dataGridView1.Font,
+                                        FontStyle.Bold), e.MarginBounds.Width).Width), e.MarginBounds.Top -
+                                        e.Graphics.MeasureString("Customer Summary 22", new Font(new Font(dataGridView1.Font,
+                                        FontStyle.Bold), FontStyle.Bold), e.MarginBounds.Width).Height - 13);
+
+                                //Draw Columns                 
+                                iTopMargin = e.MarginBounds.Top;
+                                foreach (DataGridViewColumn GridCol in dataGridView1.Columns)
+                                {
+                                    e.Graphics.FillRectangle(new SolidBrush(Color.LightGray),
+                                        new Rectangle((int)arrColumnLefts[iCount], iTopMargin,
+                                        (int)arrColumnWidths[iCount], iHeaderHeight));
+
+                                    e.Graphics.DrawRectangle(Pens.Black,
+                                        new Rectangle((int)arrColumnLefts[iCount], iTopMargin,
+                                        (int)arrColumnWidths[iCount], iHeaderHeight));
+
+                                    e.Graphics.DrawString(GridCol.HeaderText, GridCol.InheritedStyle.Font,
+                                        new SolidBrush(GridCol.InheritedStyle.ForeColor),
+                                        new RectangleF((int)arrColumnLefts[iCount], iTopMargin,
+                                        (int)arrColumnWidths[iCount], iHeaderHeight), strFormat);
+                                    iCount++;
+                                }
+                                bNewPage = false;
+                                iTopMargin += iHeaderHeight;
+                            }
+                            iCount = 0;
+                            //Draw Columns Contents                
+                            foreach (DataGridViewCell Cel in GridRow.Cells)
+                            {
+                                if (Cel.Value != null)
+                                {
+                                    e.Graphics.DrawString(Cel.Value.ToString(), Cel.InheritedStyle.Font,
+                                                new SolidBrush(Cel.InheritedStyle.ForeColor),
+                                                new RectangleF((int)arrColumnLefts[iCount], (float)iTopMargin,
+                                                (int)arrColumnWidths[iCount], (float)iCellHeight), strFormat);
+                                }
+                                //Drawing Cells Borders 
+                                e.Graphics.DrawRectangle(Pens.Black, new Rectangle((int)arrColumnLefts[iCount],
+                                        iTopMargin, (int)arrColumnWidths[iCount], iCellHeight));
+
+                                iCount++;
+                            }
+                        }
+                        iRow++;
+                        iTopMargin += iCellHeight;
+                    }
+
+                    //If more lines exist, print another page.
+                    if (bMorePagesToPrint)
+                        e.HasMorePages = true;
+                    else
+                        e.HasMorePages = false;
+                }
+                catch (Exception exc)
+                {
+                    MessageBox.Show(exc.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            #endregion
+
+
+        }
+
+        public class PrintFromControlScreen
+        {
+            public Control control_to_print;
+
+            public PrintDocument pd = new PrintDocument();
+            public PrintDialog pdialog = new PrintDialog();
+            public PrintPreviewDialog ppd = new PrintPreviewDialog();
+
+
+            public PrintFromControlScreen(Control control_to_print_from)
+            {
+                control_to_print = control_to_print_from;
+                pd.PrintPage += new System.Drawing.Printing.PrintPageEventHandler(pd_PrintPage);
+                ppd.Document = pd;
+                pdialog.Document = pd;
+                ppd.PrintPreviewControl.Zoom = 1;
+
+            }
+
+
+
+
+            public void PrintPreview()
+            {
+                ppd.ShowDialog();  // print button do this: pd.Print() but in pdialog.ShowDialog() you should call  pd.Print()
+
+            }
+
+            public DialogResult PrintDialogShow()
+            {
+                return pdialog.ShowDialog();
+
+            }
+
+            public void PrintDialogAndPrint()
+            {
+
+                if (PrintDialogShow() == DialogResult.OK) pd.Print();
+
+            }
+            public void PrintDialogAndPriview()
+            {
+                PrintDialogShow();
+                PrintPreview();
+
+            }
+
+
+            private void pd_PrintPage(object sender, System.Drawing.Printing.PrintPageEventArgs e)
+            {
+                Bitmap bm = new Bitmap(control_to_print.Width, control_to_print.Height);
+                control_to_print.DrawToBitmap(bm, new Rectangle(0, 0, control_to_print.Width, control_to_print.Height));
+                e.Graphics.DrawImage(bm, 0, 0);
+
+            }
+
+
+
+        }
+    }
+
     public class DateTimeLanguageClass
     {
+        public enum TimeFormat
+        {
+            Full,
+            Long,
+            Short,
+            Custom
+
+        }
         System.Windows.Forms.Timer timer = null;
         Control control_to_show_time;
-        public void StartTimer(Control control, string full_or_long_or_short)
+        public void StartTimer(Control control, TimeFormat time_format, string custom_time_format = null)
         {
             timer = new System.Windows.Forms.Timer();
             timer.Interval = 1000;
-            timer.Tick += new EventHandler((sender, e) => timer_Tick(sender, e, full_or_long_or_short));
+            timer.Tick += new EventHandler((sender, e) => timer_Tick(sender, e, time_format, custom_time_format));
             timer.Enabled = true;
             control_to_show_time = control;
         }
 
-        void timer_Tick(object sender, EventArgs e, string show_type)
+        void timer_Tick(object sender, EventArgs e, TimeFormat show_type, string custom_time_format)
         {
             switch (show_type)
             {
-                case "full":
+                case TimeFormat.Full:
                     control_to_show_time.Text = DateTime.Now.ToString();
                     break;
-                case "long":
+                case TimeFormat.Long:
                     control_to_show_time.Text = DateTime.Now.ToLongTimeString();
                     break;
-                case "short":
+                case TimeFormat.Short:
                     control_to_show_time.Text = DateTime.Now.ToShortTimeString();
+                    break;
+                case TimeFormat.Custom:
+                    control_to_show_time.Text = custom_time_format != null ?
+                        DateTime.Now.ToString(custom_time_format) :
+                         DateTime.Now.ToLocalTime().ToString();
                     break;
                 default:
                     break;
@@ -314,6 +646,7 @@ namespace SRL
                 var next = q.Dequeue();
                 class_mgnt.SetProperty(property_to_clear, next, clear_value);
             }
+
         }
 
         /// <summary>
@@ -329,7 +662,7 @@ namespace SRL
             if (types_to_refresh != null)
                 foreach (var item in types_to_refresh)
                 {
-                    if (item == typeof(ComboBox)) ClearControlsValue<ComboBox>(childs, "Text", string.Empty);
+                    if (item == typeof(ComboBox)) ClearControlsValue<ComboBox>(childs, "SelectedValue", -1);
                     if (item == typeof(TextBox)) ClearControlsValue<TextBox>(childs, "Text", string.Empty);
                     if (item == typeof(RadioButton)) ClearControlsValue<RadioButton>(childs, "Checked", false);
                     if (item == typeof(CheckBox)) ClearControlsValue<CheckBox>(childs, "Checked", false);
@@ -338,10 +671,8 @@ namespace SRL
             if (controls_to_refresh != null)
                 foreach (dynamic control in controls_to_refresh)
                 {
-                    if (control is ComboBox) control.Text = string.Empty;
-                    if (control is TextBox) control.Text = string.Empty;
-                    if (control is RadioButton) control.Checked = false;
-                    if (control is CheckBox) control.Checked = false;
+                    if (control is TextBox || control is ComboBox || control is MaskedTextBox) control.Text = string.Empty;
+                    if (control is RadioButton || control is CheckBox) control.Checked = false;
                 }
         }
 
@@ -444,7 +775,46 @@ namespace SRL
     }
     public class WinUI
     {
+        public class TextBoxPlaceHolder
+        {
+            TextBox myTxtbx;
 
+
+            public TextBoxPlaceHolder(TextBox tb_to_change)
+            {
+                myTxtbx = tb_to_change;
+
+                myTxtbx.Text = "Enter text here...";
+                myTxtbx.GotFocus += MyTxtbx_GotFocus;
+                myTxtbx.LostFocus += MyTxtbx_LostFocus;
+            }
+
+            private void MyTxtbx_LostFocus(object sender, EventArgs e)
+            {
+                if (String.IsNullOrWhiteSpace(myTxtbx.Text))
+                    myTxtbx.Text = "Enter text here...";
+            }
+
+            private void MyTxtbx_GotFocus(object sender, EventArgs e)
+            {
+                myTxtbx.Text = "";
+            }
+
+
+        }
+
+        public void MaximizeForm(Form form)
+        {
+            if (form.WindowState == FormWindowState.Normal)
+                form.WindowState = FormWindowState.Maximized;
+            else form.WindowState = FormWindowState.Normal;
+        }
+        public void FullScreenNoTaskbar(Control control)
+        {
+            control.Left = control.Top = 0;
+            control.Width = Screen.PrimaryScreen.WorkingArea.Width;
+            control.Height = Screen.PrimaryScreen.WorkingArea.Height;
+        }
         public class PictureBoxHover
         {
             int width_magnify = 0;
@@ -605,6 +975,89 @@ namespace SRL
 
             frm.Region = new Region(path);
         }
+
+
+        public class StyleButton : Button
+        {
+
+            private static Color _back = Color.Gray;
+            private static Color back_color;
+            private static Color _activeBorder;
+            private static Color _fore = System.Drawing.Color.White;
+
+            private static Padding _margin;// = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            private static Padding _padding;// = new System.Windows.Forms.Padding(3, 3, 3, 3);
+
+            private static Size _minSize = new System.Drawing.Size(100, 30);
+
+            private bool _active;
+            Button btn_change;
+
+            public StyleButton(Button btn_to_change, Color back_color_, Color _activeBorder_)
+                : base()
+            {
+                btn_change = btn_to_change;
+                back_color = back_color_;
+                _activeBorder = _activeBorder_;
+                _margin = btn_change.Margin;
+                _padding = btn_change.Padding;
+                _minSize = btn_change.MinimumSize;
+
+                btn_change.Font = btn_to_change.Font;// _normalFont;
+                btn_change.BackColor = back_color;
+                btn_change.ForeColor = _fore;
+                btn_change.FlatAppearance.BorderColor = _back;
+                btn_change.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+                btn_change.Margin = _margin;
+                btn_change.Padding = _padding;
+                btn_change.UseVisualStyleBackColor = false;
+                btn_change.MouseEnter += Btn_to_change_MouseEnter;
+                btn_change.MouseLeave += Btn_to_change_MouseLeave;
+                btn_change.EnabledChanged += btn_change_EnabledChanged;
+            }
+
+           private void btn_change_EnabledChanged(object sender, EventArgs e)
+            {
+               if (btn_change.Enabled)
+               {
+                   btn_change.BackColor = back_color;                   
+               }
+               else
+               {
+                btn_change.BackColor=   ControlPaint.LightLight(back_color);             
+               }
+               
+            }
+
+            private void Btn_to_change_MouseLeave(object sender, EventArgs e)
+            {
+                btn_change.Cursor = Cursors.Default;
+                if (!_active)
+                    btn_change.FlatAppearance.BorderColor = back_color;
+            }
+
+            private void Btn_to_change_MouseEnter(object sender, EventArgs e)
+            {
+                btn_change.Cursor = Cursors.Hand;
+                
+                if (!_active)
+                    btn_change.FlatAppearance.BorderColor = _activeBorder;
+            }
+
+
+            public void SetStateActive()
+            {
+                _active = true;
+                btn_change.FlatAppearance.BorderColor = _activeBorder;
+            }
+
+            public void SetStateNormal()
+            {
+                _active = false;
+                btn_change.FlatAppearance.BorderColor = back_color;
+            }
+        }
+
         public void StyleDatagridview(DataGridView dataGridView1, string style_mode)
         {
             switch (style_mode)
@@ -829,12 +1282,7 @@ namespace SRL
             cb.Margin = pad;
         }
 
-        public void FullScreenNoTaskbar(Control control)
-        {
-            control.Left = control.Top = 0;
-            control.Width = Screen.PrimaryScreen.WorkingArea.Width;
-            control.Height = Screen.PrimaryScreen.WorkingArea.Height;
-        }
+
         public void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false)
         {
             if (reset_child_font) child.Font = default(Font);
@@ -947,14 +1395,14 @@ namespace SRL
                 borders.right = form.Right - screenRectangle.Right;
                 return borders;
             }
-            public Modal(Control user_control, string title, int width_ = 1000, int height_ = 500, Color? back_color=null)
+            public Modal(Control user_control, string title, int width_ = 1000, int height_ = 500, Color? back_color = null)
             {
                 this.Text = title;
 
                 this.StartPosition = FormStartPosition.CenterScreen;
 
                 var borders = GetFormBorderSizes(this);
-                if (back_color != null) this.BackColor = (Color) back_color;
+                if (back_color != null) this.BackColor = (Color)back_color;
                 this.Width = width_ + borders.right + borders.left;
                 this.Height = height_ + borders.top + borders.bottom;
 
@@ -1457,11 +1905,11 @@ namespace SRL
         {
             return (pixel / dpi);
         }
-        public float StringToFloat(string value_to_parse, float? default_value = null, string app_decimal_symbol = "/", bool show_alarm_erro=true)
+        public float StringToFloat(string value_to_parse, float? default_value = null, string app_decimal_symbol = "/", bool show_alarm_erro = true)
         {
             if (string.IsNullOrWhiteSpace(value_to_parse)) return 0;
 
-            float value_parsed=0;
+            float value_parsed = 0;
             bool parse_try = StringToFloatTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
@@ -1478,13 +1926,13 @@ namespace SRL
             parse_try = StringToFloatTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
-            if(show_alarm_erro) MessageBox.Show("نماد اعشاری سیستم را به / تغییر دهید. ترجیحا از فرمت فارسی استفاده کنید");
+            if (show_alarm_erro) MessageBox.Show("نماد اعشاری سیستم را به / تغییر دهید. ترجیحا از فرمت فارسی استفاده کنید");
             if (default_value != null)
             {
                 value_parsed = (float)default_value;
                 return value_parsed;
             }
-            if (show_alarm_erro)  MessageBox.Show("متغیر اعشاری دارای مقدار 0 است و خطا ایجاد خواهد شد. فرمت سیستم را بررسی کنید");
+            if (show_alarm_erro) MessageBox.Show("متغیر اعشاری دارای مقدار 0 است و خطا ایجاد خواهد شد. فرمت سیستم را بررسی کنید");
             return value_parsed;
 
 
@@ -1636,7 +2084,7 @@ namespace SRL
             return national_id;
         }
 
-       public bool IsValidEmail(string email)
+        public bool IsValidEmail(string email)
         {
             try
             {
@@ -1974,7 +2422,7 @@ namespace SRL
         /// <param name="control_to_load"></param>
         public void UpdateConnectionString(string conStr, string conStrName, Control control_to_load)
         {
-            //for sqlite: @"metadata=res://*/Model.Model1.csdl|res://*/Model.Model1.ssdl|res://*/Model.Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=C:\Program Files\hesabdari\MyDatabase.sqlite'"
+            //for sqlite: @"metadata=res://*/Model.Model1.csdl|res://*/Model.Model1.ssdl|res://*/Model.Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=C:\Program Files\hami\MyDatabase.sqlite'"
 
             ControlLoader(control_to_load, "connecting database...");
 
@@ -2229,6 +2677,7 @@ namespace SRL
                 newFile.Close();
             }
         }
+
         public void MakePDF(Microsoft.Reporting.WinForms.ReportViewer reportViewer1, string fullFileName)
         {
             Microsoft.Reporting.WinForms.Warning[] warnings;
@@ -2265,6 +2714,27 @@ namespace SRL
         {
             e.DataSources.Add(new ReportDataSource(DatasetName, SubreportList));
         }
+
+        public bool GetLocalReportRdlcSize(ReportViewer report_viewer, out float width, out float height)
+        {
+            System.Drawing.Printing.PaperSize paper_size = new System.Drawing.Printing.PaperSize();
+            var report_setting = report_viewer.LocalReport.GetDefaultPageSettings();
+
+            float width_ = report_setting.PaperSize.Width / 100F;
+            float height_ = report_setting.PaperSize.Height / 100F;
+
+            width = width_;
+            height = height_;
+            if (report_setting.IsLandscape)
+            {
+                width=height_;
+                height = width_;
+
+            }
+
+            return report_setting.IsLandscape;
+
+        }
     }
     public class FileManagement
     {
@@ -2275,12 +2745,12 @@ namespace SRL
         /// <summary>
         /// get full path file and save or replace icon file
         /// </summary>
-        /// <param name="filePath">@"C:\hesabdari.exe"</param>
+        /// <param name="filePath">@"C:\hami.exe"</param>
         /// <param name="icon_full_path">@"e:\myfile.ico"</param>
         public void ExtractFileIcon(string filePath, string icon_full_path)
         {
             //@"e:\myfile.ico"
-            //  var filePath = @"C:\Users\lamso1387\Documents\Visual Studio 2012\Projects\hesabdari\hesabdari\bin\Release\hesabdari.exe";
+            //  var filePath = @"C:\Users\lamso1387\Documents\Visual Studio 2012\Projects\hami\hami\bin\Release\hami.exe";
             var theIcon = Icon.ExtractAssociatedIcon(filePath);
 
             if (theIcon != null)
@@ -2430,6 +2900,66 @@ namespace SRL
         }
 
 
+    }
+
+
+    /// <summary>
+    /// first call GetContentFontNameFromByte then call InstallFont
+    /// </summary>
+    public class FontClass
+    {
+        [DllImport("gdi32", EntryPoint = "AddFontResource")]
+        private static extern int AddFontResourceA(string lpFileName);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        private static extern int AddFontResource(string lpszFilename);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        private static extern int CreateScalableFontResource(uint fdwHidden, string
+        lpszFontRes, string lpszFontFile, string lpszCurrentPath);
+
+
+        /// <summary>
+        /// return font_name.ttf that is  WriteAllBytes from input bytes like Resources
+        /// </summary>
+        /// <param name="font_bytes">i.e. : Resources.irsan (irsan is resuource name)</param>
+        /// <returns>font_name.ttf that is input of InstallFont</returns>
+        public string GetContentFontNameFromByte(byte[] font_bytes)
+        {
+            string filename = "font_name.ttf";
+            System.IO.File.WriteAllBytes(filename, font_bytes);
+            return filename;
+        }
+
+
+        /// <summary>
+        /// Installs font on the user's system and adds it to the registry so it's available on the next session
+        /// Your font must be included in your project with its build path set to 'Content' and its Copy property
+        /// set to 'Copy Always'
+        /// </summary>
+        /// <param name="contentFontName">Your font to be passed as a resource (i.e. "myfont.tff" that is WriteAllBytes). get it from </param>
+        public void InstallFont(string contentFontName)
+        {
+            // Creates the full path where your font will be installed
+            var fontDestination = Path.Combine(System.Environment.GetFolderPath
+                                          (System.Environment.SpecialFolder.Fonts), contentFontName);
+
+            if (!System.IO.File.Exists(fontDestination))
+            {
+                // Copies font to destination
+                System.IO.File.Copy(Path.Combine(System.IO.Directory.GetCurrentDirectory(), contentFontName), fontDestination);
+
+                // Retrieves font name
+                // Makes sure you reference System.Drawing
+                PrivateFontCollection fontCol = new PrivateFontCollection();
+                fontCol.AddFontFile(fontDestination);
+                var actualFontName = fontCol.Families[0].Name;
+
+                //Add font
+                AddFontResource(fontDestination);
+                //Add registry entry   
+                Microsoft.Win32.Registry.SetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts",
+          actualFontName, contentFontName, Microsoft.Win32.RegistryValueKind.String);
+            }
+        }
     }
 
 
