@@ -26,17 +26,17 @@ namespace SRL
         /// <summary>
         /// for update or you can use is_update=true or you can use is_update=false and remove db and license and .. files from sourec
         /// </summary>
-        /// <param name="application_exe_name_only_"></param>
+        /// <param name="application_name_without_extention"></param>
         /// <param name="application_to_display_name_"></param>
-        /// <param name="directory_install_path_"></param>
+        /// <param name="directory_install_path_">e.i. @"C:\Program Files\hami\" </param>
         /// <param name="is_update"></param>
         /// <param name="update_file_list_"></param>
-        public Setup(string application_exe_name_only_, string application_to_display_name_, string directory_install_path_, bool is_update, List<string> update_file_list_ = null)
+        public Setup(string application_name_without_extention, string application_to_display_name_, string directory_install_path_, bool is_update, List<string> update_file_list_ = null)
         {
             InitializeComponent();
 
             dir_install_name = directory_install_path_;
-            app_exe_name = application_exe_name_only_;
+            app_exe_name = application_name_without_extention;
             update_file_list = update_file_list_;
             app_display_name= application_to_display_name_;
 
