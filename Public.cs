@@ -30,6 +30,7 @@ using System.Net.Mail;
 using System.Drawing.Printing;
 using System.Collections;
 using System.Drawing.Text;
+using System.Linq.Expressions;
 
 namespace SRL
 {
@@ -66,11 +67,11 @@ namespace SRL
             int iHeaderHeight = 0; //Used for the header height
             #endregion
 
-            public PrintFromDatagridView(DataGridView dataGridView1_)
+            public PrintFromDatagridView(DataGridView dataGridView1_, string printer_name = null)
             {
                 dataGridView1 = dataGridView1_;
                 printDialog.Document = printDocument1;
-
+                if (printer_name != null) printDialog.PrinterSettings.PrinterName = printer_name;
                 System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.WaitCursor;
 
 
@@ -479,6 +480,7 @@ namespace SRL
             kv["print_height1"] = "3";
             kv["print_width_container_plus1"] = "3";
             kv["print_height_container_plus1"] = "76";
+            kv["printer_name"] = "Fax";
             kv["db_version"] = "1";
 
             return kv;
@@ -555,47 +557,16 @@ namespace SRL
             return error;
 
         }
-        public void ShowSettingInControls(Control form_font_size = null, Control menu_font_size = null,
-            Control child_width_relative = null, Control child_height_relative = null, Control font_name = null,
-            Control form_back_color = null, Control menu_back_color = null, Control font_factor = null,
-            Control print_width1 = null, Control print_height1 = null, Control print_width_container_plus1 = null,
-            Control print_height_container_plus1 = null, Control db_version = null)
+        public void ShowSettingInControls(Control form_font_size = null)
         {
             if (form_font_size != null) form_font_size.Text = SqlQuerySettingTable("form_font_size");
-            if (menu_font_size != null) menu_font_size.Text = SqlQuerySettingTable("menu_font_size");
-            if (child_width_relative != null) child_width_relative.Text = SqlQuerySettingTable("child_width_relative");
-            if (child_height_relative != null) child_height_relative.Text = SqlQuerySettingTable("child_height_relative");
-            if (font_name != null) font_name.Text = SqlQuerySettingTable("font_name");
-            if (form_back_color != null) form_back_color.BackColor = Color.FromName(SqlQuerySettingTable("form_back_color"));
-            if (menu_back_color != null) menu_back_color.BackColor = Color.FromName(SqlQuerySettingTable("menu_back_color"));
-            if (font_factor != null) font_factor.Text = SqlQuerySettingTable("font_factor");
-            if (print_width1 != null) print_width1.Text = SqlQuerySettingTable("print_width1");
-            if (print_height1 != null) print_height1.Text = SqlQuerySettingTable("print_height1");
-            if (print_width_container_plus1 != null) print_width_container_plus1.Text = SqlQuerySettingTable("print_width_container_plus1");
-            if (print_height_container_plus1 != null) print_height_container_plus1.Text = SqlQuerySettingTable("print_height_container_plus1");
-            if (db_version != null) db_version.Text = SqlQuerySettingTable("db_version");
         }
 
-        public string UpdateSetting(string form_font_size = null, string menu_font_size = null,
-            string child_width_relative = null, string child_height_relative = null, string font_name = null,
-            string form_back_color = null, string menu_back_color = null, string font_factor = null,
-            string print_width1 = null, string print_height1 = null, string print_width_container_plus1 = null,
-            string print_height_container_plus1 = null)
+        public string UpdateSetting(string form_font_size = null)
         {
             string error = string.Empty;
 
             if (form_font_size != null) error = ExecuteUpdateSettingTable("form_font_size", form_font_size);
-            if (menu_font_size != null) error = ExecuteUpdateSettingTable("menu_font_size", menu_font_size);
-            if (child_width_relative != null) error = ExecuteUpdateSettingTable("child_width_relative", child_width_relative);
-            if (child_height_relative != null) error = ExecuteUpdateSettingTable("child_height_relative", child_height_relative);
-            if (font_name != null) error = ExecuteUpdateSettingTable("font_name", font_name);
-            if (form_back_color != null) error = ExecuteUpdateSettingTable("form_back_color", form_back_color);
-            if (menu_back_color != null) error = ExecuteUpdateSettingTable("menu_back_color", menu_back_color);
-            if (font_factor != null) error = ExecuteUpdateSettingTable("font_factor", font_factor);
-            if (print_width1 != null) error = ExecuteUpdateSettingTable("print_width1", print_width1);
-            if (print_height1 != null) error = ExecuteUpdateSettingTable("print_height1", print_height1);
-            if (print_width_container_plus1 != null) error = ExecuteUpdateSettingTable("print_width_container_plus1", print_width_container_plus1);
-            if (print_height_container_plus1 != null) error = ExecuteUpdateSettingTable("print_height_container_plus1", print_height_container_plus1);
 
             return error;
         }
@@ -740,11 +711,13 @@ namespace SRL
     }
     public class ClassManagement<ClassType> // where ClassType : class 
     {
-
+       
         public ClassType CreateInstance()
         {
             return (ClassType)Activator.CreateInstance(typeof(ClassType));
         }
+
+        
 
         public void SetProperty(string property_name, ClassType instance, object value)
         {
@@ -775,6 +748,8 @@ namespace SRL
     }
     public class WinUI
     {
+
+
         public class TextBoxPlaceHolder
         {
             TextBox myTxtbx;
@@ -985,48 +960,43 @@ namespace SRL
             private static Color _activeBorder;
             private static Color _fore = System.Drawing.Color.White;
 
-            private static Padding _margin;// = new System.Windows.Forms.Padding(5, 0, 5, 0);
-            private static Padding _padding;// = new System.Windows.Forms.Padding(3, 3, 3, 3);
 
-            private static Size _minSize = new System.Drawing.Size(100, 30);
+            private static Size _minSize;
 
             private bool _active;
             Button btn_change;
 
             public StyleButton(Button btn_to_change, Color back_color_, Color _activeBorder_)
-                : base()
             {
                 btn_change = btn_to_change;
                 back_color = back_color_;
                 _activeBorder = _activeBorder_;
-                _margin = btn_change.Margin;
-                _padding = btn_change.Padding;
+
                 _minSize = btn_change.MinimumSize;
 
-                btn_change.Font = btn_to_change.Font;// _normalFont;
+
                 btn_change.BackColor = back_color;
                 btn_change.ForeColor = _fore;
                 btn_change.FlatAppearance.BorderColor = _back;
                 btn_change.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-                btn_change.Margin = _margin;
-                btn_change.Padding = _padding;
+
                 btn_change.UseVisualStyleBackColor = false;
                 btn_change.MouseEnter += Btn_to_change_MouseEnter;
                 btn_change.MouseLeave += Btn_to_change_MouseLeave;
                 btn_change.EnabledChanged += btn_change_EnabledChanged;
             }
 
-           private void btn_change_EnabledChanged(object sender, EventArgs e)
+            private void btn_change_EnabledChanged(object sender, EventArgs e)
             {
-               if (btn_change.Enabled)
-               {
-                   btn_change.BackColor = back_color;                   
-               }
-               else
-               {
-                btn_change.BackColor=   ControlPaint.LightLight(back_color);             
-               }
-               
+                if (btn_change.Enabled)
+                {
+                    btn_change.BackColor = back_color;
+                }
+                else
+                {
+                    btn_change.BackColor = ControlPaint.LightLight(back_color);
+                }
+
             }
 
             private void Btn_to_change_MouseLeave(object sender, EventArgs e)
@@ -1039,7 +1009,7 @@ namespace SRL
             private void Btn_to_change_MouseEnter(object sender, EventArgs e)
             {
                 btn_change.Cursor = Cursors.Hand;
-                
+
                 if (!_active)
                     btn_change.FlatAppearance.BorderColor = _activeBorder;
             }
@@ -1058,25 +1028,13 @@ namespace SRL
             }
         }
 
-        public void StyleDatagridview(DataGridView dataGridView1, string style_mode)
+        public void StyleDatagridview(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
         {
-            switch (style_mode)
-            {
-                case "1":
-                    dataGridView1.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                    dataGridView1.ColumnHeadersDefaultCellStyle.BackColor = Color.Aqua;
-                    dataGridView1.ColumnHeadersDefaultCellStyle.ForeColor = Color.Red;
-                    dataGridView1.ColumnHeadersHeight = 30;
-                    dataGridView1.RightToLeft = RightToLeft.Yes;
-                    dataGridView1.RowHeadersVisible = false;
-                    dataGridView1.EnableHeadersVisualStyles = false;
-                    dataGridView1.Width = dataGridView1.Columns.GetColumnsWidth(DataGridViewElementStates.None) + 3;
-                    break;
+            dataGridView1.DefaultCellStyle.Font = new Font(dataGridView1.DefaultCellStyle.Font.FontFamily, cell_size);
 
-                default:
-                    break;
-            }
+            dataGridView1.ColumnHeadersDefaultCellStyle.Font = new Font(dataGridView1.ColumnHeadersDefaultCellStyle.Font.FontFamily, header_size);
 
+            dataGridView1.RowTemplate.Height = 25;
         }
         public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, string basic_back_color_name)
         {
@@ -1212,6 +1170,20 @@ namespace SRL
             public string Text { get; set; }
             public object Value { get; set; }
         }
+
+        public string GetAppName(string default_app_name, string folder_containing_exe_path, List<string> file_not_searching, string app_extention_pattern = "*.exe")
+        {
+            string app_name = default_app_name;
+            var dirs = System.IO.Directory.GetFiles(folder_containing_exe_path, app_extention_pattern).Select(x => x);
+            foreach (var item in file_not_searching)
+            {
+                dirs = dirs.Where(name => !name.EndsWith(item));
+            }
+
+            app_name = System.IO.Path.GetFileNameWithoutExtension(dirs.DefaultIfEmpty(default_app_name).FirstOrDefault()).ToString();
+            return app_name;
+        }
+
         public T CloneControl<T>(T controlToClone)
             where T : Control
         {
@@ -1267,6 +1239,13 @@ namespace SRL
             control.TextMaskFormat = format;
             return raw_text;
         }
+
+        /// <summary>
+        /// you should define Itemheight to best size
+        /// </summary>
+        /// <param name="cb"></param>
+        /// <param name="height"></param>
+        /// <param name="pad"></param>
         public void MakeComboBoxSizable(ComboBox cb, int height, Padding pad)
         {
             cb.DrawMode = DrawMode.OwnerDrawFixed;
@@ -1290,16 +1269,22 @@ namespace SRL
             parent.Controls.Add(child);
             AliagnChildToParent(parent, child);
         }
-        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false)
+        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false, bool use_parent_font_size = false, bool reset_child_font = false)
         {
             FontFamily font_family = child.Font.FontFamily;
             FontStyle font_style = child.Font.Style;
+            float child_font_size = child.Font.Size;
+
             if (use_parent_font_family)
             {
                 font_family = parent.Font.FontFamily;
                 font_style = parent.Font.Style;
             }
 
+            if (use_parent_font_size)
+            {
+                child_font_size = parent.Font.Size;
+            }
 
             if (!font_family.IsStyleAvailable(font_style))
             {
@@ -1309,7 +1294,6 @@ namespace SRL
                     font_family.IsStyleAvailable(FontStyle.Underline) ? FontStyle.Underline : FontStyle.Strikeout;
             }
 
-            //    child.Font = new Font(font_family, child.Font.Size * (float)font_factor, font_style);
 
             decimal x_relative = Decimal.Divide(parent.Width, child.Width);
             decimal y_relative = Decimal.Divide(parent.Height, child.Height);
@@ -1317,10 +1301,10 @@ namespace SRL
             f *= font_factor;
 
 
+            child.Font = new Font(font_family, child_font_size * (float)f, font_style);
 
-            child.Font = new Font(font_family, child.Font.Size * (float)f, font_style);
+            AddChildToParentControlsAliagn(parent, child, reset_child_font);
 
-            AddChildToParentControlsAliagn(parent, child);
         }
 
         public void AliagnChildToParent(Control parent, Control child)
@@ -1332,6 +1316,22 @@ namespace SRL
 
         }
 
+        public void AliagnChildWidthToParent(Control parent, Control child)
+        {
+            child.Location = new Point(
+    parent.ClientSize.Width / 2 - child.Size.Width / 2,
+    child.Location.Y);
+            child.Anchor = AnchorStyles.None;
+
+        }
+        public void AliagnChildHeightToParent(Control parent, Control child)
+        {
+            child.Location = new Point(
+    child.Location.X,
+    parent.ClientSize.Height / 2 - child.Size.Height / 2);
+            child.Anchor = AnchorStyles.None;
+
+        }
         public void AdjustChildToParent(Control parent_form, Control child, double child_width_relative, double child_height_relative)
         {
             int form_x = parent_form.Width;
@@ -2420,17 +2420,37 @@ namespace SRL
         /// <param name="conStr">metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SqlClient;provider connection string="data source=.\SOHEILLAMSO;initial catalog=Semnan;integrated security=True;MultipleActiveResultSets=True;App=EntityFramework"</param>
         /// <param name="conStrName">e.g. SemnanEntity</param>
         /// <param name="control_to_load"></param>
-        public void UpdateConnectionString(string conStr, string conStrName, Control control_to_load)
+        public bool UpdateConnectionString(string conStr, string conStrName, Control control_to_load = null)
         {
             //for sqlite: @"metadata=res://*/Model.Model1.csdl|res://*/Model.Model1.ssdl|res://*/Model.Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=C:\Program Files\hami\MyDatabase.sqlite'"
+            // or :       @"metadata=res://*/Model.Model1.csdl|res://*/Model.Model1.ssdl|res://*/Model.Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=&quot;MyDatabase.sqlite&quot;'"
 
-            ControlLoader(control_to_load, "connecting database...");
+            if (control_to_load != null) ControlLoader(control_to_load, "connecting database...");
 
             var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             var connectionStringsSection = (ConnectionStringsSection)config.GetSection("connectionStrings");
+            string last_con = connectionStringsSection.ConnectionStrings[conStrName].ConnectionString;
             connectionStringsSection.ConnectionStrings[conStrName].ConnectionString = conStr;
             config.Save();
             ConfigurationManager.RefreshSection("connectionStrings");
+
+            if (last_con != conStr) return false;
+            else return true;
+
+        }
+
+        public void UpdateConnectionStringAndRestart(string conStr, string conStrName, Control control_to_load)
+        {
+            using (SRL.Database dbsrl = new SRL.Database())
+            {
+                if (!dbsrl.UpdateConnectionString(conStr, conStrName, control_to_load))
+                {
+                    Application.Restart();
+                    Environment.Exit(0);
+                }
+
+            }
+
         }
 
     }
@@ -2727,7 +2747,7 @@ namespace SRL
             height = height_;
             if (report_setting.IsLandscape)
             {
-                width=height_;
+                width = height_;
                 height = width_;
 
             }
@@ -2742,6 +2762,10 @@ namespace SRL
         {
 
         }
+
+
+
+
         /// <summary>
         /// get full path file and save or replace icon file
         /// </summary>
@@ -2771,17 +2795,19 @@ namespace SRL
                 writer.Flush();
             }
         }
-        public void MakeShortcut(string shortcut_name, string shortcut_directory, string full_path_to_file)
+        public void MakeShortcut(string shortcut_name, string shortcut_directory, string file_directory_path, string file_with_extention)
         {
+            string full_path_to_file=System.IO.Path.Combine(file_directory_path,file_with_extention);
+
             WshShell wsh = new WshShell();
             IWshRuntimeLibrary.IWshShortcut shortcut = wsh.CreateShortcut(
                 shortcut_directory + "\\" + shortcut_name + ".lnk") as IWshRuntimeLibrary.IWshShortcut;
-            // shortcut.Arguments = "c:\\app\\1.docx";
+            shortcut.Arguments = full_path_to_file;
             shortcut.TargetPath = full_path_to_file;
             // not sure about what this is for
             shortcut.WindowStyle = 1;
             shortcut.Description = full_path_to_file;
-            // shortcut.WorkingDirectory = "c:\\app";
+            shortcut.WorkingDirectory = file_directory_path;
             string icon_path = Path.GetDirectoryName(full_path_to_file) + "\\" + shortcut_name + ".ico";
             ExtractFileIcon(full_path_to_file, icon_path);
             shortcut.IconLocation = icon_path;
@@ -2899,6 +2925,8 @@ namespace SRL
             }
         }
 
+       
+
 
     }
 
@@ -2922,11 +2950,10 @@ namespace SRL
         /// </summary>
         /// <param name="font_bytes">i.e. : Resources.irsan (irsan is resuource name)</param>
         /// <returns>font_name.ttf that is input of InstallFont</returns>
-        public string GetContentFontNameFromByte(byte[] font_bytes)
+        public string GetContentFontNameFromByte(byte[] font_bytes, string filename_with_extention)
         {
-            string filename = "font_name.ttf";
-            System.IO.File.WriteAllBytes(filename, font_bytes);
-            return filename;
+            System.IO.File.WriteAllBytes(filename_with_extention, font_bytes);
+            return filename_with_extention;
         }
 
 

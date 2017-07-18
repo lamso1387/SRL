@@ -40,9 +40,7 @@
             this.role = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.btnDel = new System.Windows.Forms.Button();
             this.panel1 = new System.Windows.Forms.Panel();
-            this.btnNew = new System.Windows.Forms.Button();
-            this.btnEdit = new System.Windows.Forms.Button();
-            this.btnAdd = new System.Windows.Forms.Button();
+            this.tbRole = new System.Windows.Forms.TextBox();
             this.label6 = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
@@ -54,8 +52,10 @@
             this.tbUsername = new System.Windows.Forms.TextBox();
             this.tbFamily = new System.Windows.Forms.TextBox();
             this.tbname = new System.Windows.Forms.TextBox();
+            this.btnNew = new System.Windows.Forms.Button();
+            this.btnEdit = new System.Windows.Forms.Button();
+            this.btnAdd = new System.Windows.Forms.Button();
             this.errorProvider1 = new System.Windows.Forms.ErrorProvider(this.components);
-            this.tbRole = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.dgvUsers)).BeginInit();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.errorProvider1)).BeginInit();
@@ -90,13 +90,14 @@
             dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
             dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
             this.dgvUsers.DefaultCellStyle = dataGridViewCellStyle2;
-            this.dgvUsers.Location = new System.Drawing.Point(13, 10);
+            this.dgvUsers.Location = new System.Drawing.Point(92, 29);
             this.dgvUsers.MultiSelect = false;
             this.dgvUsers.Name = "dgvUsers";
             this.dgvUsers.ReadOnly = true;
             this.dgvUsers.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            this.dgvUsers.RowTemplate.Height = 35;
             this.dgvUsers.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvUsers.Size = new System.Drawing.Size(684, 309);
+            this.dgvUsers.Size = new System.Drawing.Size(684, 372);
             this.dgvUsers.TabIndex = 12;
             this.dgvUsers.SelectionChanged += new System.EventHandler(this.dgvUsers_SelectionChanged);
             // 
@@ -143,9 +144,9 @@
             // 
             // btnDel
             // 
-            this.btnDel.Location = new System.Drawing.Point(495, 325);
+            this.btnDel.Location = new System.Drawing.Point(543, 418);
             this.btnDel.Name = "btnDel";
-            this.btnDel.Size = new System.Drawing.Size(100, 35);
+            this.btnDel.Size = new System.Drawing.Size(105, 41);
             this.btnDel.TabIndex = 13;
             this.btnDel.Text = "حذف";
             this.btnDel.UseVisualStyleBackColor = true;
@@ -154,9 +155,6 @@
             // panel1
             // 
             this.panel1.Controls.Add(this.tbRole);
-            this.panel1.Controls.Add(this.btnNew);
-            this.panel1.Controls.Add(this.btnEdit);
-            this.panel1.Controls.Add(this.btnAdd);
             this.panel1.Controls.Add(this.label6);
             this.panel1.Controls.Add(this.label5);
             this.panel1.Controls.Add(this.label4);
@@ -168,45 +166,23 @@
             this.panel1.Controls.Add(this.tbUsername);
             this.panel1.Controls.Add(this.tbFamily);
             this.panel1.Controls.Add(this.tbname);
-            this.panel1.Location = new System.Drawing.Point(13, 370);
+            this.panel1.Location = new System.Drawing.Point(40, 481);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(684, 171);
+            this.panel1.Size = new System.Drawing.Size(761, 108);
             this.panel1.TabIndex = 14;
             // 
-            // btnNew
+            // tbRole
             // 
-            this.btnNew.Location = new System.Drawing.Point(588, 128);
-            this.btnNew.Name = "btnNew";
-            this.btnNew.Size = new System.Drawing.Size(52, 34);
-            this.btnNew.TabIndex = 16;
-            this.btnNew.Text = "جدید";
-            this.btnNew.UseVisualStyleBackColor = true;
-            this.btnNew.Click += new System.EventHandler(this.btnNew_Click);
-            // 
-            // btnEdit
-            // 
-            this.btnEdit.Location = new System.Drawing.Point(265, 127);
-            this.btnEdit.Name = "btnEdit";
-            this.btnEdit.Size = new System.Drawing.Size(100, 35);
-            this.btnEdit.TabIndex = 15;
-            this.btnEdit.Text = "ویرایش";
-            this.btnEdit.UseVisualStyleBackColor = true;
-            this.btnEdit.Click += new System.EventHandler(this.btnEdit_Click);
-            // 
-            // btnAdd
-            // 
-            this.btnAdd.Location = new System.Drawing.Point(482, 128);
-            this.btnAdd.Name = "btnAdd";
-            this.btnAdd.Size = new System.Drawing.Size(100, 34);
-            this.btnAdd.TabIndex = 5;
-            this.btnAdd.Text = "افزودن";
-            this.btnAdd.UseVisualStyleBackColor = true;
-            this.btnAdd.Click += new System.EventHandler(this.btnAdd_Click);
+            this.tbRole.Location = new System.Drawing.Point(297, 56);
+            this.tbRole.Name = "tbRole";
+            this.tbRole.ReadOnly = true;
+            this.tbRole.Size = new System.Drawing.Size(100, 34);
+            this.tbRole.TabIndex = 17;
             // 
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(144, 67);
+            this.label6.Location = new System.Drawing.Point(144, 62);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(63, 26);
             this.label6.TabIndex = 6;
@@ -215,7 +191,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(371, 67);
+            this.label5.Location = new System.Drawing.Point(403, 59);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(36, 26);
             this.label5.TabIndex = 6;
@@ -224,7 +200,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(588, 67);
+            this.label4.Location = new System.Drawing.Point(654, 67);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(76, 26);
             this.label4.TabIndex = 6;
@@ -233,7 +209,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(588, 23);
+            this.label3.Location = new System.Drawing.Point(654, 23);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(26, 26);
             this.label3.TabIndex = 6;
@@ -242,7 +218,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(371, 26);
+            this.label2.Location = new System.Drawing.Point(403, 18);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(66, 26);
             this.label2.TabIndex = 6;
@@ -251,7 +227,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(144, 26);
+            this.label1.Location = new System.Drawing.Point(144, 21);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(57, 26);
             this.label1.TabIndex = 6;
@@ -259,7 +235,7 @@
             // 
             // tbPassRep
             // 
-            this.tbPassRep.Location = new System.Drawing.Point(38, 62);
+            this.tbPassRep.Location = new System.Drawing.Point(38, 57);
             this.tbPassRep.Name = "tbPassRep";
             this.tbPassRep.PasswordChar = '*';
             this.tbPassRep.Size = new System.Drawing.Size(100, 34);
@@ -267,7 +243,7 @@
             // 
             // tbPass
             // 
-            this.tbPass.Location = new System.Drawing.Point(38, 23);
+            this.tbPass.Location = new System.Drawing.Point(38, 18);
             this.tbPass.Name = "tbPass";
             this.tbPass.PasswordChar = '*';
             this.tbPass.Size = new System.Drawing.Size(100, 34);
@@ -275,48 +251,73 @@
             // 
             // tbUsername
             // 
-            this.tbUsername.Location = new System.Drawing.Point(265, 23);
+            this.tbUsername.Location = new System.Drawing.Point(297, 15);
             this.tbUsername.Name = "tbUsername";
             this.tbUsername.Size = new System.Drawing.Size(100, 34);
             this.tbUsername.TabIndex = 2;
             // 
             // tbFamily
             // 
-            this.tbFamily.Location = new System.Drawing.Point(482, 64);
+            this.tbFamily.Location = new System.Drawing.Point(548, 59);
             this.tbFamily.Name = "tbFamily";
             this.tbFamily.Size = new System.Drawing.Size(100, 34);
             this.tbFamily.TabIndex = 1;
             // 
             // tbname
             // 
-            this.tbname.Location = new System.Drawing.Point(482, 23);
+            this.tbname.Location = new System.Drawing.Point(548, 18);
             this.tbname.Name = "tbname";
             this.tbname.Size = new System.Drawing.Size(100, 34);
             this.tbname.TabIndex = 0;
             // 
+            // btnNew
+            // 
+            this.btnNew.Location = new System.Drawing.Point(662, 418);
+            this.btnNew.Name = "btnNew";
+            this.btnNew.Size = new System.Drawing.Size(105, 41);
+            this.btnNew.TabIndex = 16;
+            this.btnNew.Text = "جدید";
+            this.btnNew.UseVisualStyleBackColor = true;
+            this.btnNew.Click += new System.EventHandler(this.btnNew_Click);
+            // 
+            // btnEdit
+            // 
+            this.btnEdit.Location = new System.Drawing.Point(78, 595);
+            this.btnEdit.Name = "btnEdit";
+            this.btnEdit.Size = new System.Drawing.Size(105, 42);
+            this.btnEdit.TabIndex = 15;
+            this.btnEdit.Text = "ویرایش";
+            this.btnEdit.UseVisualStyleBackColor = true;
+            this.btnEdit.Click += new System.EventHandler(this.btnEdit_Click);
+            // 
+            // btnAdd
+            // 
+            this.btnAdd.Location = new System.Drawing.Point(203, 595);
+            this.btnAdd.Name = "btnAdd";
+            this.btnAdd.Size = new System.Drawing.Size(105, 42);
+            this.btnAdd.TabIndex = 5;
+            this.btnAdd.Text = "افزودن";
+            this.btnAdd.UseVisualStyleBackColor = true;
+            this.btnAdd.Click += new System.EventHandler(this.btnAdd_Click);
+            // 
             // errorProvider1
             // 
             this.errorProvider1.ContainerControl = this;
-            // 
-            // tbRole
-            // 
-            this.tbRole.Location = new System.Drawing.Point(265, 64);
-            this.tbRole.Name = "tbRole";
-            this.tbRole.ReadOnly = true;
-            this.tbRole.Size = new System.Drawing.Size(100, 34);
-            this.tbRole.TabIndex = 17;
             // 
             // WinLoginUser
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 26F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.panel1);
+            this.Controls.Add(this.btnAdd);
+            this.Controls.Add(this.btnEdit);
+            this.Controls.Add(this.btnNew);
             this.Controls.Add(this.btnDel);
             this.Controls.Add(this.dgvUsers);
             this.Font = new System.Drawing.Font("B Koodak", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
             this.Margin = new System.Windows.Forms.Padding(5);
             this.Name = "WinLoginUser";
-            this.Size = new System.Drawing.Size(714, 559);
+            this.Size = new System.Drawing.Size(843, 666);
             this.Load += new System.EventHandler(this.WinLoginUser_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dgvUsers)).EndInit();
             this.panel1.ResumeLayout(false);

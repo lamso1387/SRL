@@ -43,15 +43,22 @@ namespace SRL
             if (back_color_ != null) this.BackColor = (Color) back_color_;
         }
 
-        public Point ChangeLoginFormLocation(int x, int y)
+        public Point ChangeLoginFormLocation(bool is_width_center_align, int y, int x=0)
         {
+            if (is_width_center_align)
+            {
+                new SRL.WinTools().AliagnChildWidthToParent(this, pnlLoginForm);
+                x = pnlLoginForm.Location.X;
+            }
             pnlLoginForm.Location = new Point(x, y);
             return pnlLoginForm.Location;
         }
-        public void ChangeFootNote(string str, int x, int y)
+        public void ChangeFootNote(string str,bool is_center_align,float font_size, int x=0, int y=0 )
         {
-            lblFotNote.Text = str;
-            lblFotNote.Location = new Point(x, y);
+            lblFotNote.Text = str;           
+            lblFotNote.Font = new Font(lblFotNote.Font.FontFamily, font_size,lblFotNote.Font.Style);
+            if (is_center_align) new SRL.WinTools().AliagnChildToParent(pnlFoot, lblFotNote);
+            else lblFotNote.Location = new Point(x, y);
         }
         public void ChangeTitle(string str, int x, int y)
         {

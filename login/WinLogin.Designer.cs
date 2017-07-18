@@ -35,12 +35,12 @@
             this.label2 = new System.Windows.Forms.Label();
             this.lblExit = new System.Windows.Forms.LinkLabel();
             this.pnlLoginForm = new System.Windows.Forms.Panel();
-            this.panel1 = new System.Windows.Forms.Panel();
+            this.pnlFoot = new System.Windows.Forms.Panel();
             this.lblFotNote = new System.Windows.Forms.Label();
             this.panel2 = new System.Windows.Forms.Panel();
             this.lblTitle = new System.Windows.Forms.Label();
             this.pnlLoginForm.SuspendLayout();
-            this.panel1.SuspendLayout();
+            this.pnlFoot.SuspendLayout();
             this.panel2.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -125,15 +125,15 @@
             this.pnlLoginForm.Size = new System.Drawing.Size(178, 221);
             this.pnlLoginForm.TabIndex = 6;
             // 
-            // panel1
+            // pnlFoot
             // 
-            this.panel1.BackColor = System.Drawing.Color.Transparent;
-            this.panel1.Controls.Add(this.lblFotNote);
-            this.panel1.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panel1.Location = new System.Drawing.Point(0, 419);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(396, 43);
-            this.panel1.TabIndex = 7;
+            this.pnlFoot.BackColor = System.Drawing.Color.Transparent;
+            this.pnlFoot.Controls.Add(this.lblFotNote);
+            this.pnlFoot.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.pnlFoot.Location = new System.Drawing.Point(0, 419);
+            this.pnlFoot.Name = "pnlFoot";
+            this.pnlFoot.Size = new System.Drawing.Size(396, 43);
+            this.pnlFoot.TabIndex = 7;
             // 
             // lblFotNote
             // 
@@ -177,7 +177,7 @@
             this.ControlBox = false;
             this.Controls.Add(this.lblTitle);
             this.Controls.Add(this.panel2);
-            this.Controls.Add(this.panel1);
+            this.Controls.Add(this.pnlFoot);
             this.Controls.Add(this.pnlLoginForm);
             this.Font = new System.Drawing.Font("B Koodak", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
@@ -190,8 +190,8 @@
             this.Load += new System.EventHandler(this.WinLogin_Load);
             this.pnlLoginForm.ResumeLayout(false);
             this.pnlLoginForm.PerformLayout();
-            this.panel1.ResumeLayout(false);
-            this.panel1.PerformLayout();
+            this.pnlFoot.ResumeLayout(false);
+            this.pnlFoot.PerformLayout();
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();
             this.ResumeLayout(false);
@@ -208,7 +208,7 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.LinkLabel lblExit;
         private System.Windows.Forms.Panel pnlLoginForm;
-        private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Panel pnlFoot;
         private System.Windows.Forms.Label lblFotNote;
         private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Label lblTitle;

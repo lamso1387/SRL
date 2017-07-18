@@ -26,12 +26,18 @@ namespace SRL
         /// <param name="db_"></param>
         /// <param name="entity_name_"></param>
         /// <param name="session_"></param>
-        public WinLoginUser(DbContext db_, string entity_name_, WinSessionId session_)
+        public WinLoginUser(DbContext db_, string entity_name_, WinSessionId session_, Color btn_color)
         {
             InitializeComponent();
             db = db_;
             entity_name = entity_name_;
             session = session_;
+
+            foreach (var item in new SRL.ChildParent().GetAllChildrenControls(this).OfType<Button>())
+            {
+                new SRL.WinUI.StyleButton(item, btn_color, Color.Black);
+            }
+
         }
 
         private void LoadUsersInDgv(DataGridView dgv)

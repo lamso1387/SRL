@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.tbSource = new System.Windows.Forms.TextBox();
@@ -38,33 +39,30 @@
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.btnUpdate = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
-            this.tbappname = new System.Windows.Forms.TextBox();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.tbDb = new System.Windows.Forms.TextBox();
-            this.btnDb = new System.Windows.Forms.Button();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.progressBar1 = new System.Windows.Forms.ProgressBar();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.SuspendLayout();
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(734, 16);
+            this.label1.Location = new System.Drawing.Point(709, 16);
             this.label1.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(77, 26);
+            this.label1.Size = new System.Drawing.Size(91, 26);
             this.label1.TabIndex = 0;
-            this.label1.Text = "فایلهای نصبی";
+            this.label1.Text = "پوشه فایل نصب";
             // 
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(648, 107);
+            this.label2.Location = new System.Drawing.Point(688, 107);
             this.label2.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(152, 26);
+            this.label2.Size = new System.Drawing.Size(112, 26);
             this.label2.TabIndex = 1;
-            this.label2.Text = "محل نصب ( محل پیشنهادی)";
+            this.label2.Text = "محل نصب نرم افزار";
             // 
             // tbSource
             // 
@@ -86,7 +84,7 @@
             // 
             // btnCopy
             // 
-            this.btnCopy.Location = new System.Drawing.Point(700, 411);
+            this.btnCopy.Location = new System.Drawing.Point(700, 271);
             this.btnCopy.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
             this.btnCopy.Name = "btnCopy";
             this.btnCopy.Size = new System.Drawing.Size(100, 37);
@@ -119,7 +117,7 @@
             // 
             // btnUpdate
             // 
-            this.btnUpdate.Location = new System.Drawing.Point(586, 411);
+            this.btnUpdate.Location = new System.Drawing.Point(586, 271);
             this.btnUpdate.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
             this.btnUpdate.Name = "btnUpdate";
             this.btnUpdate.Size = new System.Drawing.Size(100, 37);
@@ -130,7 +128,7 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(463, 411);
+            this.button1.Location = new System.Drawing.Point(463, 271);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(100, 37);
             this.button1.TabIndex = 8;
@@ -138,69 +136,23 @@
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
-            // tbappname
-            // 
-            this.tbappname.Location = new System.Drawing.Point(564, 320);
-            this.tbappname.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
-            this.tbappname.Name = "tbappname";
-            this.tbappname.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-            this.tbappname.Size = new System.Drawing.Size(236, 34);
-            this.tbappname.TabIndex = 10;
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(660, 288);
-            this.label3.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(140, 26);
-            this.label3.TabIndex = 9;
-            this.label3.Text = "نام نرم افزار جهت نمایش";
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(734, 193);
-            this.label4.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(66, 26);
-            this.label4.TabIndex = 9;
-            this.label4.Text = "پایگاه داده";
-            // 
-            // tbDb
-            // 
-            this.tbDb.Font = new System.Drawing.Font("Times New Roman", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
-            this.tbDb.Location = new System.Drawing.Point(564, 225);
-            this.tbDb.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
-            this.tbDb.Name = "tbDb";
-            this.tbDb.Size = new System.Drawing.Size(236, 29);
-            this.tbDb.TabIndex = 10;
-            // 
-            // btnDb
-            // 
-            this.btnDb.Location = new System.Drawing.Point(516, 225);
-            this.btnDb.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
-            this.btnDb.Name = "btnDb";
-            this.btnDb.Size = new System.Drawing.Size(38, 29);
-            this.btnDb.TabIndex = 11;
-            this.btnDb.Text = "..";
-            this.btnDb.UseVisualStyleBackColor = true;
-            this.btnDb.Click += new System.EventHandler(this.btnDb_Click);
-            // 
             // openFileDialog1
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
+            // 
+            // progressBar1
+            // 
+            this.progressBar1.Location = new System.Drawing.Point(70, 210);
+            this.progressBar1.Name = "progressBar1";
+            this.progressBar1.Size = new System.Drawing.Size(730, 23);
+            this.progressBar1.TabIndex = 9;
             // 
             // Setup
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 26F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(818, 472);
-            this.Controls.Add(this.btnDb);
-            this.Controls.Add(this.tbDb);
-            this.Controls.Add(this.label4);
-            this.Controls.Add(this.tbappname);
-            this.Controls.Add(this.label3);
+            this.ClientSize = new System.Drawing.Size(818, 336);
+            this.Controls.Add(this.progressBar1);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.btnUpdate);
             this.Controls.Add(this.btnBrowsDes);
@@ -233,12 +185,9 @@
         private System.Windows.Forms.FolderBrowserDialog folderBrowserDialog1;
         private System.Windows.Forms.Button btnUpdate;
         private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.TextBox tbappname;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.TextBox tbDb;
-        private System.Windows.Forms.Button btnDb;
         private System.Windows.Forms.OpenFileDialog openFileDialog1;
+        private System.Windows.Forms.ProgressBar progressBar1;
+        private System.Windows.Forms.Timer timer1;
     }
 }
 

@@ -107,15 +107,15 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="tools\Setup.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="tools\Setup.designer.cs">
-      <DependentUpon>Setup.cs</DependentUpon>
-    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublicForm.aspx.cs" />
     <Compile Include="Public.cs" />
+    <Compile Include="setup\Setup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="setup\Setup.designer.cs">
+      <DependentUpon>Setup.cs</DependentUpon>
+    </Compile>
     <Compile Include="tools\TextBoxBorderColor.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -185,9 +185,7 @@
     <None Include="doc\google map.rtf" />
     <None Include="doc\select2.rtf" />
     <None Include="doc\sqlite.docx" />
-    <None Include="tools\app.manifest">
-      <SubType>Designer</SubType>
-    </None>
+    <None Include="setup\app.manifest" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="license\WinLicenseActivation.resx">
@@ -203,14 +201,14 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <EmbeddedResource Include="tools\Setup.resx">
-      <DependentUpon>Setup.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="login\WinLogin.resx">
       <DependentUpon>WinLogin.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="login\WinLoginUser.resx">
       <DependentUpon>WinLoginUser.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="setup\Setup.resx">
+      <DependentUpon>Setup.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
@@ -224,6 +222,7 @@
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
