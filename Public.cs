@@ -711,13 +711,13 @@ namespace SRL
     }
     public class ClassManagement<ClassType> // where ClassType : class 
     {
-       
+
         public ClassType CreateInstance()
         {
             return (ClassType)Activator.CreateInstance(typeof(ClassType));
         }
 
-        
+
 
         public void SetProperty(string property_name, ClassType instance, object value)
         {
@@ -967,7 +967,7 @@ namespace SRL
             private bool _active;
             Button btn_change;
 
-            public StyleButton(Button btn_to_change, Color back_color_, Color _activeBorder_ ,Color? back_color_disabled_=null)
+            public StyleButton(Button btn_to_change, Color back_color_, Color _activeBorder_, Color? back_color_disabled_ = null)
             {
                 btn_change = btn_to_change;
                 back_color = back_color_;
@@ -985,9 +985,9 @@ namespace SRL
                 btn_change.MouseEnter += Btn_to_change_MouseEnter;
                 btn_change.MouseLeave += Btn_to_change_MouseLeave;
                 btn_change.EnabledChanged += btn_change_EnabledChanged;
-                
-              back_color_disabled=back_color_disabled_ !=null ? (Color)back_color_disabled_ :  ControlPaint.LightLight(back_color);
-                
+
+                back_color_disabled = back_color_disabled_ != null ? (Color)back_color_disabled_ : ControlPaint.LightLight(back_color);
+
             }
 
             private void btn_change_EnabledChanged(object sender, EventArgs e)
@@ -1937,7 +1937,7 @@ namespace SRL
             if (show_alarm_error) MessageBox.Show("نماد اعشاری سیستم را به / تغییر دهید. ترجیحا از فرمت فارسی استفاده کنید");
             if (default_value != null)
             {
-                value_parsed =  (decimal)default_value;
+                value_parsed = (decimal)default_value;
                 return value_parsed;
             }
             if (show_alarm_error) MessageBox.Show("متغیر اعشاری دارای مقدار 0 است و خطا ایجاد خواهد شد. فرمت سیستم را بررسی کنید");
@@ -2791,11 +2791,15 @@ namespace SRL
                 using (var stream = new System.IO.FileStream(icon_full_path, System.IO.FileMode.OpenOrCreate))
                 {
                     theIcon.Save(stream);
+                    stream.Close();
                 }
             }
+
         }
+
         public void MakeShortcutUrl(string shortcut_name, string shortcut_directory, string full_path_to_file)
         {
+
             using (StreamWriter writer = new StreamWriter(shortcut_directory + "\\" + shortcut_name + ".url"))
             {
                 writer.WriteLine("[InternetShortcut]");
@@ -2803,9 +2807,9 @@ namespace SRL
                 writer.Flush();
             }
         }
-        public void MakeShortcut(string shortcut_name, string shortcut_directory, string file_directory_path, string file_with_extention)
+        public void MakeShortcut(string shortcut_name, string shortcut_directory, string file_directory_path, string file_with_extention, string icon_full_path_from_file_directory = null)
         {
-            string full_path_to_file=System.IO.Path.Combine(file_directory_path,file_with_extention);
+            string full_path_to_file = System.IO.Path.Combine(file_directory_path, file_with_extention);
 
             WshShell wsh = new WshShell();
             IWshRuntimeLibrary.IWshShortcut shortcut = wsh.CreateShortcut(
@@ -2816,9 +2820,15 @@ namespace SRL
             shortcut.WindowStyle = 1;
             shortcut.Description = full_path_to_file;
             shortcut.WorkingDirectory = file_directory_path;
-            string icon_path = Path.GetDirectoryName(full_path_to_file) + "\\" + shortcut_name + ".ico";
-            ExtractFileIcon(full_path_to_file, icon_path);
-            shortcut.IconLocation = icon_path;
+            string icon_full_path = System.IO.Path.Combine(file_directory_path,
+                icon_full_path_from_file_directory == null ? "" : icon_full_path_from_file_directory);
+            if (!System.IO.File.Exists(icon_full_path))
+            {
+                icon_full_path = Path.GetDirectoryName(full_path_to_file) + "\\" + shortcut_name + ".ico";
+                ExtractFileIcon(full_path_to_file, icon_full_path);
+            }
+            shortcut.IconLocation = icon_full_path;
+
             shortcut.Save();
         }
         public string ReplaceAllFilesFromDirToDir(string SourceFolderFullPath, string DestinationFolderFullPath)
@@ -2933,7 +2943,7 @@ namespace SRL
             }
         }
 
-       
+
 
 
     }

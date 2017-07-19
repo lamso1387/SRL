@@ -22,6 +22,7 @@ namespace SRL
         public string app_exe_name = "";
         List<string> update_file_list;
         string app_display_name = "";
+        string icon_full_path_from_source_directory;
 
         /// <summary>
         /// for update or you can use is_update=true or you can use is_update=false and remove db and license and .. files from sourec
@@ -31,10 +32,10 @@ namespace SRL
         /// <param name="directory_install_path_"></param>
         /// <param name="is_update"></param>
         /// <param name="update_file_list_"></param>
-        public Setup(string application_exe_name_only_, string application_to_display_name_, string directory_install_path_, bool is_update, List<string> update_file_list_ = null)
+        public Setup(string application_exe_name_only_, string application_to_display_name_, string directory_install_path_, bool is_update, List<string> update_file_list_ = null, string icon_full_path_from_source_directory_ = null)
         {
             InitializeComponent();
-
+            icon_full_path_from_source_directory = icon_full_path_from_source_directory_;
             dir_install_name = directory_install_path_;
             app_exe_name = application_exe_name_only_;
             update_file_list = update_file_list_;
@@ -48,7 +49,7 @@ namespace SRL
         {
             srl_file.ReplaceAllFilesFromDirToDir(tbSource.Text, tbDestination.Text);
             progressBar1.Value = 60;
-            srl_file.MakeShortcut(app_display_name,srl_file.GetDesktopDirectory(), tbDestination.Text , app_exe_name + ".exe");
+            srl_file.MakeShortcut(app_display_name, srl_file.GetDesktopDirectory(), tbDestination.Text, app_exe_name + ".exe", icon_full_path_from_source_directory);
             progressBar1.Value = 100;
             clicker.Text = end_string;
             button1.Enabled = false;
@@ -76,7 +77,7 @@ namespace SRL
         {
             Control c=sender as Control;
             if(c.Text==end_string) this.Close();
-            InstallFiles(c);
+            else InstallFiles(c);
 
         }
 
@@ -98,10 +99,13 @@ namespace SRL
         {
             Control c = sender as Control;
             if (c.Text == end_string) this.Close();
+            else
+            {
 
-           if(update_file_list !=null) KeepUpdateFiles();
+                if (update_file_list != null) KeepUpdateFiles();
 
-           InstallFiles(c);
+                InstallFiles(c);
+            }
         }     
 
         private void button1_Click(object sender, EventArgs e)
