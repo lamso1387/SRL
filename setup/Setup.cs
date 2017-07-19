@@ -46,7 +46,6 @@ namespace SRL
 
         private void InstallFiles(Control clicker)
         {
-            progressBar1.Value = 30;
             srl_file.ReplaceAllFilesFromDirToDir(tbSource.Text, tbDestination.Text);
             progressBar1.Value = 60;
             srl_file.MakeShortcut(app_display_name,srl_file.GetDesktopDirectory(), tbDestination.Text , app_exe_name + ".exe");

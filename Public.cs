@@ -955,18 +955,19 @@ namespace SRL
         public class StyleButton : Button
         {
 
-            private static Color _back = Color.Gray;
-            private static Color back_color;
-            private static Color _activeBorder;
-            private static Color _fore = System.Drawing.Color.White;
+            private Color _back = Color.Gray;
+            private Color back_color;
+            private Color back_color_disabled;
+            private Color _activeBorder;
+            private Color _fore = System.Drawing.Color.White;
 
 
-            private static Size _minSize;
+            private Size _minSize;
 
             private bool _active;
             Button btn_change;
 
-            public StyleButton(Button btn_to_change, Color back_color_, Color _activeBorder_)
+            public StyleButton(Button btn_to_change, Color back_color_, Color _activeBorder_ ,Color? back_color_disabled_=null)
             {
                 btn_change = btn_to_change;
                 back_color = back_color_;
@@ -984,6 +985,9 @@ namespace SRL
                 btn_change.MouseEnter += Btn_to_change_MouseEnter;
                 btn_change.MouseLeave += Btn_to_change_MouseLeave;
                 btn_change.EnabledChanged += btn_change_EnabledChanged;
+                
+              back_color_disabled=back_color_disabled_ !=null ? (Color)back_color_disabled_ :  ControlPaint.LightLight(back_color);
+                
             }
 
             private void btn_change_EnabledChanged(object sender, EventArgs e)
@@ -994,7 +998,7 @@ namespace SRL
                 }
                 else
                 {
-                    btn_change.BackColor = ControlPaint.LightLight(back_color);
+                    btn_change.BackColor = back_color_disabled;
                 }
 
             }
@@ -1062,6 +1066,10 @@ namespace SRL
     }
     public class WinTools
     {
+        public class WinMessage
+        {
+        }
+
         /// <summary>
         /// Add column show/hide capability to a DataGridView. When user right-clicks 
         /// the cell origin a popup, containing a list of checkbox and column names, is
@@ -1905,34 +1913,34 @@ namespace SRL
         {
             return (pixel / dpi);
         }
-        public float StringToFloat(string value_to_parse, float? default_value = null, string app_decimal_symbol = "/", bool show_alarm_erro = true)
+        public decimal StringToDecimal(string value_to_parse, decimal? default_value = null, string app_decimal_symbol = "/", bool show_alarm_error = true)
         {
             if (string.IsNullOrWhiteSpace(value_to_parse)) return 0;
 
-            float value_parsed = 0;
-            bool parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            decimal value_parsed = 0;
+            bool parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
             string current_decimal_symbol = NumberFormatInfo.CurrentInfo.NumberDecimalSeparator;
             value_to_parse = value_to_parse.Replace(app_decimal_symbol, current_decimal_symbol);
-            parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
             value_to_parse = value_to_parse.Replace(app_decimal_symbol, ".");
-            parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
             value_to_parse = value_to_parse.Replace(app_decimal_symbol, ",");
-            parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
-            if (show_alarm_erro) MessageBox.Show("نماد اعشاری سیستم را به / تغییر دهید. ترجیحا از فرمت فارسی استفاده کنید");
+            if (show_alarm_error) MessageBox.Show("نماد اعشاری سیستم را به / تغییر دهید. ترجیحا از فرمت فارسی استفاده کنید");
             if (default_value != null)
             {
-                value_parsed = (float)default_value;
+                value_parsed =  (decimal)default_value;
                 return value_parsed;
             }
-            if (show_alarm_erro) MessageBox.Show("متغیر اعشاری دارای مقدار 0 است و خطا ایجاد خواهد شد. فرمت سیستم را بررسی کنید");
+            if (show_alarm_error) MessageBox.Show("متغیر اعشاری دارای مقدار 0 است و خطا ایجاد خواهد شد. فرمت سیستم را بررسی کنید");
             return value_parsed;
 
 

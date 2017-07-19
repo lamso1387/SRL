@@ -116,6 +116,15 @@
     <Compile Include="setup\Setup.designer.cs">
       <DependentUpon>Setup.cs</DependentUpon>
     </Compile>
+    <Compile Include="tools\MessageBoxForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="tools\MessageBoxForm.designer.cs">
+      <DependentUpon>MessageBoxForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\MessageBoxForm2.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="tools\TextBoxBorderColor.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -209,6 +218,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="setup\Setup.resx">
       <DependentUpon>Setup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\MessageBoxForm.resx">
+      <DependentUpon>MessageBoxForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\MessageBoxForm2.resx">
+      <DependentUpon>MessageBoxForm2.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
