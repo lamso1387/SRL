@@ -778,6 +778,224 @@ namespace SRL
 
         }
 
+        public class LabelOrientation
+        {
+            public LabelOrientation(ref Label lbl_, LblOrientation textOrientation_ = LblOrientation.Rotate, double rotationAngle_ = 0d, LblDirection textDirection_ = LblDirection.NotSet)
+            {
+                OrientedTextLabel new_lbl = new OrientedTextLabel(textOrientation_, rotationAngle_, textDirection_);
+
+                new_lbl.Text = lbl_.Text;
+                new_lbl.Size = new Size(lbl_.Height, lbl_.Width);
+
+                new_lbl.Location = new Point(
+       lbl_.Location.X + lbl_.Size.Width / 2 - new_lbl.Size.Width / 2,
+       lbl_.Location.Y + lbl_.Size.Height / 2 - new_lbl.Size.Height / 2);
+                lbl_.Anchor = AnchorStyles.None;
+
+
+                new_lbl.Font = lbl_.Font;
+
+                Control parent = lbl_.Parent;
+                parent.Controls.Remove(lbl_);
+                parent.Controls.Add(new_lbl);
+
+            }
+
+            public enum LblOrientation
+            {
+                Circle,
+                Arc,
+                Rotate
+            }
+
+            public enum LblDirection
+            {
+                Clockwise,
+                AntiClockwise,
+                NotSet
+            }
+
+            public class OrientedTextLabel : System.Windows.Forms.Label
+            {
+                #region Variables
+
+                private double rotationAngle;
+                private LblOrientation textOrientation;
+                private LblDirection textDirection;
+
+                #endregion
+
+                #region Constructor
+
+                public OrientedTextLabel(LblOrientation textOrientation_ = LblOrientation.Rotate, double rotationAngle = 0d, LblDirection textDirection_ = LblDirection.NotSet)
+                {
+                    RotationAngle = rotationAngle;
+                    TextOrientation = textOrientation_;
+                    TextDirection = textDirection_;
+
+                }
+
+                #endregion
+
+                #region Properties
+
+                [Description("Rotation Angle"), Category("Appearance")]
+                public double RotationAngle
+                {
+                    get
+                    {
+                        return rotationAngle;
+                    }
+                    set
+                    {
+                        rotationAngle = value;
+                        this.Invalidate();
+                    }
+                }
+
+                [Description("Kind of Text Orientation"), Category("Appearance")]
+                public LblOrientation TextOrientation
+                {
+                    get
+                    {
+                        return textOrientation;
+                    }
+                    set
+                    {
+                        textOrientation = value;
+                        this.Invalidate();
+                    }
+                }
+
+                [Description("Direction of the Text"), Category("Appearance")]
+                public LblDirection TextDirection
+                {
+                    get
+                    {
+                        return textDirection;
+                    }
+                    set
+                    {
+                        textDirection = value;
+                        this.Invalidate();
+                    }
+                }
+
+
+
+                #endregion
+
+                #region Method
+
+                protected override void OnPaint(PaintEventArgs e)
+                {
+                    Graphics graphics = e.Graphics;
+
+                    StringFormat stringFormat = new StringFormat();
+                    stringFormat.Alignment = StringAlignment.Center;
+                    stringFormat.Trimming = StringTrimming.None;
+
+                    Brush textBrush = new SolidBrush(this.ForeColor);
+
+                    //Getting the width and height of the text, which we are going to write
+                    float width = graphics.MeasureString(Text, this.Font).Width;
+                    float height = graphics.MeasureString(Text, this.Font).Height;
+
+                    //The radius is set to 0.9 of the width or height, b'cos not to
+                    //hide and part of the text at any stage
+                    float radius = 0f;
+                    if (ClientRectangle.Width < ClientRectangle.Height)
+                    {
+                        radius = ClientRectangle.Width * 0.9f / 2;
+                    }
+                    else
+                    {
+                        radius = ClientRectangle.Height * 0.9f / 2;
+                    }
+
+                    //Setting the text according to the selection
+                    switch (textOrientation)
+                    {
+                        case LblOrientation.Arc:
+                            {
+                                //Arc angle must be get from the length of the text.
+                                float arcAngle = (2 * width / radius) / Text.Length;
+                                if (textDirection == LblDirection.Clockwise)
+                                {
+                                    for (int i = 0; i < Text.Length; i++)
+                                    {
+                                        graphics.TranslateTransform(
+                                            (float)(radius * (1 - Math.Cos(arcAngle * i + rotationAngle / 180 * Math.PI))),
+                                            (float)(radius * (1 - Math.Sin(arcAngle * i + rotationAngle / 180 * Math.PI))));
+                                        graphics.RotateTransform((-90 + (float)rotationAngle + 180 * arcAngle * i / (float)Math.PI));
+                                        graphics.DrawString(Text[i].ToString(), this.Font, textBrush, 0, 0);
+                                        graphics.ResetTransform();
+                                    }
+                                }
+                                else
+                                {
+                                    for (int i = 0; i < Text.Length; i++)
+                                    {
+                                        graphics.TranslateTransform(
+                                            (float)(radius * (1 - Math.Cos(arcAngle * i + rotationAngle / 180 * Math.PI))),
+                                            (float)(radius * (1 + Math.Sin(arcAngle * i + rotationAngle / 180 * Math.PI))));
+                                        graphics.RotateTransform((-90 - (float)rotationAngle - 180 * arcAngle * i / (float)Math.PI));
+                                        graphics.DrawString(Text[i].ToString(), this.Font, textBrush, 0, 0);
+                                        graphics.ResetTransform();
+                                    }
+                                }
+                                break;
+                            }
+                        case LblOrientation.Circle:
+                            {
+                                if (textDirection == LblDirection.Clockwise)
+                                {
+                                    for (int i = 0; i < Text.Length; i++)
+                                    {
+                                        graphics.TranslateTransform(
+                                            (float)(radius * (1 - Math.Cos((2 * Math.PI / Text.Length) * i + rotationAngle / 180 * Math.PI))),
+                                            (float)(radius * (1 - Math.Sin((2 * Math.PI / Text.Length) * i + rotationAngle / 180 * Math.PI))));
+                                        graphics.RotateTransform(-90 + (float)rotationAngle + (360 / Text.Length) * i);
+                                        graphics.DrawString(Text[i].ToString(), this.Font, textBrush, 0, 0);
+                                        graphics.ResetTransform();
+                                    }
+                                }
+                                else
+                                {
+                                    for (int i = 0; i < Text.Length; i++)
+                                    {
+                                        graphics.TranslateTransform(
+                                            (float)(radius * (1 - Math.Cos((2 * Math.PI / Text.Length) * i + rotationAngle / 180 * Math.PI))),
+                                            (float)(radius * (1 + Math.Sin((2 * Math.PI / Text.Length) * i + rotationAngle / 180 * Math.PI))));
+                                        graphics.RotateTransform(-90 - (float)rotationAngle - (360 / Text.Length) * i);
+                                        graphics.DrawString(Text[i].ToString(), this.Font, textBrush, 0, 0);
+                                        graphics.ResetTransform();
+                                    }
+
+                                }
+                                break;
+                            }
+
+                        case LblOrientation.Rotate:
+                            {
+                                //For rotation, who about rotation?
+                                double angle = (rotationAngle / 180) * Math.PI;
+                                graphics.TranslateTransform(
+                                    (ClientRectangle.Width + (float)(height * Math.Sin(angle)) - (float)(width * Math.Cos(angle))) / 2,
+                                    (ClientRectangle.Height - (float)(height * Math.Cos(angle)) - (float)(width * Math.Sin(angle))) / 2);
+                                graphics.RotateTransform((float)rotationAngle);
+                                graphics.DrawString(Text, this.Font, textBrush, 0, 0);
+                                graphics.ResetTransform();
+
+                                break;
+                            }
+                    }
+                }
+                #endregion
+            }
+
+        }
+
         public void MaximizeForm(Form form)
         {
             if (form.WindowState == FormWindowState.Normal)
