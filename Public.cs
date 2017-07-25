@@ -748,7 +748,100 @@ namespace SRL
     }
     public class WinUI
     {
+        public class TextBoxBorderColor
+        {
+            public TextBoxBorderColor(ref TextBox tb, out TextBox new_tb_, Color border_color_, Color border_focus_color_, string border_or_focus_or_both_)
+            {
+                TextBoxBorder new_tb = new TextBoxBorder(border_color_, border_focus_color_, border_or_focus_or_both_);
 
+                new_tb.Text = tb.Text;
+                new_tb.Size = new Size(tb.Width, tb.Height);
+
+                new_tb.Location = new Point(tb.Location.X, tb.Location.Y);
+
+
+                new_tb.Font = tb.Font;
+
+                Control parent = tb.Parent;
+
+                parent.Controls.Add(new_tb);
+                parent.Controls.Remove(tb);
+
+                new_tb_ = new_tb;
+
+
+            }
+
+            public class TextBoxBorder : TextBox
+            {
+
+                public Color border_color;
+                public Color border_focus_color;
+                public string border_or_focus_or_both;
+                public TextBoxBorder(Color border_color_, Color border_focus_color_, string border_or_focus_or_both_)
+                {
+                    border_color = border_color_;
+                    border_focus_color = border_focus_color_;
+                    border_or_focus_or_both = border_or_focus_or_both_;
+                }
+
+                [System.Runtime.InteropServices.DllImport("user32")]
+                private static extern IntPtr GetWindowDC(IntPtr hwnd);
+                private const int WM_NCPAINT = 0x85;
+                protected override void WndProc(ref Message m)
+                {
+                    base.WndProc(ref m);
+                    Pen pen;
+                    switch (border_or_focus_or_both)
+                    {
+                        case "border":
+                            if (m.Msg == WM_NCPAINT && !this.Focused)
+                            {
+                                pen = new Pen(border_color);
+                                var dc = GetWindowDC(Handle);
+                                using (Graphics g = Graphics.FromHdc(dc))
+                                {
+                                    g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                                }
+                            }
+                            break;
+                        case "focus":
+                            if (m.Msg == WM_NCPAINT && this.Focused)
+                            {
+                                pen = new Pen(border_focus_color);
+                                var dc = GetWindowDC(Handle);
+                                using (Graphics g = Graphics.FromHdc(dc))
+                                {
+                                    g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                                }
+                            }
+                            break;
+                        case "both":
+                            if (m.Msg == WM_NCPAINT && this.Focused)
+                            {
+                                pen = new Pen(border_focus_color);
+                                var dc = GetWindowDC(Handle);
+                                using (Graphics g = Graphics.FromHdc(dc))
+                                {
+                                    g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                                }
+                            }
+                            else if (m.Msg == WM_NCPAINT && !this.Focused)
+                            {
+                                pen = new Pen(border_color);
+                                var dc = GetWindowDC(Handle);
+                                using (Graphics g = Graphics.FromHdc(dc))
+                                {
+                                    g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                                }
+                            }
+                            break;
+
+                    }
+
+                }
+            }
+        }
 
         public class TextBoxPlaceHolder
         {
@@ -780,24 +873,25 @@ namespace SRL
 
         public class LabelOrientation
         {
-            public LabelOrientation(ref Label lbl_, LblOrientation textOrientation_ = LblOrientation.Rotate, double rotationAngle_ = 0d, LblDirection textDirection_ = LblDirection.NotSet)
+            public LabelOrientation(ref Label lbl_,out Label new_lbl_, LblOrientation textOrientation_ = LblOrientation.Rotate, double rotationAngle_ = 0d, LblDirection textDirection_ = LblDirection.NotSet)
             {
                 OrientedTextLabel new_lbl = new OrientedTextLabel(textOrientation_, rotationAngle_, textDirection_);
 
                 new_lbl.Text = lbl_.Text;
-                new_lbl.Size = new Size(lbl_.Height, lbl_.Width);
+                new_lbl.Size = new Size(lbl_.Height + lbl_.Width, lbl_.Width + lbl_.Height);
 
                 new_lbl.Location = new Point(
-       lbl_.Location.X + lbl_.Size.Width / 2 - new_lbl.Size.Width / 2,
-       lbl_.Location.Y + lbl_.Size.Height / 2 - new_lbl.Size.Height / 2);
+       lbl_.Location.X + lbl_.Size.Width / 2 - lbl_.Size.Height / 2,
+       lbl_.Location.Y + lbl_.Size.Height / 2 - lbl_.Size.Width / 2);
                 lbl_.Anchor = AnchorStyles.None;
-
 
                 new_lbl.Font = lbl_.Font;
 
                 Control parent = lbl_.Parent;
                 parent.Controls.Remove(lbl_);
                 parent.Controls.Add(new_lbl);
+
+                new_lbl_ = new_lbl;
 
             }
 
@@ -1027,6 +1121,12 @@ namespace SRL
                 pb.MouseLeave += new System.EventHandler(pb_MouseLeave);
             }
 
+            public void PictureBoxOnlyHover(PictureBox pb, System.Windows.Forms.Cursor cursor_)
+            { 
+                cursor = cursor_;
+                pb.MouseEnter += new System.EventHandler(pb_MouseEnterOnlyHover);
+            }
+
             private void pb_MouseEnter(object sender, EventArgs e)
             {
                 PictureBox pb = sender as PictureBox;
@@ -1048,6 +1148,17 @@ namespace SRL
 
 
             }
+
+            private void pb_MouseEnterOnlyHover(object sender, EventArgs e)
+            {
+                PictureBox pb = sender as PictureBox;
+
+                pb.Cursor = cursor;
+
+
+            }
+            
+
             public Bitmap CreateNonIndexedImage(Image src)
             {
 

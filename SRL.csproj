@@ -125,9 +125,6 @@
     <Compile Include="tools\MessageBoxForm2.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="tools\TextBoxBorderColor.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="login\WinLogin.cs">
       <SubType>Form</SubType>
     </Compile>
