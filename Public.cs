@@ -711,13 +711,13 @@ namespace SRL
     }
     public class ClassManagement<ClassType> // where ClassType : class 
     {
-       
+
         public ClassType CreateInstance()
         {
             return (ClassType)Activator.CreateInstance(typeof(ClassType));
         }
 
-        
+
 
         public void SetProperty(string property_name, ClassType instance, object value)
         {
@@ -748,126 +748,562 @@ namespace SRL
     }
     public class WinUI
     {
-
-
-        public class TextBoxPlaceHolder
+        public class FormClass
         {
-            TextBox myTxtbx;
-
-
-            public TextBoxPlaceHolder(TextBox tb_to_change)
+            public class EnableFadeShowForm
             {
-                myTxtbx = tb_to_change;
+                Form F = new Form();
 
-                myTxtbx.Text = "Enter text here...";
-                myTxtbx.GotFocus += MyTxtbx_GotFocus;
-                myTxtbx.LostFocus += MyTxtbx_LostFocus;
+                public EnableFadeShowForm(Form f)
+                {
+                    F = f;
+                    //
+                    // Required for Windows Form Designer support
+                    //
+                    InitializeComponent();
+
+                    //
+                    // TODO: Add any constructor code after InitializeComponent call
+                    //
+                    F.Opacity = 0;
+                    f.Shown += F_Shown;
+                }
+
+                private void F_Shown(object sender, EventArgs e)
+                {
+                    tmrFade.Enabled = true;
+                }
+
+
+                protected internal System.Timers.Timer tmrFade;
+
+                /// <summary>
+                /// Required designer variable.
+                /// </summary>
+                private System.ComponentModel.Container components = null;
+
+                #region Windows Form Designer generated code
+                /// <summary>
+                /// Required method for Designer support - do not modify
+                /// the contents of this method with the code editor.
+                /// </summary>
+                private void InitializeComponent()
+                {
+                    tmrFade = new System.Timers.Timer();
+                    ((System.ComponentModel.ISupportInitialize)(tmrFade)).BeginInit();
+                    // 
+                    // tmrFade
+                    // 
+                    tmrFade.Interval = 20;
+                    tmrFade.SynchronizingObject = F;
+                    tmrFade.Elapsed += new System.Timers.ElapsedEventHandler(this.tmrFade_Elapsed);
+                    // 
+                    // BaseForm
+                    // 
+                    F.AutoScaleBaseSize = new System.Drawing.Size(5, 13);
+                    F.ClientSize = new System.Drawing.Size(292, 266);
+                    F.Name = "BaseForm";
+                    F.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+                    F.Text = "Form1";
+                    ((System.ComponentModel.ISupportInitialize)(tmrFade)).EndInit();
+
+                }
+                #endregion
+
+                private void tmrFade_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+                {
+                    F.Opacity += 0.05;
+                    if (F.Opacity >= .95)
+                    {
+                        F.Opacity = 1;
+                        tmrFade.Enabled = false;
+                    }
+                }
+
             }
 
-            private void MyTxtbx_LostFocus(object sender, EventArgs e)
+            public void MaximizeForm(Form form)
             {
-                if (String.IsNullOrWhiteSpace(myTxtbx.Text))
+                if (form.WindowState == FormWindowState.Normal)
+                    form.WindowState = FormWindowState.Maximized;
+                else form.WindowState = FormWindowState.Normal;
+            }
+
+            public void RoundBorderForm(Form frm)
+            {
+                //make a regtangular witd one point(x,y) and it's width and height:
+                Rectangle Bounds = new Rectangle(0, 0, frm.Width, frm.Height);
+                //size of a radius to disgh for a point arc
+                int CornerRadius = 1;
+                System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
+                //making regtangular width 4 arc
+                path.AddArc(Bounds.X, Bounds.Y, CornerRadius, CornerRadius, 180, 90);
+                path.AddArc(Bounds.X + Bounds.Width - CornerRadius, Bounds.Y, CornerRadius, CornerRadius, 270, 90);
+                path.AddArc(Bounds.X + Bounds.Width - CornerRadius, Bounds.Y + Bounds.Height - CornerRadius, CornerRadius, CornerRadius, 0, 90);
+                path.AddArc(Bounds.X, Bounds.Y + Bounds.Height - CornerRadius, CornerRadius, CornerRadius, 90, 90);
+                path.CloseAllFigures();
+
+                frm.Region = new Region(path);
+            }
+
+        }
+        public class TextBoxClass
+        {
+            public class TextBoxBorderColor
+            {
+                public TextBoxBorderColor(ref TextBox tb, out TextBox new_tb_, Color border_color_, Color border_focus_color_, string border_or_focus_or_both_)
+                {
+                    TextBoxBorder new_tb = new TextBoxBorder(border_color_, border_focus_color_, border_or_focus_or_both_);
+
+                    new_tb.Text = tb.Text;
+                    new_tb.Size = new Size(tb.Width, tb.Height);
+
+                    new_tb.Location = new Point(tb.Location.X, tb.Location.Y);
+
+
+                    new_tb.Font = tb.Font;
+
+                    Control parent = tb.Parent;
+
+                    parent.Controls.Add(new_tb);
+                    parent.Controls.Remove(tb);
+
+                    new_tb_ = new_tb;
+
+
+                }
+
+                public class TextBoxBorder : TextBox
+                {
+
+                    public Color border_color;
+                    public Color border_focus_color;
+                    public string border_or_focus_or_both;
+                    public TextBoxBorder(Color border_color_, Color border_focus_color_, string border_or_focus_or_both_)
+                    {
+                        border_color = border_color_;
+                        border_focus_color = border_focus_color_;
+                        border_or_focus_or_both = border_or_focus_or_both_;
+                    }
+
+                    [System.Runtime.InteropServices.DllImport("user32")]
+                    private static extern IntPtr GetWindowDC(IntPtr hwnd);
+                    private const int WM_NCPAINT = 0x85;
+                    protected override void WndProc(ref Message m)
+                    {
+                        base.WndProc(ref m);
+                        Pen pen;
+                        switch (border_or_focus_or_both)
+                        {
+                            case "border":
+                                if (m.Msg == WM_NCPAINT && !this.Focused)
+                                {
+                                    pen = new Pen(border_color);
+                                    var dc = GetWindowDC(Handle);
+                                    using (Graphics g = Graphics.FromHdc(dc))
+                                    {
+                                        g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                                    }
+                                }
+                                break;
+                            case "focus":
+                                if (m.Msg == WM_NCPAINT && this.Focused)
+                                {
+                                    pen = new Pen(border_focus_color);
+                                    var dc = GetWindowDC(Handle);
+                                    using (Graphics g = Graphics.FromHdc(dc))
+                                    {
+                                        g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                                    }
+                                }
+                                break;
+                            case "both":
+                                if (m.Msg == WM_NCPAINT && this.Focused)
+                                {
+                                    pen = new Pen(border_focus_color);
+                                    var dc = GetWindowDC(Handle);
+                                    using (Graphics g = Graphics.FromHdc(dc))
+                                    {
+                                        g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                                    }
+                                }
+                                else if (m.Msg == WM_NCPAINT && !this.Focused)
+                                {
+                                    pen = new Pen(border_color);
+                                    var dc = GetWindowDC(Handle);
+                                    using (Graphics g = Graphics.FromHdc(dc))
+                                    {
+                                        g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                                    }
+                                }
+                                break;
+
+                        }
+
+                    }
+                }
+            }
+
+            public class TextBoxPlaceHolder
+            {
+                TextBox myTxtbx;
+
+
+                public TextBoxPlaceHolder(TextBox tb_to_change)
+                {
+                    myTxtbx = tb_to_change;
+
                     myTxtbx.Text = "Enter text here...";
+                    myTxtbx.GotFocus += MyTxtbx_GotFocus;
+                    myTxtbx.LostFocus += MyTxtbx_LostFocus;
+                }
+
+                private void MyTxtbx_LostFocus(object sender, EventArgs e)
+                {
+                    if (String.IsNullOrWhiteSpace(myTxtbx.Text))
+                        myTxtbx.Text = "Enter text here...";
+                }
+
+                private void MyTxtbx_GotFocus(object sender, EventArgs e)
+                {
+                    myTxtbx.Text = "";
+                }
+
+
             }
-
-            private void MyTxtbx_GotFocus(object sender, EventArgs e)
-            {
-                myTxtbx.Text = "";
-            }
-
-
         }
 
-        public void MaximizeForm(Form form)
+        public class LabelClass
         {
-            if (form.WindowState == FormWindowState.Normal)
-                form.WindowState = FormWindowState.Maximized;
-            else form.WindowState = FormWindowState.Normal;
+            public class LabelOrientation
+            {
+                public LabelOrientation(ref Label lbl_, out Label new_lbl_, LblOrientation textOrientation_ = LblOrientation.Rotate, double rotationAngle_ = 0d, LblDirection textDirection_ = LblDirection.NotSet)
+                {
+                    OrientedTextLabel new_lbl = new OrientedTextLabel(textOrientation_, rotationAngle_, textDirection_);
+
+                    new_lbl.Text = lbl_.Text;
+                    new_lbl.Size = new Size(lbl_.Height + lbl_.Width, lbl_.Width + lbl_.Height);
+
+                    new_lbl.Location = new Point(
+           lbl_.Location.X + lbl_.Size.Width / 2 - lbl_.Size.Height / 2,
+           lbl_.Location.Y + lbl_.Size.Height / 2 - lbl_.Size.Width / 2);
+                    lbl_.Anchor = AnchorStyles.None;
+
+                    new_lbl.Font = lbl_.Font;
+
+                    Control parent = lbl_.Parent;
+                    parent.Controls.Remove(lbl_);
+                    parent.Controls.Add(new_lbl);
+
+                    new_lbl_ = new_lbl;
+
+                }
+
+                public enum LblOrientation
+                {
+                    Circle,
+                    Arc,
+                    Rotate
+                }
+
+                public enum LblDirection
+                {
+                    Clockwise,
+                    AntiClockwise,
+                    NotSet
+                }
+
+                public class OrientedTextLabel : System.Windows.Forms.Label
+                {
+                    #region Variables
+
+                    private double rotationAngle;
+                    private LblOrientation textOrientation;
+                    private LblDirection textDirection;
+
+                    #endregion
+
+                    #region Constructor
+
+                    public OrientedTextLabel(LblOrientation textOrientation_ = LblOrientation.Rotate, double rotationAngle = 0d, LblDirection textDirection_ = LblDirection.NotSet)
+                    {
+                        RotationAngle = rotationAngle;
+                        TextOrientation = textOrientation_;
+                        TextDirection = textDirection_;
+
+                    }
+
+                    #endregion
+
+                    #region Properties
+
+                    [Description("Rotation Angle"), Category("Appearance")]
+                    public double RotationAngle
+                    {
+                        get
+                        {
+                            return rotationAngle;
+                        }
+                        set
+                        {
+                            rotationAngle = value;
+                            this.Invalidate();
+                        }
+                    }
+
+                    [Description("Kind of Text Orientation"), Category("Appearance")]
+                    public LblOrientation TextOrientation
+                    {
+                        get
+                        {
+                            return textOrientation;
+                        }
+                        set
+                        {
+                            textOrientation = value;
+                            this.Invalidate();
+                        }
+                    }
+
+                    [Description("Direction of the Text"), Category("Appearance")]
+                    public LblDirection TextDirection
+                    {
+                        get
+                        {
+                            return textDirection;
+                        }
+                        set
+                        {
+                            textDirection = value;
+                            this.Invalidate();
+                        }
+                    }
+
+
+
+                    #endregion
+
+                    #region Method
+
+                    protected override void OnPaint(PaintEventArgs e)
+                    {
+                        Graphics graphics = e.Graphics;
+
+                        StringFormat stringFormat = new StringFormat();
+                        stringFormat.Alignment = StringAlignment.Center;
+                        stringFormat.Trimming = StringTrimming.None;
+
+                        Brush textBrush = new SolidBrush(this.ForeColor);
+
+                        //Getting the width and height of the text, which we are going to write
+                        float width = graphics.MeasureString(Text, this.Font).Width;
+                        float height = graphics.MeasureString(Text, this.Font).Height;
+
+                        //The radius is set to 0.9 of the width or height, b'cos not to
+                        //hide and part of the text at any stage
+                        float radius = 0f;
+                        if (ClientRectangle.Width < ClientRectangle.Height)
+                        {
+                            radius = ClientRectangle.Width * 0.9f / 2;
+                        }
+                        else
+                        {
+                            radius = ClientRectangle.Height * 0.9f / 2;
+                        }
+
+                        //Setting the text according to the selection
+                        switch (textOrientation)
+                        {
+                            case LblOrientation.Arc:
+                                {
+                                    //Arc angle must be get from the length of the text.
+                                    float arcAngle = (2 * width / radius) / Text.Length;
+                                    if (textDirection == LblDirection.Clockwise)
+                                    {
+                                        for (int i = 0; i < Text.Length; i++)
+                                        {
+                                            graphics.TranslateTransform(
+                                                (float)(radius * (1 - Math.Cos(arcAngle * i + rotationAngle / 180 * Math.PI))),
+                                                (float)(radius * (1 - Math.Sin(arcAngle * i + rotationAngle / 180 * Math.PI))));
+                                            graphics.RotateTransform((-90 + (float)rotationAngle + 180 * arcAngle * i / (float)Math.PI));
+                                            graphics.DrawString(Text[i].ToString(), this.Font, textBrush, 0, 0);
+                                            graphics.ResetTransform();
+                                        }
+                                    }
+                                    else
+                                    {
+                                        for (int i = 0; i < Text.Length; i++)
+                                        {
+                                            graphics.TranslateTransform(
+                                                (float)(radius * (1 - Math.Cos(arcAngle * i + rotationAngle / 180 * Math.PI))),
+                                                (float)(radius * (1 + Math.Sin(arcAngle * i + rotationAngle / 180 * Math.PI))));
+                                            graphics.RotateTransform((-90 - (float)rotationAngle - 180 * arcAngle * i / (float)Math.PI));
+                                            graphics.DrawString(Text[i].ToString(), this.Font, textBrush, 0, 0);
+                                            graphics.ResetTransform();
+                                        }
+                                    }
+                                    break;
+                                }
+                            case LblOrientation.Circle:
+                                {
+                                    if (textDirection == LblDirection.Clockwise)
+                                    {
+                                        for (int i = 0; i < Text.Length; i++)
+                                        {
+                                            graphics.TranslateTransform(
+                                                (float)(radius * (1 - Math.Cos((2 * Math.PI / Text.Length) * i + rotationAngle / 180 * Math.PI))),
+                                                (float)(radius * (1 - Math.Sin((2 * Math.PI / Text.Length) * i + rotationAngle / 180 * Math.PI))));
+                                            graphics.RotateTransform(-90 + (float)rotationAngle + (360 / Text.Length) * i);
+                                            graphics.DrawString(Text[i].ToString(), this.Font, textBrush, 0, 0);
+                                            graphics.ResetTransform();
+                                        }
+                                    }
+                                    else
+                                    {
+                                        for (int i = 0; i < Text.Length; i++)
+                                        {
+                                            graphics.TranslateTransform(
+                                                (float)(radius * (1 - Math.Cos((2 * Math.PI / Text.Length) * i + rotationAngle / 180 * Math.PI))),
+                                                (float)(radius * (1 + Math.Sin((2 * Math.PI / Text.Length) * i + rotationAngle / 180 * Math.PI))));
+                                            graphics.RotateTransform(-90 - (float)rotationAngle - (360 / Text.Length) * i);
+                                            graphics.DrawString(Text[i].ToString(), this.Font, textBrush, 0, 0);
+                                            graphics.ResetTransform();
+                                        }
+
+                                    }
+                                    break;
+                                }
+
+                            case LblOrientation.Rotate:
+                                {
+                                    //For rotation, who about rotation?
+                                    double angle = (rotationAngle / 180) * Math.PI;
+                                    graphics.TranslateTransform(
+                                        (ClientRectangle.Width + (float)(height * Math.Sin(angle)) - (float)(width * Math.Cos(angle))) / 2,
+                                        (ClientRectangle.Height - (float)(height * Math.Cos(angle)) - (float)(width * Math.Sin(angle))) / 2);
+                                    graphics.RotateTransform((float)rotationAngle);
+                                    graphics.DrawString(Text, this.Font, textBrush, 0, 0);
+                                    graphics.ResetTransform();
+
+                                    break;
+                                }
+                        }
+                    }
+                    #endregion
+                }
+
+            }
+
         }
+       
+
+       
         public void FullScreenNoTaskbar(Control control)
         {
             control.Left = control.Top = 0;
             control.Width = Screen.PrimaryScreen.WorkingArea.Width;
             control.Height = Screen.PrimaryScreen.WorkingArea.Height;
         }
-        public class PictureBoxHover
+
+        public class PictureBoxClass
         {
-            int width_magnify = 0;
-            int height_magnify = 0;
-            System.Windows.Forms.Cursor cursor;
-            int opacity = 255;
-            public PictureBoxHover()
+            public class PictureBoxHover
             {
-            }
-            public void EnablePictureBoxHover(PictureBox pb, System.Windows.Forms.Cursor cursor_, int width_magnify_ = 0, int height_magnify_ = 0, int opacity_ = 255)
-            {
-                width_magnify = width_magnify_;
-                height_magnify = height_magnify_;
-                opacity = opacity_;
-                cursor = cursor_;
-                pb.MouseEnter += new System.EventHandler(pb_MouseEnter);
-                pb.MouseLeave += new System.EventHandler(pb_MouseLeave);
-            }
-
-            private void pb_MouseEnter(object sender, EventArgs e)
-            {
-                PictureBox pb = sender as PictureBox;
-
-                pb.Height += height_magnify;
-                pb.Width += width_magnify;
-                pb.Cursor = cursor;
-
-                SetPictueBoxOpacity(pb, opacity);
-
-            }
-            private void pb_MouseLeave(object sender, EventArgs e)
-            {
-                PictureBox pb = sender as PictureBox;
-
-                pb.Height -= height_magnify;
-                pb.Width -= width_magnify;
-                SetPictueBoxOpacity(pb, 255);
-
-
-            }
-            public Bitmap CreateNonIndexedImage(Image src)
-            {
-
-                Bitmap newBmp = new Bitmap(src.Width, src.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
-                using (Graphics gfx = Graphics.FromImage(newBmp))
+                int width_magnify = 0;
+                int height_magnify = 0;
+                System.Windows.Forms.Cursor cursor;
+                int opacity = 255;
+                public PictureBoxHover()
                 {
-                    gfx.DrawImage(src, 0, 0);
+                }
+                public void EnablePictureBoxHover(PictureBox pb, System.Windows.Forms.Cursor cursor_, int width_magnify_ = 0, int height_magnify_ = 0, int opacity_ = 255)
+                {
+                    width_magnify = width_magnify_;
+                    height_magnify = height_magnify_;
+                    opacity = opacity_;
+                    cursor = cursor_;
+                    pb.MouseEnter += new System.EventHandler(pb_MouseEnter);
+                    pb.MouseLeave += new System.EventHandler(pb_MouseLeave);
                 }
 
-                return newBmp;
-
-            }
-            public void SetPictueBoxOpacity(PictureBox pb, int opc)
-            {
-                Bitmap pic = (Bitmap)pb.Image;
-                for (int w = 0; w < pic.Width; w++)
+                public void PictureBoxOnlyHover(PictureBox pb, System.Windows.Forms.Cursor cursor_)
                 {
-                    for (int h = 0; h < pic.Height; h++)
+                    cursor = cursor_;
+                    pb.MouseEnter += new System.EventHandler(pb_MouseEnterOnlyHover);
+                }
+
+                private void pb_MouseEnter(object sender, EventArgs e)
+                {
+                    PictureBox pb = sender as PictureBox;
+
+                    pb.Height += height_magnify;
+                    pb.Width += width_magnify;
+                    pb.Cursor = cursor;
+
+                    SetPictueBoxOpacity(pb, opacity);
+
+                }
+                private void pb_MouseLeave(object sender, EventArgs e)
+                {
+                    PictureBox pb = sender as PictureBox;
+
+                    pb.Height -= height_magnify;
+                    pb.Width -= width_magnify;
+                    SetPictueBoxOpacity(pb, 255);
+
+
+                }
+
+                private void pb_MouseEnterOnlyHover(object sender, EventArgs e)
+                {
+                    PictureBox pb = sender as PictureBox;
+
+                    pb.Cursor = cursor;
+
+
+                }
+
+
+                public Bitmap CreateNonIndexedImage(Image src)
+                {
+
+                    Bitmap newBmp = new Bitmap(src.Width, src.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+                    using (Graphics gfx = Graphics.FromImage(newBmp))
                     {
-                        Color c = pic.GetPixel(w, h);
-                        Color newC = Color.FromArgb(opc, c);
-                        try
-                        {
-                            pic.SetPixel(w, h, newC);
-                        }
-                        catch
-                        {
+                        gfx.DrawImage(src, 0, 0);
+                    }
 
-                            pic = CreateNonIndexedImage(pic);
-                            pic.SetPixel(w, h, newC);
+                    return newBmp;
 
+                }
+                public void SetPictueBoxOpacity(PictureBox pb, int opc)
+                {
+                    Bitmap pic = (Bitmap)pb.Image;
+                    for (int w = 0; w < pic.Width; w++)
+                    {
+                        for (int h = 0; h < pic.Height; h++)
+                        {
+                            Color c = pic.GetPixel(w, h);
+                            Color newC = Color.FromArgb(opc, c);
+                            try
+                            {
+                                pic.SetPixel(w, h, newC);
+                            }
+                            catch
+                            {
+
+                                pic = CreateNonIndexedImage(pic);
+                                pic.SetPixel(w, h, newC);
+
+                            }
                         }
                     }
+                    pb.Image = pic;
                 }
-                pb.Image = pic;
             }
         }
+        
 
         public class AlterTitleBarColor : Form
         {
@@ -934,242 +1370,289 @@ namespace SRL
             }
             return Icon.FromHandle(bitmap.GetHicon());
         }
-        public void RoundBorderForm(Form frm)
+
+        public class ButtonClass
         {
-            //make a regtangular witd one point(x,y) and it's width and height:
-            Rectangle Bounds = new Rectangle(0, 0, frm.Width, frm.Height);
-            //size of a radius to disgh for a point arc
-            int CornerRadius = 1;
-            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
-            //making regtangular width 4 arc
-            path.AddArc(Bounds.X, Bounds.Y, CornerRadius, CornerRadius, 180, 90);
-            path.AddArc(Bounds.X + Bounds.Width - CornerRadius, Bounds.Y, CornerRadius, CornerRadius, 270, 90);
-            path.AddArc(Bounds.X + Bounds.Width - CornerRadius, Bounds.Y + Bounds.Height - CornerRadius, CornerRadius, CornerRadius, 0, 90);
-            path.AddArc(Bounds.X, Bounds.Y + Bounds.Height - CornerRadius, CornerRadius, CornerRadius, 90, 90);
-            path.CloseAllFigures();
-
-            frm.Region = new Region(path);
-        }
-
-
-        public class StyleButton : Button
-        {
-
-            private static Color _back = Color.Gray;
-            private static Color back_color;
-            private static Color _activeBorder;
-            private static Color _fore = System.Drawing.Color.White;
-
-
-            private static Size _minSize;
-
-            private bool _active;
-            Button btn_change;
-
-            public StyleButton(Button btn_to_change, Color back_color_, Color _activeBorder_)
+            public class StyleButton : Button
             {
-                btn_change = btn_to_change;
-                back_color = back_color_;
-                _activeBorder = _activeBorder_;
 
-                _minSize = btn_change.MinimumSize;
+                private Color _back = Color.Gray;
+                private Color back_color;
+                private Color back_color_disabled;
+                private Color _activeBorder;
+                private Color _fore = System.Drawing.Color.White;
 
 
-                btn_change.BackColor = back_color;
-                btn_change.ForeColor = _fore;
-                btn_change.FlatAppearance.BorderColor = _back;
-                btn_change.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+                private Size _minSize;
 
-                btn_change.UseVisualStyleBackColor = false;
-                btn_change.MouseEnter += Btn_to_change_MouseEnter;
-                btn_change.MouseLeave += Btn_to_change_MouseLeave;
-                btn_change.EnabledChanged += btn_change_EnabledChanged;
-            }
+                private bool _active;
+                Button btn_change;
 
-            private void btn_change_EnabledChanged(object sender, EventArgs e)
-            {
-                if (btn_change.Enabled)
+                public StyleButton(Button btn_to_change, Color back_color_, Color _activeBorder_, Color? back_color_disabled_ = null)
                 {
+                    btn_change = btn_to_change;
+                    back_color = back_color_;
+                    _activeBorder = _activeBorder_;
+
+                    _minSize = btn_change.MinimumSize;
+
+
                     btn_change.BackColor = back_color;
+                    btn_change.ForeColor = _fore;
+                    btn_change.FlatAppearance.BorderColor = _back;
+                    btn_change.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+
+                    btn_change.UseVisualStyleBackColor = false;
+                    btn_change.MouseEnter += Btn_to_change_MouseEnter;
+                    btn_change.MouseLeave += Btn_to_change_MouseLeave;
+                    btn_change.EnabledChanged += btn_change_EnabledChanged;
+
+                    back_color_disabled = back_color_disabled_ != null ? (Color)back_color_disabled_ : ControlPaint.LightLight(back_color);
+
                 }
-                else
+
+                private void btn_change_EnabledChanged(object sender, EventArgs e)
                 {
-                    btn_change.BackColor = ControlPaint.LightLight(back_color);
+                    if (btn_change.Enabled)
+                    {
+                        btn_change.BackColor = back_color;
+                    }
+                    else
+                    {
+                        btn_change.BackColor = back_color_disabled;
+                    }
+
                 }
 
-            }
+                private void Btn_to_change_MouseLeave(object sender, EventArgs e)
+                {
+                    btn_change.Cursor = Cursors.Default;
+                    if (!_active)
+                        btn_change.FlatAppearance.BorderColor = back_color;
+                }
 
-            private void Btn_to_change_MouseLeave(object sender, EventArgs e)
-            {
-                btn_change.Cursor = Cursors.Default;
-                if (!_active)
-                    btn_change.FlatAppearance.BorderColor = back_color;
-            }
+                private void Btn_to_change_MouseEnter(object sender, EventArgs e)
+                {
+                    btn_change.Cursor = Cursors.Hand;
 
-            private void Btn_to_change_MouseEnter(object sender, EventArgs e)
-            {
-                btn_change.Cursor = Cursors.Hand;
+                    if (!_active)
+                        btn_change.FlatAppearance.BorderColor = _activeBorder;
+                }
 
-                if (!_active)
+
+                public void SetStateActive()
+                {
+                    _active = true;
                     btn_change.FlatAppearance.BorderColor = _activeBorder;
-            }
+                }
 
-
-            public void SetStateActive()
-            {
-                _active = true;
-                btn_change.FlatAppearance.BorderColor = _activeBorder;
-            }
-
-            public void SetStateNormal()
-            {
-                _active = false;
-                btn_change.FlatAppearance.BorderColor = back_color;
+                public void SetStateNormal()
+                {
+                    _active = false;
+                    btn_change.FlatAppearance.BorderColor = back_color;
+                }
             }
         }
 
-        public void StyleDatagridview(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
+        public class DatagridviewClass
         {
-            dataGridView1.DefaultCellStyle.Font = new Font(dataGridView1.DefaultCellStyle.Font.FontFamily, cell_size);
-
-            dataGridView1.ColumnHeadersDefaultCellStyle.Font = new Font(dataGridView1.ColumnHeadersDefaultCellStyle.Font.FontFamily, header_size);
-
-            dataGridView1.RowTemplate.Height = 25;
-        }
-        public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, string basic_back_color_name)
-        {
-            foreach (ToolStripMenuItem item in menu_strip.Items.OfType<ToolStripMenuItem>())
+            public void StyleDatagridview(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
             {
-                item.BackColor = default(Color);
+                dataGridView1.DefaultCellStyle.Font = new Font(dataGridView1.DefaultCellStyle.Font.FontFamily, cell_size);
+
+                dataGridView1.ColumnHeadersDefaultCellStyle.Font = new Font(dataGridView1.ColumnHeadersDefaultCellStyle.Font.FontFamily, header_size);
+
+                dataGridView1.RowTemplate.Height = 25;
+            }
+        }
+
+        public class MenuClass
+        {
+            public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, string basic_back_color_name)
+            {
+                foreach (ToolStripMenuItem item in menu_strip.Items.OfType<ToolStripMenuItem>())
+                {
+                    item.BackColor = default(Color);
+
+                }
+                menu_strip.Items[item_name_to_alter_color].BackColor = Color.FromName(basic_back_color_name);
 
             }
-            menu_strip.Items[item_name_to_alter_color].BackColor = Color.FromName(basic_back_color_name);
-
-        }
-        public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, Color back_color, Color fore_color)
-        {
-            foreach (ToolStripMenuItem item in menu_strip.Items.OfType<ToolStripMenuItem>())
+            public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, Color back_color, Color fore_color)
             {
-                item.BackColor = default(Color);
-                item.ForeColor = default(Color);
+                foreach (ToolStripMenuItem item in menu_strip.Items.OfType<ToolStripMenuItem>())
+                {
+                    item.BackColor = default(Color);
+                    item.ForeColor = default(Color);
+
+                }
+                menu_strip.Items[item_name_to_alter_color].BackColor = back_color;
+                menu_strip.Items[item_name_to_alter_color].ForeColor = fore_color;
 
             }
-            menu_strip.Items[item_name_to_alter_color].BackColor = back_color;
-            menu_strip.Items[item_name_to_alter_color].ForeColor = fore_color;
 
         }
 
     }
     public class WinTools
     {
-        /// <summary>
-        /// Add column show/hide capability to a DataGridView. When user right-clicks 
-        /// the cell origin a popup, containing a list of checkbox and column names, is
-        /// shown. 
-        /// example:  DataGridViewColumnSelector cs = new DataGridViewColumnSelector(dataGridView1);
-        /// cs.PopupMaxHeight = 100;
-        /// cs.PopupWidth = 110;
-        /// </summary>
-        public class DataGridViewColumnSelector
+        public class DataGridViewTool
         {
-            // the DataGridView to which the DataGridViewColumnSelector is attached
-            private DataGridView mDataGridView = null;
-            // a CheckedListBox containing the column header text and checkboxes
-            private CheckedListBox mCheckedListBox;
-            // a ToolStripDropDown object used to show the popup
-            private ToolStripDropDown mPopup;
-
-            private bool allow_all_cell_click = false;
-
             /// <summary>
-            /// The max height of the popup
+            /// Add column show/hide capability to a DataGridView. When user right-clicks 
+            /// the cell origin a popup, containing a list of checkbox and column names, is
+            /// shown. 
+            /// example:  DataGridViewColumnSelector cs = new DataGridViewColumnSelector(dataGridView1);
+            /// cs.PopupMaxHeight = 100;
+            /// cs.PopupWidth = 110;
             /// </summary>
-            public int PopupMaxHeight = 300;
-            /// <summary>
-            /// The width of the popup
-            /// </summary>
-            public int PopupWidth = 200;
-
-            /// <summary>
-            /// Gets or sets the DataGridView to which the DataGridViewColumnSelector is attached
-            /// </summary>
-            public DataGridView DataGridView
+            public class DataGridViewColumnSelector
             {
-                get { return mDataGridView; }
-                set
-                {
-                    // If any, remove handler from current DataGridView 
-                    if (mDataGridView != null) mDataGridView.CellMouseClick -= new DataGridViewCellMouseEventHandler(mDataGridView_CellMouseClick);
-                    // Set the new DataGridView
-                    mDataGridView = value;
-                    // Attach CellMouseClick handler to DataGridView
-                    if (mDataGridView != null) mDataGridView.CellMouseClick += new DataGridViewCellMouseEventHandler(mDataGridView_CellMouseClick);
-                }
-            }
+                // the DataGridView to which the DataGridViewColumnSelector is attached
+                private DataGridView mDataGridView = null;
+                // a CheckedListBox containing the column header text and checkboxes
+                private CheckedListBox mCheckedListBox;
+                // a ToolStripDropDown object used to show the popup
+                private ToolStripDropDown mPopup;
 
-            // When user right-clicks the cell origin, it clears and fill the CheckedListBox with
-            // columns header text. Then it shows the popup. 
-            // In this way the CheckedListBox items are always refreshed to reflect changes occurred in 
-            // DataGridView columns (column additions or name changes and so on).
-            void mDataGridView_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
-            {
-                bool click_cell = allow_all_cell_click ? true : (e.RowIndex == -1 && e.ColumnIndex == -1);
-                if (e.Button == MouseButtons.Right && click_cell)
+                private bool allow_all_cell_click = false;
+
+                /// <summary>
+                /// The max height of the popup
+                /// </summary>
+                public int PopupMaxHeight = 300;
+                /// <summary>
+                /// The width of the popup
+                /// </summary>
+                public int PopupWidth = 200;
+
+                /// <summary>
+                /// Gets or sets the DataGridView to which the DataGridViewColumnSelector is attached
+                /// </summary>
+                public DataGridView DataGridView
                 {
-                    mCheckedListBox.Items.Clear();
-                    foreach (DataGridViewColumn c in mDataGridView.Columns)
+                    get { return mDataGridView; }
+                    set
                     {
-                        mCheckedListBox.Items.Add(c.HeaderText, c.Visible);
+                        // If any, remove handler from current DataGridView 
+                        if (mDataGridView != null) mDataGridView.CellMouseClick -= new DataGridViewCellMouseEventHandler(mDataGridView_CellMouseClick);
+                        // Set the new DataGridView
+                        mDataGridView = value;
+                        // Attach CellMouseClick handler to DataGridView
+                        if (mDataGridView != null) mDataGridView.CellMouseClick += new DataGridViewCellMouseEventHandler(mDataGridView_CellMouseClick);
                     }
-                    int PreferredHeight = (mCheckedListBox.Items.Count * 16) + 7;
-                    mCheckedListBox.Height = (PreferredHeight < PopupMaxHeight) ? PreferredHeight : PopupMaxHeight;
-                    mCheckedListBox.Width = this.PopupWidth;
-                    int x_location = e.X;
-                    if (mDataGridView.RightToLeft == RightToLeft.Yes) x_location += mDataGridView.Width;
+                }
 
-                    mPopup.Show(mDataGridView.PointToScreen(new Point(x_location, e.Y)));
+                // When user right-clicks the cell origin, it clears and fill the CheckedListBox with
+                // columns header text. Then it shows the popup. 
+                // In this way the CheckedListBox items are always refreshed to reflect changes occurred in 
+                // DataGridView columns (column additions or name changes and so on).
+                void mDataGridView_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+                {
+                    bool click_cell = allow_all_cell_click ? true : (e.RowIndex == -1 && e.ColumnIndex == -1);
+                    if (e.Button == MouseButtons.Right && click_cell)
+                    {
+                        mCheckedListBox.Items.Clear();
+                        foreach (DataGridViewColumn c in mDataGridView.Columns)
+                        {
+                            mCheckedListBox.Items.Add(c.HeaderText, c.Visible);
+                        }
+                        int PreferredHeight = (mCheckedListBox.Items.Count * 16) + 7;
+                        mCheckedListBox.Height = (PreferredHeight < PopupMaxHeight) ? PreferredHeight : PopupMaxHeight;
+                        mCheckedListBox.Width = this.PopupWidth;
+                        int x_location = e.X;
+                        if (mDataGridView.RightToLeft == RightToLeft.Yes) x_location += mDataGridView.Width;
+
+                        mPopup.Show(mDataGridView.PointToScreen(new Point(x_location, e.Y)));
+                    }
+                }
+
+                // The constructor creates an instance of CheckedListBox and ToolStripDropDown.
+                // the CheckedListBox is hosted by ToolStripControlHost, which in turn is
+                // added to ToolStripDropDown.
+                public DataGridViewColumnSelector()
+                {
+                    mCheckedListBox = new CheckedListBox();
+                    mCheckedListBox.CheckOnClick = true;
+                    mCheckedListBox.ItemCheck += new ItemCheckEventHandler(mCheckedListBox_ItemCheck);
+
+                    ToolStripControlHost mControlHost = new ToolStripControlHost(mCheckedListBox);
+                    mControlHost.Padding = Padding.Empty;
+                    mControlHost.Margin = Padding.Empty;
+                    mControlHost.AutoSize = false;
+
+                    mPopup = new ToolStripDropDown();
+                    mPopup.Padding = Padding.Empty;
+                    mPopup.Items.Add(mControlHost);
+                }
+
+                public DataGridViewColumnSelector(DataGridView dgv, bool all_cell_click = false)
+                    : this()
+                {
+                    this.DataGridView = dgv;
+                    this.allow_all_cell_click = all_cell_click;
+                }
+
+                // When user checks / unchecks a checkbox, the related column visibility is 
+                // switched.
+                void mCheckedListBox_ItemCheck(object sender, ItemCheckEventArgs e)
+                {
+                    mDataGridView.Columns[e.Index].Visible = (e.NewValue == CheckState.Checked);
                 }
             }
 
-            // The constructor creates an instance of CheckedListBox and ToolStripDropDown.
-            // the CheckedListBox is hosted by ToolStripControlHost, which in turn is
-            // added to ToolStripDropDown.
-            public DataGridViewColumnSelector()
-            {
-                mCheckedListBox = new CheckedListBox();
-                mCheckedListBox.CheckOnClick = true;
-                mCheckedListBox.ItemCheck += new ItemCheckEventHandler(mCheckedListBox_ItemCheck);
-
-                ToolStripControlHost mControlHost = new ToolStripControlHost(mCheckedListBox);
-                mControlHost.Padding = Padding.Empty;
-                mControlHost.Margin = Padding.Empty;
-                mControlHost.AutoSize = false;
-
-                mPopup = new ToolStripDropDown();
-                mPopup.Padding = Padding.Empty;
-                mPopup.Items.Add(mControlHost);
-            }
-
-            public DataGridViewColumnSelector(DataGridView dgv, bool all_cell_click = false)
-                : this()
-            {
-                this.DataGridView = dgv;
-                this.allow_all_cell_click = all_cell_click;
-            }
-
-            // When user checks / unchecks a checkbox, the related column visibility is 
-            // switched.
-            void mCheckedListBox_ItemCheck(object sender, ItemCheckEventArgs e)
-            {
-                mDataGridView.Columns[e.Index].Visible = (e.NewValue == CheckState.Checked);
-            }
         }
-
-        public class ComboItem
+        public class ComboTool
         {
-            public string Text { get; set; }
-            public object Value { get; set; }
+            /// <summary>
+            /// you should define Itemheight to best size
+            /// </summary>
+            /// <param name="cb"></param>
+            /// <param name="height"></param>
+            /// <param name="pad"></param>
+            public void MakeComboBoxSizable(ComboBox cb, int height, Padding pad)
+            {
+                cb.DrawMode = DrawMode.OwnerDrawFixed;
+
+                decimal factor1 = Decimal.Divide(cb.Height, cb.ItemHeight);
+                decimal item_height1 = height / factor1;
+
+                int factor2 = cb.Height - cb.ItemHeight;
+                int item_height2 = height - factor2;
+
+                int item_height = Decimal.ToInt32(Decimal.Divide(item_height1 + item_height2, 2));
+                cb.ItemHeight = Decimal.ToInt32(item_height);
+                cb.Margin = pad;
+            }
+
+
+            public class ComboItem
+            {
+                public string Text { get; set; }
+                public object Value { get; set; }
+            }
+
+            /// <summary>
+            /// this method make app slow. use it in your app rather than reference from SRL
+            /// </summary>
+            /// <typeparam name="ValueT"></typeparam>
+            /// <param name="cb"></param>
+            /// <param name="enumerable_data_source">enumerable_data_source is IEnumerable query of  new {string Text=?, object Value=? }</param>
+            /// <param name="empty_row_value">empty row is added to top</param>
+            public void ComboBoxDataBind<ValueT>(ComboBox cb, IEnumerable<dynamic> enumerable_data_source, ValueT empty_row_value)
+            {
+                var data_source = enumerable_data_source.ToList();
+                cb.Items.Clear();
+                cb.DisplayMember = "Text";
+                cb.ValueMember = "Value";
+                data_source.Insert(0, new { Text = "", Value = empty_row_value });
+                cb.DataSource = data_source;
+
+            }
+
+
         }
+
 
         public string GetAppName(string default_app_name, string folder_containing_exe_path, List<string> file_not_searching, string app_extention_pattern = "*.exe")
         {
@@ -1204,63 +1687,30 @@ namespace SRL
         }
 
 
-
-
-        /// <summary>
-        /// this method make app slow. use it in your app rather than reference from SRL
-        /// </summary>
-        /// <typeparam name="ValueT"></typeparam>
-        /// <param name="cb"></param>
-        /// <param name="enumerable_data_source">enumerable_data_source is IEnumerable query of  new {string Text=?, object Value=? }</param>
-        /// <param name="empty_row_value">empty row is added to top</param>
-        public void ComboBoxDataBind<ValueT>(ComboBox cb, IEnumerable<dynamic> enumerable_data_source, ValueT empty_row_value)
+        public class TextBoxTool
         {
-            var data_source = enumerable_data_source.ToList();
-            cb.Items.Clear();
-            cb.DisplayMember = "Text";
-            cb.ValueMember = "Value";
-            data_source.Insert(0, new { Text = "", Value = empty_row_value });
-            cb.DataSource = data_source;
-
-        }
-        /// <summary>
-        /// return "" if control is empty or text with format if control is not empty
-        /// </summary>
-        /// <param name="control"></param>
-        /// <returns></returns>
-        public string GetRawStringMaskedTextBox(MaskedTextBox control)
-        {
-            string raw_text = "";
-            MaskFormat format = control.TextMaskFormat;
-            control.TextMaskFormat = MaskFormat.ExcludePromptAndLiterals;
-            if (control.Text.Any())
+            /// <summary>
+            /// return "" if control is empty or text with format if control is not empty
+            /// </summary>
+            /// <param name="control"></param>
+            /// <returns></returns>
+            public string GetRawStringMaskedTextBox(MaskedTextBox control)
+            {
+                string raw_text = "";
+                MaskFormat format = control.TextMaskFormat;
+                control.TextMaskFormat = MaskFormat.ExcludePromptAndLiterals;
+                if (control.Text.Any())
+                    control.TextMaskFormat = format;
+                raw_text = control.Text;
                 control.TextMaskFormat = format;
-            raw_text = control.Text;
-            control.TextMaskFormat = format;
-            return raw_text;
+                return raw_text;
+            }
+
         }
 
-        /// <summary>
-        /// you should define Itemheight to best size
-        /// </summary>
-        /// <param name="cb"></param>
-        /// <param name="height"></param>
-        /// <param name="pad"></param>
-        public void MakeComboBoxSizable(ComboBox cb, int height, Padding pad)
-        {
-            cb.DrawMode = DrawMode.OwnerDrawFixed;
+          
 
-            decimal factor1 = Decimal.Divide(cb.Height, cb.ItemHeight);
-            decimal item_height1 = height / factor1;
-
-            int factor2 = cb.Height - cb.ItemHeight;
-            int item_height2 = height - factor2;
-
-            int item_height = Decimal.ToInt32(Decimal.Divide(item_height1 + item_height2, 2));
-            cb.ItemHeight = Decimal.ToInt32(item_height);
-            cb.Margin = pad;
-        }
-
+        
 
         public void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false)
         {
@@ -1570,7 +2020,7 @@ namespace SRL
 
                 var dt = new DateTime();
 
-                if (new WinTools().GetRawStringMaskedTextBox(control).Any())
+                if (new WinTools.TextBoxTool().GetRawStringMaskedTextBox(control).Any())
                     if (!DateTime.TryParse(control.Text, out dt))
                     {
                         e.Cancel = force_cancel;
@@ -1905,34 +2355,34 @@ namespace SRL
         {
             return (pixel / dpi);
         }
-        public float StringToFloat(string value_to_parse, float? default_value = null, string app_decimal_symbol = "/", bool show_alarm_erro = true)
+        public decimal StringToDecimal(string value_to_parse, decimal? default_value = null, string app_decimal_symbol = "/", bool show_alarm_error = true)
         {
             if (string.IsNullOrWhiteSpace(value_to_parse)) return 0;
 
-            float value_parsed = 0;
-            bool parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            decimal value_parsed = 0;
+            bool parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
             string current_decimal_symbol = NumberFormatInfo.CurrentInfo.NumberDecimalSeparator;
             value_to_parse = value_to_parse.Replace(app_decimal_symbol, current_decimal_symbol);
-            parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
             value_to_parse = value_to_parse.Replace(app_decimal_symbol, ".");
-            parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
             value_to_parse = value_to_parse.Replace(app_decimal_symbol, ",");
-            parse_try = StringToFloatTry(value_to_parse, out value_parsed);
+            parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
-            if (show_alarm_erro) MessageBox.Show("نماد اعشاری سیستم را به / تغییر دهید. ترجیحا از فرمت فارسی استفاده کنید");
+            if (show_alarm_error) MessageBox.Show("نماد اعشاری سیستم را به / تغییر دهید. ترجیحا از فرمت فارسی استفاده کنید");
             if (default_value != null)
             {
-                value_parsed = (float)default_value;
+                value_parsed = (decimal)default_value;
                 return value_parsed;
             }
-            if (show_alarm_erro) MessageBox.Show("متغیر اعشاری دارای مقدار 0 است و خطا ایجاد خواهد شد. فرمت سیستم را بررسی کنید");
+            if (show_alarm_error) MessageBox.Show("متغیر اعشاری دارای مقدار 0 است و خطا ایجاد خواهد شد. فرمت سیستم را بررسی کنید");
             return value_parsed;
 
 
@@ -2783,11 +3233,15 @@ namespace SRL
                 using (var stream = new System.IO.FileStream(icon_full_path, System.IO.FileMode.OpenOrCreate))
                 {
                     theIcon.Save(stream);
+                    stream.Close();
                 }
             }
+
         }
+
         public void MakeShortcutUrl(string shortcut_name, string shortcut_directory, string full_path_to_file)
         {
+
             using (StreamWriter writer = new StreamWriter(shortcut_directory + "\\" + shortcut_name + ".url"))
             {
                 writer.WriteLine("[InternetShortcut]");
@@ -2795,9 +3249,9 @@ namespace SRL
                 writer.Flush();
             }
         }
-        public void MakeShortcut(string shortcut_name, string shortcut_directory, string file_directory_path, string file_with_extention)
+        public void MakeShortcut(string shortcut_name, string shortcut_directory, string file_directory_path, string file_with_extention, string icon_full_path_from_file_directory = null)
         {
-            string full_path_to_file=System.IO.Path.Combine(file_directory_path,file_with_extention);
+            string full_path_to_file = System.IO.Path.Combine(file_directory_path, file_with_extention);
 
             WshShell wsh = new WshShell();
             IWshRuntimeLibrary.IWshShortcut shortcut = wsh.CreateShortcut(
@@ -2808,9 +3262,15 @@ namespace SRL
             shortcut.WindowStyle = 1;
             shortcut.Description = full_path_to_file;
             shortcut.WorkingDirectory = file_directory_path;
-            string icon_path = Path.GetDirectoryName(full_path_to_file) + "\\" + shortcut_name + ".ico";
-            ExtractFileIcon(full_path_to_file, icon_path);
-            shortcut.IconLocation = icon_path;
+            string icon_full_path = System.IO.Path.Combine(file_directory_path,
+                icon_full_path_from_file_directory == null ? "" : icon_full_path_from_file_directory);
+            if (!System.IO.File.Exists(icon_full_path))
+            {
+                icon_full_path = Path.GetDirectoryName(full_path_to_file) + "\\" + shortcut_name + ".ico";
+                ExtractFileIcon(full_path_to_file, icon_full_path);
+            }
+            shortcut.IconLocation = icon_full_path;
+
             shortcut.Save();
         }
         public string ReplaceAllFilesFromDirToDir(string SourceFolderFullPath, string DestinationFolderFullPath)
@@ -2925,7 +3385,7 @@ namespace SRL
             }
         }
 
-       
+
 
 
     }

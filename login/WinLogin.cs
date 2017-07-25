@@ -67,7 +67,7 @@ namespace SRL
         }
         private void WinLogin_Load(object sender, EventArgs e)
         {
-            new SRL.WinUI.StyleButton(btnEnter, Color.Blue, Color.BlueViolet);
+            new SRL.WinUI.ButtonClass.StyleButton(btnEnter, Color.Blue, Color.BlueViolet);
             
         }
 

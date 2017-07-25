@@ -35,7 +35,7 @@ namespace SRL
 
             foreach (var item in new SRL.ChildParent().GetAllChildrenControls(this).OfType<Button>())
             {
-                new SRL.WinUI.StyleButton(item, btn_color, Color.Black);
+                new SRL.WinUI.ButtonClass.StyleButton(item, btn_color, Color.Black,Color.FromKnownColor(KnownColor.Control));
             }
 
         }
