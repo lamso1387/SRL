@@ -750,6 +750,31 @@ namespace SRL
     {
         public class FormClass
         {
+            private async void FadeInFormShowDialog(Form o, int interval = 50)
+            {
+                o.ShowDialog();
+                o.Opacity = 0;
+                //Object is not fully invisible. Fade it in
+                while (o.Opacity < 1.0)
+                {
+                    await Task.Delay(interval);
+                    o.Opacity += 0.05;
+                }
+                o.Opacity = 1; //make fully visible       
+            }
+
+            private async void FadeOutFormClose(Form o, int interval = 50)
+            {
+                //Object is fully visible. Fade it out
+                while (o.Opacity > 0.0)
+                {
+                    await Task.Delay(interval);
+                    o.Opacity -= 0.05;
+                }
+                o.Opacity = 0; //make fully invisible     
+                o.Close();
+            }
+
             public class EnableFadeShowForm
             {
                 Form F = new Form();
