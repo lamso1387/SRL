@@ -29,6 +29,15 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace SRL
 {
+
+
+    /// <summary>
+    /// Usage Guide:
+    /// Command for creating the certificate
+    /// >> makecert -pe -ss My -sr CurrentUser -$ commercial -n "CN=YourCertName" -sky Signature
+    /// Then export the cert with private key from key store with a password
+    /// Also export another cert with only public key 
+    /// </summary>
     public class LicenseClass
     {
         public byte[] CertificatePublicKeyData { get; set; }
@@ -536,13 +545,7 @@ namespace SRL
         }
 
 
-        /// <summary>
-        /// Usage Guide:
-        /// Command for creating the certificate
-        /// >> makecert -pe -ss My -sr CurrentUser -$ commercial -n "CN=<YourCertName>" -sky Signature
-        /// Then export the cert with private key from key store with a password
-        /// Also export another cert with only public key
-        /// </summary>
+        
         public enum LicenseStatus
         {
             UNDEFINED = 0,

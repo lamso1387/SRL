@@ -1633,6 +1633,36 @@ namespace SRL
             }
 
         }
+        public class DataGridViewFiltering
+        {
+            public DataGridView dgv;
+            public DataGridViewFiltering(DataGridView dgv_with_columns)
+            {
+                dgv = dgv_with_columns;
+            }
+
+            public DataTable GetDataTable()
+            {
+                DataTable table = new DataTable();
+
+                foreach (DataGridViewColumn item in dgv.Columns)
+                {
+                    DataColumn dc = new DataColumn(item.Name);
+                    table.Columns.Add(dc);
+                }
+
+                dgv.Columns.Clear();
+                dgv.DataSource = table;
+                return table;
+            }
+
+            public void Filter(string expression)
+            {
+                //"c2 > 6"
+                ((DataTable)dgv.DataSource).DefaultView.RowFilter =expression ;
+            }
+            
+        }
         public class ComboTool
         {
             /// <summary>
