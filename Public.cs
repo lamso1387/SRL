@@ -878,7 +878,15 @@ namespace SRL
         {
             public class TextBoxBorderColor
             {
-                public TextBoxBorderColor(ref TextBox tb, out TextBox new_tb_, Color border_color_, Color border_focus_color_, string border_or_focus_or_both_)
+                /// <summary>
+                /// tb must have parent
+                /// </summary>
+                /// <param name="tb"></param>
+                /// <param name="new_tb_"></param>
+                /// <param name="border_color_"></param>
+                /// <param name="border_focus_color_"></param>
+                /// <param name="border_or_focus_or_both_"></param>
+                public TextBoxBorderColor(TextBox tb, out TextBox new_tb_, Color border_color_, Color border_focus_color_, string border_or_focus_or_both_)
                 {
                     TextBoxBorder new_tb = new TextBoxBorder(border_color_, border_focus_color_, border_or_focus_or_both_);
 
@@ -887,11 +895,9 @@ namespace SRL
 
                     new_tb.Location = new Point(tb.Location.X, tb.Location.Y);
 
-
                     new_tb.Font = tb.Font;
 
                     Control parent = tb.Parent;
-
                     parent.Controls.Add(new_tb);
                     parent.Controls.Remove(tb);
 
@@ -1222,9 +1228,9 @@ namespace SRL
             }
 
         }
-       
 
-       
+
+
         public void FullScreenNoTaskbar(Control control)
         {
             control.Left = control.Top = 0;
@@ -1330,7 +1336,7 @@ namespace SRL
                 }
             }
         }
-        
+
 
         public class AlterTitleBarColor : Form
         {
@@ -2299,7 +2305,8 @@ namespace SRL
             public void ComboBoxDataBind<ValueT>(ComboBox cb, IEnumerable<dynamic> enumerable_data_source, ValueT empty_row_value)
             {
                 var data_source = enumerable_data_source.ToList();
-                cb.Items.Clear();
+                // cb.Items.Clear();
+                cb.DataSource = null;
                 cb.DisplayMember = "Text";
                 cb.ValueMember = "Value";
                 data_source.Insert(0, new { Text = "", Value = empty_row_value });
@@ -2346,6 +2353,29 @@ namespace SRL
 
         public class TextBoxTool
         {
+            public class Enable3DigitSeperation
+            {
+                TextBox tb;
+                public Enable3DigitSeperation(TextBox tb_)
+                {
+                    tb = tb_;
+                    tb_.TextChanged += new EventHandler(tb_TextChanged);
+                }
+                void tb_TextChanged(object sender, EventArgs e)
+                {
+                    string value = tb.Text.Replace(",", "");
+                    ulong ul;
+                    if (ulong.TryParse(value, out ul))
+                    {
+                        tb.TextChanged -= tb_TextChanged;
+                        tb.Text = string.Format("{0:#,#}", ul);
+                        tb.SelectionStart = tb.Text.Length;
+                        tb.TextChanged += tb_TextChanged;
+                    }
+
+                }
+            }
+
             /// <summary>
             /// return "" if control is empty or text with format if control is not empty
             /// </summary>
@@ -2365,9 +2395,9 @@ namespace SRL
 
         }
 
-          
 
-        
+
+
 
         public void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false)
         {
@@ -2564,8 +2594,11 @@ namespace SRL
                 [Description("عدد اعشاری اجباری است")]
                 DecimalInput_NotNull = 6,
 
+                [Description("عدد صحیح اجباری است")]
+                IntegerInput_NotNull = 7,
+
                 [Description("ایمیل صحیح اجباری است")]
-                EmailPattern_NotNull = 7
+                EmailPattern_NotNull = 8
 
             }
 
@@ -2627,6 +2660,10 @@ namespace SRL
                         control.KeyPress += new System.Windows.Forms.KeyPressEventHandler(decimal_input_KeyPress);
                         control.Validating += new System.ComponentModel.CancelEventHandler(not_null_Validating);
                         break;
+                    case ErrorTypes.IntegerInput_NotNull:
+                        control.KeyPress += new System.Windows.Forms.KeyPressEventHandler(integer_input_KeyPress);
+                        control.Validating += new System.ComponentModel.CancelEventHandler(not_null_Validating);
+                        break;
                     case ErrorTypes.EmailPattern_NotNull:
                         control.Validating += new System.ComponentModel.CancelEventHandler(not_null_email_pattern_Validating);
                         break;
@@ -2669,6 +2706,30 @@ namespace SRL
                     if ((sender as TextBox).Text.IndexOf(e.KeyChar) != -1)
                         e.Handled = true;
                 }
+            }
+
+            private void integer_input_KeyPress(object sender, KeyPressEventArgs e)
+            {
+                //8	        BACKSPACE key
+                //46        .  
+                //47        /     
+                //48        0 
+                //49        1
+                //50        2
+                //51        3
+                //52        4
+                //53        5
+                //54        6
+                //55        7
+                //56        8
+                //57        9
+
+                if (((e.KeyChar < 48 || e.KeyChar > 57) && e.KeyChar != 8))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
             }
 
             private void mask_date_pattern_Validating(object sender, CancelEventArgs e)
