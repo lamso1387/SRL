@@ -1489,13 +1489,15 @@ namespace SRL
 
         public class DatagridviewClass
         {
-            public void StyleDatagridview(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
+            public void StyleDatagridviewDefault(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
             {
                 dataGridView1.DefaultCellStyle.Font = new Font(dataGridView1.DefaultCellStyle.Font.FontFamily, cell_size);
 
                 dataGridView1.ColumnHeadersDefaultCellStyle.Font = new Font(dataGridView1.ColumnHeadersDefaultCellStyle.Font.FontFamily, header_size);
-
+                dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+                dataGridView1.MultiSelect = false;
                 dataGridView1.RowTemplate.Height = 25;
+                dataGridView1.AllowUserToAddRows = false;
             }
         }
 
@@ -4013,6 +4015,7 @@ namespace SRL
             }
 
         }
+
         public void CreateFolderOverwrite(string FolderFullPath)
         {
             System.IO.Directory.CreateDirectory(FolderFullPath);
