@@ -1532,606 +1532,606 @@ namespace SRL
     public class WinTools
     {
 
-        public  class LoadingCircleControl
+        public class LoadingCircleControl
         {
-        public partial class LoadingCircle : Control
-        {
-            // Constants =========================================================
-            private const double NumberOfDegreesInCircle = 360;
-            private const double NumberOfDegreesInHalfCircle = NumberOfDegreesInCircle / 2;
-            private const int DefaultInnerCircleRadius = 8;
-            private const int DefaultOuterCircleRadius = 10;
-            private const int DefaultNumberOfSpoke = 10;
-            private const int DefaultSpokeThickness = 4;
-            private readonly Color DefaultColor = Color.DarkGray;
-
-            private const int MacOSXInnerCircleRadius = 5;
-            private const int MacOSXOuterCircleRadius = 11;
-            private const int MacOSXNumberOfSpoke = 12;
-            private const int MacOSXSpokeThickness = 2;
-
-            private const int FireFoxInnerCircleRadius = 6;
-            private const int FireFoxOuterCircleRadius = 7;
-            private const int FireFoxNumberOfSpoke = 9;
-            private const int FireFoxSpokeThickness = 4;
-
-            private const int IE7InnerCircleRadius = 8;
-            private const int IE7OuterCircleRadius = 9;
-            private const int IE7NumberOfSpoke = 24;
-            private const int IE7SpokeThickness = 4;
-
-            // Enumeration =======================================================
-            public enum StylePresets
+            public partial class LoadingCircle : Control
             {
-                MacOSX,
-                Firefox,
-                IE7,
-                Custom
-            }
+                // Constants =========================================================
+                private const double NumberOfDegreesInCircle = 360;
+                private const double NumberOfDegreesInHalfCircle = NumberOfDegreesInCircle / 2;
+                private const int DefaultInnerCircleRadius = 8;
+                private const int DefaultOuterCircleRadius = 10;
+                private const int DefaultNumberOfSpoke = 10;
+                private const int DefaultSpokeThickness = 4;
+                private readonly Color DefaultColor = Color.DarkGray;
 
-            // Attributes ========================================================
-            private Timer m_Timer;
-            private bool m_IsTimerActive;
-            private int m_NumberOfSpoke;
-            private int m_SpokeThickness;
-            private int m_ProgressValue;
-            private int m_OuterCircleRadius;
-            private int m_InnerCircleRadius;
-            private PointF m_CenterPoint;
-            private Color m_Color;
-            private Color[] m_Colors;
-            private double[] m_Angles;
-            private StylePresets m_StylePreset;
+                private const int MacOSXInnerCircleRadius = 5;
+                private const int MacOSXOuterCircleRadius = 11;
+                private const int MacOSXNumberOfSpoke = 12;
+                private const int MacOSXSpokeThickness = 2;
 
-            // Properties ========================================================
-            /// <summary>
-            /// Gets or sets the lightest color of the circle.
-            /// </summary>
-            /// <value>The lightest color of the circle.</value>
-            [TypeConverter("System.Drawing.ColorConverter"),
-             Category("LoadingCircle"),
-             Description("Sets the color of spoke.")]
-            public Color Color
-            {
-                get
+                private const int FireFoxInnerCircleRadius = 6;
+                private const int FireFoxOuterCircleRadius = 7;
+                private const int FireFoxNumberOfSpoke = 9;
+                private const int FireFoxSpokeThickness = 4;
+
+                private const int IE7InnerCircleRadius = 8;
+                private const int IE7OuterCircleRadius = 9;
+                private const int IE7NumberOfSpoke = 24;
+                private const int IE7SpokeThickness = 4;
+
+                // Enumeration =======================================================
+                public enum StylePresets
                 {
-                    return m_Color;
+                    MacOSX,
+                    Firefox,
+                    IE7,
+                    Custom
                 }
-                set
+
+                // Attributes ========================================================
+                private Timer m_Timer;
+                private bool m_IsTimerActive;
+                private int m_NumberOfSpoke;
+                private int m_SpokeThickness;
+                private int m_ProgressValue;
+                private int m_OuterCircleRadius;
+                private int m_InnerCircleRadius;
+                private PointF m_CenterPoint;
+                private Color m_Color;
+                private Color[] m_Colors;
+                private double[] m_Angles;
+                private StylePresets m_StylePreset;
+
+                // Properties ========================================================
+                /// <summary>
+                /// Gets or sets the lightest color of the circle.
+                /// </summary>
+                /// <value>The lightest color of the circle.</value>
+                [TypeConverter("System.Drawing.ColorConverter"),
+                 Category("LoadingCircle"),
+                 Description("Sets the color of spoke.")]
+                public Color Color
                 {
-                    m_Color = value;
+                    get
+                    {
+                        return m_Color;
+                    }
+                    set
+                    {
+                        m_Color = value;
+
+                        GenerateColorsPallet();
+                        Invalidate();
+                    }
+                }
+
+                /// <summary>
+                /// Gets or sets the outer circle radius.
+                /// </summary>
+                /// <value>The outer circle radius.</value>
+                [System.ComponentModel.Description("Gets or sets the radius of outer circle."),
+                 System.ComponentModel.Category("LoadingCircle")]
+                public int OuterCircleRadius
+                {
+                    get
+                    {
+                        if (m_OuterCircleRadius == 0)
+                            m_OuterCircleRadius = DefaultOuterCircleRadius;
+
+                        return m_OuterCircleRadius;
+                    }
+                    set
+                    {
+                        m_OuterCircleRadius = value;
+                        Invalidate();
+                    }
+                }
+
+                /// <summary>
+                /// Gets or sets the inner circle radius.
+                /// </summary>
+                /// <value>The inner circle radius.</value>
+                [System.ComponentModel.Description("Gets or sets the radius of inner circle."),
+                 System.ComponentModel.Category("LoadingCircle")]
+                public int InnerCircleRadius
+                {
+                    get
+                    {
+                        if (m_InnerCircleRadius == 0)
+                            m_InnerCircleRadius = DefaultInnerCircleRadius;
+
+                        return m_InnerCircleRadius;
+                    }
+                    set
+                    {
+                        m_InnerCircleRadius = value;
+                        Invalidate();
+                    }
+                }
+
+                /// <summary>
+                /// Gets or sets the number of spoke.
+                /// </summary>
+                /// <value>The number of spoke.</value>
+                [System.ComponentModel.Description("Gets or sets the number of spoke."),
+                System.ComponentModel.Category("LoadingCircle")]
+                public int NumberSpoke
+                {
+                    get
+                    {
+                        if (m_NumberOfSpoke == 0)
+                            m_NumberOfSpoke = DefaultNumberOfSpoke;
+
+                        return m_NumberOfSpoke;
+                    }
+                    set
+                    {
+                        if (m_NumberOfSpoke != value && m_NumberOfSpoke > 0)
+                        {
+                            m_NumberOfSpoke = value;
+                            GenerateColorsPallet();
+                            GetSpokesAngles();
+
+                            Invalidate();
+                        }
+                    }
+                }
+
+                /// <summary>
+                /// Gets or sets a value indicating whether this <see cref="T:LoadingCircle"/> is active.
+                /// </summary>
+                /// <value><c>true</c> if active; otherwise, <c>false</c>.</value>
+                [System.ComponentModel.Description("Gets or sets the number of spoke."),
+                System.ComponentModel.Category("LoadingCircle")]
+                public bool Active
+                {
+                    get
+                    {
+                        return m_IsTimerActive;
+                    }
+                    set
+                    {
+                        m_IsTimerActive = value;
+                        ActiveTimer();
+                    }
+                }
+
+                /// <summary>
+                /// Gets or sets the spoke thickness.
+                /// </summary>
+                /// <value>The spoke thickness.</value>
+                [System.ComponentModel.Description("Gets or sets the thickness of a spoke."),
+                System.ComponentModel.Category("LoadingCircle")]
+                public int SpokeThickness
+                {
+                    get
+                    {
+                        if (m_SpokeThickness <= 0)
+                            m_SpokeThickness = DefaultSpokeThickness;
+
+                        return m_SpokeThickness;
+                    }
+                    set
+                    {
+                        m_SpokeThickness = value;
+                        Invalidate();
+                    }
+                }
+
+                /// <summary>
+                /// Gets or sets the rotation speed.
+                /// </summary>
+                /// <value>The rotation speed.</value>
+                [System.ComponentModel.Description("Gets or sets the rotation speed. Higher the slower."),
+                System.ComponentModel.Category("LoadingCircle")]
+                public int RotationSpeed
+                {
+                    get
+                    {
+                        return m_Timer.Interval;
+                    }
+                    set
+                    {
+                        if (value > 0)
+                            m_Timer.Interval = value;
+                    }
+                }
+
+                /// <summary>
+                /// Quickly sets the style to one of these presets, or a custom style if desired
+                /// </summary>
+                /// <value>The style preset.</value>
+                [Category("LoadingCircle"),
+                 Description("Quickly sets the style to one of these presets, or a custom style if desired"),
+                 DefaultValue(typeof(StylePresets), "Custom")]
+                public StylePresets StylePreset
+                {
+                    get { return m_StylePreset; }
+                    set
+                    {
+                        m_StylePreset = value;
+
+                        switch (m_StylePreset)
+                        {
+                            case StylePresets.MacOSX:
+                                SetCircleAppearance(MacOSXNumberOfSpoke,
+                                    MacOSXSpokeThickness, MacOSXInnerCircleRadius,
+                                    MacOSXOuterCircleRadius);
+                                break;
+                            case StylePresets.Firefox:
+                                SetCircleAppearance(FireFoxNumberOfSpoke,
+                                    FireFoxSpokeThickness, FireFoxInnerCircleRadius,
+                                    FireFoxOuterCircleRadius);
+                                break;
+                            case StylePresets.IE7:
+                                SetCircleAppearance(IE7NumberOfSpoke,
+                                    IE7SpokeThickness, IE7InnerCircleRadius,
+                                    IE7OuterCircleRadius);
+                                break;
+                            case StylePresets.Custom:
+                                SetCircleAppearance(DefaultNumberOfSpoke,
+                                    DefaultSpokeThickness,
+                                    DefaultInnerCircleRadius,
+                                    DefaultOuterCircleRadius);
+                                break;
+                        }
+                    }
+                }
+
+                // Construtor ========================================================
+                /// <summary>
+                /// Initializes a new instance of the <see cref="T:LoadingCircle"/> class.
+                /// </summary>
+                public LoadingCircle()
+                {
+                    SetStyle(ControlStyles.UserPaint, true);
+                    SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+                    SetStyle(ControlStyles.ResizeRedraw, true);
+                    SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+
+                    m_Color = DefaultColor;
+
+                    GenerateColorsPallet();
+                    GetSpokesAngles();
+                    GetControlCenterPoint();
+
+                    m_Timer = new Timer();
+                    m_Timer.Tick += new EventHandler(aTimer_Tick);
+                    ActiveTimer();
+
+                    this.Resize += new EventHandler(LoadingCircle_Resize);
+                }
+
+                // Events ============================================================
+                /// <summary>
+                /// Handles the Resize event of the LoadingCircle control.
+                /// </summary>
+                /// <param name="sender">The source of the event.</param>
+                /// <param name="e">The <see cref="T:System.EventArgs"/> instance containing the event data.</param>
+                void LoadingCircle_Resize(object sender, EventArgs e)
+                {
+                    GetControlCenterPoint();
+                }
+
+                /// <summary>
+                /// Handles the Tick event of the aTimer control.
+                /// </summary>
+                /// <param name="sender">The source of the event.</param>
+                /// <param name="e">The <see cref="T:System.EventArgs"/> instance containing the event data.</param>
+                void aTimer_Tick(object sender, EventArgs e)
+                {
+                    m_ProgressValue = ++m_ProgressValue % m_NumberOfSpoke;
+                    Invalidate();
+                }
+
+                /// <summary>
+                /// Raises the <see cref="E:System.Windows.Forms.Control.Paint"></see> event.
+                /// </summary>
+                /// <param name="e">A <see cref="T:System.Windows.Forms.PaintEventArgs"></see> that contains the event data.</param>
+                protected override void OnPaint(PaintEventArgs e)
+                {
+                    if (m_NumberOfSpoke > 0)
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
+
+                        int intPosition = m_ProgressValue;
+                        for (int intCounter = 0; intCounter < m_NumberOfSpoke; intCounter++)
+                        {
+                            intPosition = intPosition % m_NumberOfSpoke;
+                            DrawLine(e.Graphics,
+                                     GetCoordinate(m_CenterPoint, m_InnerCircleRadius, m_Angles[intPosition]),
+                                     GetCoordinate(m_CenterPoint, m_OuterCircleRadius, m_Angles[intPosition]),
+                                     m_Colors[intCounter], m_SpokeThickness);
+                            intPosition++;
+                        }
+                    }
+
+                    base.OnPaint(e);
+                }
+
+                // Overridden Methods ================================================
+                /// <summary>
+                /// Retrieves the size of a rectangular area into which a control can be fitted.
+                /// </summary>
+                /// <param name="proposedSize">The custom-sized area for a control.</param>
+                /// <returns>
+                /// An ordered pair of type <see cref="T:System.Drawing.Size"></see> representing the width and height of a rectangle.
+                /// </returns>
+                public override Size GetPreferredSize(Size proposedSize)
+                {
+                    proposedSize.Width =
+                        (m_OuterCircleRadius + m_SpokeThickness) * 2;
+
+                    return proposedSize;
+                }
+
+                // Methods ===========================================================
+                /// <summary>
+                /// Darkens a specified color.
+                /// </summary>
+                /// <param name="_objColor">Color to darken.</param>
+                /// <param name="_intPercent">The percent of darken.</param>
+                /// <returns>The new color generated.</returns>
+                private Color Darken(Color _objColor, int _intPercent)
+                {
+                    int intRed = _objColor.R;
+                    int intGreen = _objColor.G;
+                    int intBlue = _objColor.B;
+                    return Color.FromArgb(_intPercent, Math.Min(intRed, byte.MaxValue), Math.Min(intGreen, byte.MaxValue), Math.Min(intBlue, byte.MaxValue));
+                }
+
+                /// <summary>
+                /// Generates the colors pallet.
+                /// </summary>
+                private void GenerateColorsPallet()
+                {
+                    m_Colors = GenerateColorsPallet(m_Color, Active, m_NumberOfSpoke);
+                }
+
+                /// <summary>
+                /// Generates the colors pallet.
+                /// </summary>
+                /// <param name="_objColor">Color of the lightest spoke.</param>
+                /// <param name="_blnShadeColor">if set to <c>true</c> the color will be shaded on X spoke.</param>
+                /// <returns>An array of color used to draw the circle.</returns>
+                private Color[] GenerateColorsPallet(Color _objColor, bool _blnShadeColor, int _intNbSpoke)
+                {
+                    Color[] objColors = new Color[NumberSpoke];
+
+                    // Value is used to simulate a gradient feel... For each spoke, the 
+                    // color will be darken by value in intIncrement.
+                    byte bytIncrement = (byte)(byte.MaxValue / NumberSpoke);
+
+                    //Reset variable in case of multiple passes
+                    byte PERCENTAGE_OF_DARKEN = 0;
+
+                    for (int intCursor = 0; intCursor < NumberSpoke; intCursor++)
+                    {
+                        if (_blnShadeColor)
+                        {
+                            if (intCursor == 0 || intCursor < NumberSpoke - _intNbSpoke)
+                                objColors[intCursor] = _objColor;
+                            else
+                            {
+                                // Increment alpha channel color
+                                PERCENTAGE_OF_DARKEN += bytIncrement;
+
+                                // Ensure that we don't exceed the maximum alpha
+                                // channel value (255)
+                                if (PERCENTAGE_OF_DARKEN > byte.MaxValue)
+                                    PERCENTAGE_OF_DARKEN = byte.MaxValue;
+
+                                // Determine the spoke forecolor
+                                objColors[intCursor] = Darken(_objColor, PERCENTAGE_OF_DARKEN);
+                            }
+                        }
+                        else
+                            objColors[intCursor] = _objColor;
+                    }
+
+                    return objColors;
+                }
+
+                /// <summary>
+                /// Gets the control center point.
+                /// </summary>
+                private void GetControlCenterPoint()
+                {
+                    m_CenterPoint = GetControlCenterPoint(this);
+                }
+
+                /// <summary>
+                /// Gets the control center point.
+                /// </summary>
+                /// <returns>PointF object</returns>
+                private PointF GetControlCenterPoint(Control _objControl)
+                {
+                    return new PointF(_objControl.Width / 2, _objControl.Height / 2 - 1);
+                }
+
+                /// <summary>
+                /// Draws the line with GDI+.
+                /// </summary>
+                /// <param name="_objGraphics">The Graphics object.</param>
+                /// <param name="_objPointOne">The point one.</param>
+                /// <param name="_objPointTwo">The point two.</param>
+                /// <param name="_objColor">Color of the spoke.</param>
+                /// <param name="_intLineThickness">The thickness of spoke.</param>
+                private void DrawLine(Graphics _objGraphics, PointF _objPointOne, PointF _objPointTwo,
+                                      Color _objColor, int _intLineThickness)
+                {
+                    using (Pen objPen = new Pen(new SolidBrush(_objColor), _intLineThickness))
+                    {
+                        objPen.StartCap = LineCap.Round;
+                        objPen.EndCap = LineCap.Round;
+                        _objGraphics.DrawLine(objPen, _objPointOne, _objPointTwo);
+                    }
+                }
+
+                /// <summary>
+                /// Gets the coordinate.
+                /// </summary>
+                /// <param name="_objCircleCenter">The Circle center.</param>
+                /// <param name="_intRadius">The radius.</param>
+                /// <param name="_dblAngle">The angle.</param>
+                /// <returns></returns>
+                private PointF GetCoordinate(PointF _objCircleCenter, int _intRadius, double _dblAngle)
+                {
+                    double dblAngle = Math.PI * _dblAngle / NumberOfDegreesInHalfCircle;
+
+                    return new PointF(_objCircleCenter.X + _intRadius * (float)Math.Cos(dblAngle),
+                                      _objCircleCenter.Y + _intRadius * (float)Math.Sin(dblAngle));
+                }
+
+                /// <summary>
+                /// Gets the spokes angles.
+                /// </summary>
+                private void GetSpokesAngles()
+                {
+                    m_Angles = GetSpokesAngles(NumberSpoke);
+                }
+
+                /// <summary>
+                /// Gets the spoke angles.
+                /// </summary>
+                /// <param name="_shtNumberSpoke">The number spoke.</param>
+                /// <returns>An array of angle.</returns>
+                private double[] GetSpokesAngles(int _intNumberSpoke)
+                {
+                    double[] Angles = new double[_intNumberSpoke];
+                    double dblAngle = (double)NumberOfDegreesInCircle / _intNumberSpoke;
+
+                    for (int shtCounter = 0; shtCounter < _intNumberSpoke; shtCounter++)
+                        Angles[shtCounter] = (shtCounter == 0 ? dblAngle : Angles[shtCounter - 1] + dblAngle);
+
+                    return Angles;
+                }
+
+                /// <summary>
+                /// Actives the timer.
+                /// </summary>
+                private void ActiveTimer()
+                {
+                    if (m_IsTimerActive)
+                        m_Timer.Start();
+                    else
+                    {
+                        m_Timer.Stop();
+                        m_ProgressValue = 0;
+                    }
 
                     GenerateColorsPallet();
                     Invalidate();
                 }
-            }
 
-            /// <summary>
-            /// Gets or sets the outer circle radius.
-            /// </summary>
-            /// <value>The outer circle radius.</value>
-            [System.ComponentModel.Description("Gets or sets the radius of outer circle."),
-             System.ComponentModel.Category("LoadingCircle")]
-            public int OuterCircleRadius
-            {
-                get
+                /// <summary>
+                /// Sets the circle appearance.
+                /// </summary>
+                /// <param name="numberSpoke">The number spoke.</param>
+                /// <param name="spokeThickness">The spoke thickness.</param>
+                /// <param name="innerCircleRadius">The inner circle radius.</param>
+                /// <param name="outerCircleRadius">The outer circle radius.</param>
+                public void SetCircleAppearance(int numberSpoke, int spokeThickness,
+                    int innerCircleRadius, int outerCircleRadius)
                 {
-                    if (m_OuterCircleRadius == 0)
-                        m_OuterCircleRadius = DefaultOuterCircleRadius;
+                    NumberSpoke = numberSpoke;
+                    SpokeThickness = spokeThickness;
+                    InnerCircleRadius = innerCircleRadius;
+                    OuterCircleRadius = outerCircleRadius;
 
-                    return m_OuterCircleRadius;
-                }
-                set
-                {
-                    m_OuterCircleRadius = value;
                     Invalidate();
                 }
             }
 
-            /// <summary>
-            /// Gets or sets the inner circle radius.
-            /// </summary>
-            /// <value>The inner circle radius.</value>
-            [System.ComponentModel.Description("Gets or sets the radius of inner circle."),
-             System.ComponentModel.Category("LoadingCircle")]
-            public int InnerCircleRadius
+            partial class LoadingCircle
             {
-                get
-                {
-                    if (m_InnerCircleRadius == 0)
-                        m_InnerCircleRadius = DefaultInnerCircleRadius;
+                /// <summary>
+                /// Required designer variable.
+                /// </summary>
+                private System.ComponentModel.IContainer components = null;
 
-                    return m_InnerCircleRadius;
-                }
-                set
+                /// <summary>
+                /// Clean up any resources being used.
+                /// </summary>
+                /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+                protected override void Dispose(bool disposing)
                 {
-                    m_InnerCircleRadius = value;
-                    Invalidate();
-                }
-            }
-
-            /// <summary>
-            /// Gets or sets the number of spoke.
-            /// </summary>
-            /// <value>The number of spoke.</value>
-            [System.ComponentModel.Description("Gets or sets the number of spoke."),
-            System.ComponentModel.Category("LoadingCircle")]
-            public int NumberSpoke
-            {
-                get
-                {
-                    if (m_NumberOfSpoke == 0)
-                        m_NumberOfSpoke = DefaultNumberOfSpoke;
-
-                    return m_NumberOfSpoke;
-                }
-                set
-                {
-                    if (m_NumberOfSpoke != value && m_NumberOfSpoke > 0)
+                    if (disposing && (components != null))
                     {
-                        m_NumberOfSpoke = value;
-                        GenerateColorsPallet();
-                        GetSpokesAngles();
-
-                        Invalidate();
+                        components.Dispose();
                     }
+                    base.Dispose(disposing);
                 }
             }
 
-            /// <summary>
-            /// Gets or sets a value indicating whether this <see cref="T:LoadingCircle"/> is active.
-            /// </summary>
-            /// <value><c>true</c> if active; otherwise, <c>false</c>.</value>
-            [System.ComponentModel.Description("Gets or sets the number of spoke."),
-            System.ComponentModel.Category("LoadingCircle")]
-            public bool Active
+            [ToolStripItemDesignerAvailability(ToolStripItemDesignerAvailability.All)]
+            public class LoadingCircleToolStripMenuItem : ToolStripControlHost
             {
-                get
+                // Constants =========================================================
+
+                // Attributes ========================================================
+
+                // Properties ========================================================
+                /// <summary>
+                /// Gets the loading circle control.
+                /// </summary>
+                /// <value>The loading circle control.</value>
+                [RefreshProperties(RefreshProperties.All),
+                DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
+                public LoadingCircle LoadingCircleControl
                 {
-                    return m_IsTimerActive;
+                    get { return Control as LoadingCircle; }
                 }
-                set
+
+                // Constructor ========================================================
+                /// <summary>
+                /// Initializes a new instance of the <see cref="LoadingCircleToolStripMenuItem"/> class.
+                /// </summary>
+                public LoadingCircleToolStripMenuItem()
+                    : base(new LoadingCircle())
                 {
-                    m_IsTimerActive = value;
-                    ActiveTimer();
                 }
-            }
 
-            /// <summary>
-            /// Gets or sets the spoke thickness.
-            /// </summary>
-            /// <value>The spoke thickness.</value>
-            [System.ComponentModel.Description("Gets or sets the thickness of a spoke."),
-            System.ComponentModel.Category("LoadingCircle")]
-            public int SpokeThickness
-            {
-                get
+                /// <summary>
+                /// Retrieves the size of a rectangular area into which a control can be fitted.
+                /// </summary>
+                /// <param name="constrainingSize">The custom-sized area for a control.</param>
+                /// <returns>
+                /// An ordered pair of type <see cref="T:System.Drawing.Size"></see> representing the width and height of a rectangle.
+                /// </returns>
+                /// <PermissionSet><IPermission class="System.Security.Permissions.EnvironmentPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Unrestricted="true"/><IPermission class="System.Security.Permissions.FileIOPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Unrestricted="true"/><IPermission class="System.Security.Permissions.SecurityPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Flags="UnmanagedCode, ControlEvidence"/><IPermission class="System.Diagnostics.PerformanceCounterPermission, System, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Unrestricted="true"/></PermissionSet>
+                public override Size GetPreferredSize(Size constrainingSize)
                 {
-                    if (m_SpokeThickness <= 0)
-                        m_SpokeThickness = DefaultSpokeThickness;
-
-                    return m_SpokeThickness;
+                    //return base.GetPreferredSize(constrainingSize);
+                    return this.LoadingCircleControl.GetPreferredSize(constrainingSize);
                 }
-                set
+
+                /// <summary>
+                /// Subscribes events from the hosted control.
+                /// </summary>
+                /// <param name="control">The control from which to subscribe events.</param>
+                protected override void OnSubscribeControlEvents(Control control)
                 {
-                    m_SpokeThickness = value;
-                    Invalidate();
-                }
-            }
+                    base.OnSubscribeControlEvents(control);
 
-            /// <summary>
-            /// Gets or sets the rotation speed.
-            /// </summary>
-            /// <value>The rotation speed.</value>
-            [System.ComponentModel.Description("Gets or sets the rotation speed. Higher the slower."),
-            System.ComponentModel.Category("LoadingCircle")]
-            public int RotationSpeed
-            {
-                get
+                    //Add your code here to subsribe to Control Events
+                }
+
+                /// <summary>
+                /// Unsubscribes events from the hosted control.
+                /// </summary>
+                /// <param name="control">The control from which to unsubscribe events.</param>
+                protected override void OnUnsubscribeControlEvents(Control control)
                 {
-                    return m_Timer.Interval;
+                    base.OnUnsubscribeControlEvents(control);
+
+                    //Add your code here to unsubscribe from control events.
                 }
-                set
-                {
-                    if (value > 0)
-                        m_Timer.Interval = value;
-                }
-            }
-
-            /// <summary>
-            /// Quickly sets the style to one of these presets, or a custom style if desired
-            /// </summary>
-            /// <value>The style preset.</value>
-            [Category("LoadingCircle"),
-             Description("Quickly sets the style to one of these presets, or a custom style if desired"),
-             DefaultValue(typeof(StylePresets), "Custom")]
-            public StylePresets StylePreset
-            {
-                get { return m_StylePreset; }
-                set
-                {
-                    m_StylePreset = value;
-
-                    switch (m_StylePreset)
-                    {
-                        case StylePresets.MacOSX:
-                            SetCircleAppearance(MacOSXNumberOfSpoke,
-                                MacOSXSpokeThickness, MacOSXInnerCircleRadius,
-                                MacOSXOuterCircleRadius);
-                            break;
-                        case StylePresets.Firefox:
-                            SetCircleAppearance(FireFoxNumberOfSpoke,
-                                FireFoxSpokeThickness, FireFoxInnerCircleRadius,
-                                FireFoxOuterCircleRadius);
-                            break;
-                        case StylePresets.IE7:
-                            SetCircleAppearance(IE7NumberOfSpoke,
-                                IE7SpokeThickness, IE7InnerCircleRadius,
-                                IE7OuterCircleRadius);
-                            break;
-                        case StylePresets.Custom:
-                            SetCircleAppearance(DefaultNumberOfSpoke,
-                                DefaultSpokeThickness,
-                                DefaultInnerCircleRadius,
-                                DefaultOuterCircleRadius);
-                            break;
-                    }
-                }
-            }
-
-            // Construtor ========================================================
-            /// <summary>
-            /// Initializes a new instance of the <see cref="T:LoadingCircle"/> class.
-            /// </summary>
-            public LoadingCircle()
-            {
-                SetStyle(ControlStyles.UserPaint, true);
-                SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
-                SetStyle(ControlStyles.ResizeRedraw, true);
-                SetStyle(ControlStyles.SupportsTransparentBackColor, true);
-
-                m_Color = DefaultColor;
-
-                GenerateColorsPallet();
-                GetSpokesAngles();
-                GetControlCenterPoint();
-
-                m_Timer = new Timer();
-                m_Timer.Tick += new EventHandler(aTimer_Tick);
-                ActiveTimer();
-
-                this.Resize += new EventHandler(LoadingCircle_Resize);
-            }
-
-            // Events ============================================================
-            /// <summary>
-            /// Handles the Resize event of the LoadingCircle control.
-            /// </summary>
-            /// <param name="sender">The source of the event.</param>
-            /// <param name="e">The <see cref="T:System.EventArgs"/> instance containing the event data.</param>
-            void LoadingCircle_Resize(object sender, EventArgs e)
-            {
-                GetControlCenterPoint();
-            }
-
-            /// <summary>
-            /// Handles the Tick event of the aTimer control.
-            /// </summary>
-            /// <param name="sender">The source of the event.</param>
-            /// <param name="e">The <see cref="T:System.EventArgs"/> instance containing the event data.</param>
-            void aTimer_Tick(object sender, EventArgs e)
-            {
-                m_ProgressValue = ++m_ProgressValue % m_NumberOfSpoke;
-                Invalidate();
-            }
-
-            /// <summary>
-            /// Raises the <see cref="E:System.Windows.Forms.Control.Paint"></see> event.
-            /// </summary>
-            /// <param name="e">A <see cref="T:System.Windows.Forms.PaintEventArgs"></see> that contains the event data.</param>
-            protected override void OnPaint(PaintEventArgs e)
-            {
-                if (m_NumberOfSpoke > 0)
-                {
-                    e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
-
-                    int intPosition = m_ProgressValue;
-                    for (int intCounter = 0; intCounter < m_NumberOfSpoke; intCounter++)
-                    {
-                        intPosition = intPosition % m_NumberOfSpoke;
-                        DrawLine(e.Graphics,
-                                 GetCoordinate(m_CenterPoint, m_InnerCircleRadius, m_Angles[intPosition]),
-                                 GetCoordinate(m_CenterPoint, m_OuterCircleRadius, m_Angles[intPosition]),
-                                 m_Colors[intCounter], m_SpokeThickness);
-                        intPosition++;
-                    }
-                }
-
-                base.OnPaint(e);
-            }
-
-            // Overridden Methods ================================================
-            /// <summary>
-            /// Retrieves the size of a rectangular area into which a control can be fitted.
-            /// </summary>
-            /// <param name="proposedSize">The custom-sized area for a control.</param>
-            /// <returns>
-            /// An ordered pair of type <see cref="T:System.Drawing.Size"></see> representing the width and height of a rectangle.
-            /// </returns>
-            public override Size GetPreferredSize(Size proposedSize)
-            {
-                proposedSize.Width =
-                    (m_OuterCircleRadius + m_SpokeThickness) * 2;
-
-                return proposedSize;
-            }
-
-            // Methods ===========================================================
-            /// <summary>
-            /// Darkens a specified color.
-            /// </summary>
-            /// <param name="_objColor">Color to darken.</param>
-            /// <param name="_intPercent">The percent of darken.</param>
-            /// <returns>The new color generated.</returns>
-            private Color Darken(Color _objColor, int _intPercent)
-            {
-                int intRed = _objColor.R;
-                int intGreen = _objColor.G;
-                int intBlue = _objColor.B;
-                return Color.FromArgb(_intPercent, Math.Min(intRed, byte.MaxValue), Math.Min(intGreen, byte.MaxValue), Math.Min(intBlue, byte.MaxValue));
-            }
-
-            /// <summary>
-            /// Generates the colors pallet.
-            /// </summary>
-            private void GenerateColorsPallet()
-            {
-                m_Colors = GenerateColorsPallet(m_Color, Active, m_NumberOfSpoke);
-            }
-
-            /// <summary>
-            /// Generates the colors pallet.
-            /// </summary>
-            /// <param name="_objColor">Color of the lightest spoke.</param>
-            /// <param name="_blnShadeColor">if set to <c>true</c> the color will be shaded on X spoke.</param>
-            /// <returns>An array of color used to draw the circle.</returns>
-            private Color[] GenerateColorsPallet(Color _objColor, bool _blnShadeColor, int _intNbSpoke)
-            {
-                Color[] objColors = new Color[NumberSpoke];
-
-                // Value is used to simulate a gradient feel... For each spoke, the 
-                // color will be darken by value in intIncrement.
-                byte bytIncrement = (byte)(byte.MaxValue / NumberSpoke);
-
-                //Reset variable in case of multiple passes
-                byte PERCENTAGE_OF_DARKEN = 0;
-
-                for (int intCursor = 0; intCursor < NumberSpoke; intCursor++)
-                {
-                    if (_blnShadeColor)
-                    {
-                        if (intCursor == 0 || intCursor < NumberSpoke - _intNbSpoke)
-                            objColors[intCursor] = _objColor;
-                        else
-                        {
-                            // Increment alpha channel color
-                            PERCENTAGE_OF_DARKEN += bytIncrement;
-
-                            // Ensure that we don't exceed the maximum alpha
-                            // channel value (255)
-                            if (PERCENTAGE_OF_DARKEN > byte.MaxValue)
-                                PERCENTAGE_OF_DARKEN = byte.MaxValue;
-
-                            // Determine the spoke forecolor
-                            objColors[intCursor] = Darken(_objColor, PERCENTAGE_OF_DARKEN);
-                        }
-                    }
-                    else
-                        objColors[intCursor] = _objColor;
-                }
-
-                return objColors;
-            }
-
-            /// <summary>
-            /// Gets the control center point.
-            /// </summary>
-            private void GetControlCenterPoint()
-            {
-                m_CenterPoint = GetControlCenterPoint(this);
-            }
-
-            /// <summary>
-            /// Gets the control center point.
-            /// </summary>
-            /// <returns>PointF object</returns>
-            private PointF GetControlCenterPoint(Control _objControl)
-            {
-                return new PointF(_objControl.Width / 2, _objControl.Height / 2 - 1);
-            }
-
-            /// <summary>
-            /// Draws the line with GDI+.
-            /// </summary>
-            /// <param name="_objGraphics">The Graphics object.</param>
-            /// <param name="_objPointOne">The point one.</param>
-            /// <param name="_objPointTwo">The point two.</param>
-            /// <param name="_objColor">Color of the spoke.</param>
-            /// <param name="_intLineThickness">The thickness of spoke.</param>
-            private void DrawLine(Graphics _objGraphics, PointF _objPointOne, PointF _objPointTwo,
-                                  Color _objColor, int _intLineThickness)
-            {
-                using (Pen objPen = new Pen(new SolidBrush(_objColor), _intLineThickness))
-                {
-                    objPen.StartCap = LineCap.Round;
-                    objPen.EndCap = LineCap.Round;
-                    _objGraphics.DrawLine(objPen, _objPointOne, _objPointTwo);
-                }
-            }
-
-            /// <summary>
-            /// Gets the coordinate.
-            /// </summary>
-            /// <param name="_objCircleCenter">The Circle center.</param>
-            /// <param name="_intRadius">The radius.</param>
-            /// <param name="_dblAngle">The angle.</param>
-            /// <returns></returns>
-            private PointF GetCoordinate(PointF _objCircleCenter, int _intRadius, double _dblAngle)
-            {
-                double dblAngle = Math.PI * _dblAngle / NumberOfDegreesInHalfCircle;
-
-                return new PointF(_objCircleCenter.X + _intRadius * (float)Math.Cos(dblAngle),
-                                  _objCircleCenter.Y + _intRadius * (float)Math.Sin(dblAngle));
-            }
-
-            /// <summary>
-            /// Gets the spokes angles.
-            /// </summary>
-            private void GetSpokesAngles()
-            {
-                m_Angles = GetSpokesAngles(NumberSpoke);
-            }
-
-            /// <summary>
-            /// Gets the spoke angles.
-            /// </summary>
-            /// <param name="_shtNumberSpoke">The number spoke.</param>
-            /// <returns>An array of angle.</returns>
-            private double[] GetSpokesAngles(int _intNumberSpoke)
-            {
-                double[] Angles = new double[_intNumberSpoke];
-                double dblAngle = (double)NumberOfDegreesInCircle / _intNumberSpoke;
-
-                for (int shtCounter = 0; shtCounter < _intNumberSpoke; shtCounter++)
-                    Angles[shtCounter] = (shtCounter == 0 ? dblAngle : Angles[shtCounter - 1] + dblAngle);
-
-                return Angles;
-            }
-
-            /// <summary>
-            /// Actives the timer.
-            /// </summary>
-            private void ActiveTimer()
-            {
-                if (m_IsTimerActive)
-                    m_Timer.Start();
-                else
-                {
-                    m_Timer.Stop();
-                    m_ProgressValue = 0;
-                }
-
-                GenerateColorsPallet();
-                Invalidate();
-            }
-
-            /// <summary>
-            /// Sets the circle appearance.
-            /// </summary>
-            /// <param name="numberSpoke">The number spoke.</param>
-            /// <param name="spokeThickness">The spoke thickness.</param>
-            /// <param name="innerCircleRadius">The inner circle radius.</param>
-            /// <param name="outerCircleRadius">The outer circle radius.</param>
-            public void SetCircleAppearance(int numberSpoke, int spokeThickness,
-                int innerCircleRadius, int outerCircleRadius)
-            {
-                NumberSpoke = numberSpoke;
-                SpokeThickness = spokeThickness;
-                InnerCircleRadius = innerCircleRadius;
-                OuterCircleRadius = outerCircleRadius;
-
-                Invalidate();
             }
         }
 
-        partial class LoadingCircle
-        {
-            /// <summary>
-            /// Required designer variable.
-            /// </summary>
-            private System.ComponentModel.IContainer components = null;
-
-            /// <summary>
-            /// Clean up any resources being used.
-            /// </summary>
-            /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-            protected override void Dispose(bool disposing)
-            {
-                if (disposing && (components != null))
-                {
-                    components.Dispose();
-                }
-                base.Dispose(disposing);
-            }
-        }
-
-        [ToolStripItemDesignerAvailability(ToolStripItemDesignerAvailability.All)]
-        public class LoadingCircleToolStripMenuItem : ToolStripControlHost
-        {
-            // Constants =========================================================
-
-            // Attributes ========================================================
-
-            // Properties ========================================================
-            /// <summary>
-            /// Gets the loading circle control.
-            /// </summary>
-            /// <value>The loading circle control.</value>
-            [RefreshProperties(RefreshProperties.All),
-            DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
-            public LoadingCircle LoadingCircleControl
-            {
-                get { return Control as LoadingCircle; }
-            }
-
-            // Constructor ========================================================
-            /// <summary>
-            /// Initializes a new instance of the <see cref="LoadingCircleToolStripMenuItem"/> class.
-            /// </summary>
-            public LoadingCircleToolStripMenuItem()
-                : base(new LoadingCircle())
-            {
-            }
-
-            /// <summary>
-            /// Retrieves the size of a rectangular area into which a control can be fitted.
-            /// </summary>
-            /// <param name="constrainingSize">The custom-sized area for a control.</param>
-            /// <returns>
-            /// An ordered pair of type <see cref="T:System.Drawing.Size"></see> representing the width and height of a rectangle.
-            /// </returns>
-            /// <PermissionSet><IPermission class="System.Security.Permissions.EnvironmentPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Unrestricted="true"/><IPermission class="System.Security.Permissions.FileIOPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Unrestricted="true"/><IPermission class="System.Security.Permissions.SecurityPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Flags="UnmanagedCode, ControlEvidence"/><IPermission class="System.Diagnostics.PerformanceCounterPermission, System, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Unrestricted="true"/></PermissionSet>
-            public override Size GetPreferredSize(Size constrainingSize)
-            {
-                //return base.GetPreferredSize(constrainingSize);
-                return this.LoadingCircleControl.GetPreferredSize(constrainingSize);
-            }
-
-            /// <summary>
-            /// Subscribes events from the hosted control.
-            /// </summary>
-            /// <param name="control">The control from which to subscribe events.</param>
-            protected override void OnSubscribeControlEvents(Control control)
-            {
-                base.OnSubscribeControlEvents(control);
-
-                //Add your code here to subsribe to Control Events
-            }
-
-            /// <summary>
-            /// Unsubscribes events from the hosted control.
-            /// </summary>
-            /// <param name="control">The control from which to unsubscribe events.</param>
-            protected override void OnUnsubscribeControlEvents(Control control)
-            {
-                base.OnUnsubscribeControlEvents(control);
-
-                //Add your code here to unsubscribe from control events.
-            }
-        }
-    }
-
-    public class DataGridViewTool
+        public class DataGridViewTool
         {
             /// <summary>
             /// Add column show/hide capability to a DataGridView. When user right-clicks 
@@ -2263,9 +2263,9 @@ namespace SRL
             public void Filter(string expression)
             {
                 //"c2 > 6"
-                ((DataTable)dgv.DataSource).DefaultView.RowFilter =expression ;
+                ((DataTable)dgv.DataSource).DefaultView.RowFilter = expression;
             }
-            
+
         }
         public class ComboTool
         {
@@ -2319,7 +2319,46 @@ namespace SRL
 
         }
 
+        public class NavigatorTools
+        {
+            public NavigatorTools(BindingNavigator bn)
+            {
+                bn.Enabled = true;
 
+                foreach (ToolStripItem item in bn.Items)
+                {
+                    item.Enabled = true;
+                }
+            }
+
+            public void LoadNumbersFromDgv(DataGridView dgv, ToolStripItem item_to_show_all, ToolStripItem item_to_show_current,bool? isForward, int count)
+            {
+                var tag = dgv.Tag;
+                if (tag == null) return;
+                int all = int.Parse(tag.ToString());
+                item_to_show_all.Text =Math.Ceiling(Decimal.Divide( all, count)).ToString();
+
+                int page = 1;
+                if (!string.IsNullOrWhiteSpace(item_to_show_current.Text))
+                {
+                    page = int.Parse(item_to_show_current.Text);
+                    if (isForward != null)
+                    {
+                        if ((bool)isForward)
+                        {
+                            if (page < all) page += page;
+                        }
+                        else
+                        {
+                            if (page > 1) page -= page;
+                        }
+                    }
+                }
+                item_to_show_current.Text = page.ToString();
+            }
+
+
+        }
         public string GetAppName(string default_app_name, string folder_containing_exe_path, List<string> file_not_searching, string app_extention_pattern = "*.exe")
         {
             string app_name = default_app_name;
@@ -2443,6 +2482,44 @@ namespace SRL
             child.Font = new Font(font_family, child_font_size * (float)f, font_style);
 
             AddChildToParentControlsAliagn(parent, child, reset_child_font);
+
+        }
+
+        public void ChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false, bool use_parent_font_size = false, bool reset_child_font = false)
+        {
+            FontFamily font_family = child.Font.FontFamily;
+            FontStyle font_style = child.Font.Style;
+            float child_font_size = child.Font.Size;
+
+            if (use_parent_font_family)
+            {
+                font_family = parent.Font.FontFamily;
+                font_style = parent.Font.Style;
+            }
+
+            if (use_parent_font_size)
+            {
+                child_font_size = parent.Font.Size;
+            }
+
+            if (!font_family.IsStyleAvailable(font_style))
+            {
+                font_style = font_family.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular :
+                    font_family.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold :
+                    font_family.IsStyleAvailable(FontStyle.Italic) ? FontStyle.Italic :
+                    font_family.IsStyleAvailable(FontStyle.Underline) ? FontStyle.Underline : FontStyle.Strikeout;
+            }
+
+
+            decimal x_relative = Decimal.Divide(parent.Width, child.Width);
+            decimal y_relative = Decimal.Divide(parent.Height, child.Height);
+            var f = (x_relative + y_relative) / 2;
+            f *= font_factor;
+
+
+            child.Font = new Font(font_family, child_font_size * (float)f, font_style);
+
+            AliagnChildToParent(parent, child);
 
         }
 
@@ -2945,23 +3022,140 @@ namespace SRL
             result[key] = value;
         }
     }
-    public class WebRequest
+    public class HttpSend
     {
-        /// <summary>
-        /// salam
-        /// </summary>
-        /// <param name="response">1</param>
-        /// <param name="client">2</param>
-        /// <param name="uri">3</param>
-        /// <param name="input">4</param>
+        HttpClient client = new HttpClient();
+        public Dictionary<string, object> input = new Dictionary<string, object>();
+        public DbContext db;
+        public Dictionary<string, string> map_input_to_entity = new Dictionary<string, string>();
 
-        public void PostAsJsonAsync(Dictionary<string, object> response, System.Net.Http.HttpClient client, string uri, object input)
+        public enum SendType
         {
-            System.Net.Http.HttpResponseMessage httpResponse = client.PostAsJsonAsync(uri, input).Result;
-            string responseContent = httpResponse.Content.ReadAsStringAsync().Result;
-            response["httpResponse"] = httpResponse;
-            response["responseContent"] = responseContent;
+            Post,
+            Get
         }
+
+        public HttpSend(string base_address)
+        {
+            client.BaseAddress = new Uri(base_address);
+
+        }
+
+        public void CreateInput<inputType, entityType>(entityType entity_instance) where inputType : class where entityType : class
+        {
+            SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
+
+            foreach (var prop in typeof(inputType).GetProperties())
+            {
+                input[prop.Name] = entityTypeClass.GetProperty(GetEntityPropName(prop.Name), entity_instance);
+            }
+        }
+
+        private string GetEntityPropName(string input_prop)
+        {
+            if (map_input_to_entity.ContainsKey(input_prop))
+                return map_input_to_entity[input_prop];
+
+            else return input_prop;
+        }
+        public outputType Send<outputType, entityType>(SendType send_type, string url, entityType entity_to_update, string status_code_field_name, string http_response_field_name, DbContext db) where outputType : class where entityType : class
+        {
+            HttpResponseMessage response = SendHttpRequest(url, send_type);
+
+            SaveHttpStatusCode<entityType>(status_code_field_name, entity_to_update, response);
+            SaveHttpResultMessage<entityType>(http_response_field_name, entity_to_update, response);
+
+            return GetHttpOutput<outputType>(response, send_type);
+
+        }
+        public void Send<entityType>(SendType send_type, string url, entityType entity_to_update, string status_code_field_name, string http_response_field_name) where entityType : class
+        {
+            HttpResponseMessage response = SendHttpRequest(url, send_type);
+
+            SaveHttpStatusCode<entityType>(status_code_field_name, entity_to_update, response);
+            SaveHttpResultMessage<entityType>(http_response_field_name, entity_to_update, response);
+
+        }
+
+        private void SaveHttpStatusCode<entityType>(string status_code_field_name, entityType entity_to_update, HttpResponseMessage response)
+        {
+            string http_status_code = response.StatusCode.ToString();
+            if (!string.IsNullOrWhiteSpace(status_code_field_name))
+            {
+                SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
+                entityTypeClass.SetProperty(status_code_field_name, entity_to_update, http_status_code);
+                db.SaveChanges();
+            }
+        }
+
+        private void SaveHttpResultMessage<entityType>(string http_response_field_name, entityType entity_to_update, HttpResponseMessage response)
+        {
+            string result = response.Content.ReadAsStringAsync().Result;
+            if (!string.IsNullOrWhiteSpace(http_response_field_name))
+            {
+                SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
+                entityTypeClass.SetProperty(http_response_field_name, entity_to_update, System.Text.RegularExpressions.Regex.Unescape(result));
+                db.SaveChanges();
+            }
+        }
+
+        private HttpResponseMessage SendHttpRequest(string url, SendType send_type)
+        {
+            HttpResponseMessage response = new HttpResponseMessage();
+
+
+            switch (send_type)
+            {
+                case SendType.Post:
+                    response = client.PostAsJsonAsync(url, input).Result;
+                    break;
+                case SendType.Get:
+                    response = client.GetAsync(url).Result;
+                    break;
+
+            }
+
+            return response;
+        }
+
+        private outputType GetHttpOutput<outputType>(HttpResponseMessage response, SendType send_type)
+        {
+            outputType data = new SRL.ClassManagement<outputType>().CreateInstance();
+            string result = response.Content.ReadAsStringAsync().Result;
+
+            if (response.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+                switch (send_type)
+                {
+                    case SendType.Post:
+                        data = Newtonsoft.Json.JsonConvert.DeserializeObject<outputType>(result);
+                        break;
+                    case SendType.Get:
+
+                        break;
+                }
+
+            }
+
+            return data;
+        }
+
+        public int SaveResult<outputType, entityType>(outputType object_to_save, entityType entity_to_update) where outputType : class where entityType : class
+        {
+            SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
+            SRL.ClassManagement<outputType> outputTypeClass = new SRL.ClassManagement<outputType>();
+
+
+            foreach (var prop in typeof(outputType).GetProperties())
+            {
+                entityTypeClass.SetProperty(prop.Name, entity_to_update, outputTypeClass.GetProperty(prop.Name, object_to_save));
+
+            }
+
+            return db.SaveChanges();
+
+        }
+
     }
     public class WebResponse
     {
@@ -2979,6 +3173,193 @@ namespace SRL
     }
     public class Convertor
     {
+        public class IEnumerableToDatatable
+        {
+
+            public static DataTable CopyToDataTable<T>(IEnumerable<T> source)
+            {
+                return new ObjectShredder<T>().Shred(source, null, null);
+            }
+
+            public static DataTable CopyToDataTable<T>(IEnumerable<T> source,
+                                                        DataTable table, LoadOption? options)
+            {
+                return new ObjectShredder<T>().Shred(source, table, options);
+            }
+
+            public class ObjectShredder<T>
+            {
+                private System.Reflection.FieldInfo[] _fi;
+                private System.Reflection.PropertyInfo[] _pi;
+                private System.Collections.Generic.Dictionary<string, int> _ordinalMap;
+                private System.Type _type;
+
+                // ObjectShredder constructor.
+                public ObjectShredder()
+                {
+                    _type = typeof(T);
+                    _fi = _type.GetFields();
+                    _pi = _type.GetProperties();
+                    _ordinalMap = new Dictionary<string, int>();
+                }
+
+                /// <summary>
+                /// Loads a DataTable from a sequence of objects.
+                /// </summary>
+                /// <param name="source">The sequence of objects to load into the DataTable.</param>
+                /// <param name="table">The input table. The schema of the table must match that 
+                /// the type T.  If the table is null, a new table is created with a schema 
+                /// created from the public properties and fields of the type T.</param>
+                /// <param name="options">Specifies how values from the source sequence will be applied to 
+                /// existing rows in the table.</param>
+                /// <returns>A DataTable created from the source sequence.</returns>
+                public DataTable Shred(IEnumerable<T> source, DataTable table, LoadOption? options)
+                {
+                    // Load the table from the scalar sequence if T is a primitive type.
+                    if (typeof(T).IsPrimitive)
+                    {
+                        return ShredPrimitive(source, table, options);
+                    }
+
+                    // Create a new table if the input table is null.
+                    if (table == null)
+                    {
+                        table = new DataTable(typeof(T).Name);
+                    }
+
+                    // Initialize the ordinal map and extend the table schema based on type T.
+                    table = ExtendTable(table, typeof(T));
+
+                    // Enumerate the source sequence and load the object values into rows.
+                    table.BeginLoadData();
+                    using (IEnumerator<T> e = source.GetEnumerator())
+                    {
+                        while (e.MoveNext())
+                        {
+                            if (options != null)
+                            {
+                                table.LoadDataRow(ShredObject(table, e.Current), (LoadOption)options);
+                            }
+                            else
+                            {
+                                table.LoadDataRow(ShredObject(table, e.Current), true);
+                            }
+                        }
+                    }
+                    table.EndLoadData();
+
+                    // Return the table.
+                    return table;
+                }
+
+                public DataTable ShredPrimitive(IEnumerable<T> source, DataTable table, LoadOption? options)
+                {
+                    // Create a new table if the input table is null.
+                    if (table == null)
+                    {
+                        table = new DataTable(typeof(T).Name);
+                    }
+
+                    if (!table.Columns.Contains("Value"))
+                    {
+                        table.Columns.Add("Value", typeof(T));
+                    }
+
+                    // Enumerate the source sequence and load the scalar values into rows.
+                    table.BeginLoadData();
+                    using (IEnumerator<T> e = source.GetEnumerator())
+                    {
+                        Object[] values = new object[table.Columns.Count];
+                        while (e.MoveNext())
+                        {
+                            values[table.Columns["Value"].Ordinal] = e.Current;
+
+                            if (options != null)
+                            {
+                                table.LoadDataRow(values, (LoadOption)options);
+                            }
+                            else
+                            {
+                                table.LoadDataRow(values, true);
+                            }
+                        }
+                    }
+                    table.EndLoadData();
+
+                    // Return the table.
+                    return table;
+                }
+
+                public object[] ShredObject(DataTable table, T instance)
+                {
+
+                    FieldInfo[] fi = _fi;
+                    PropertyInfo[] pi = _pi;
+
+                    if (instance.GetType() != typeof(T))
+                    {
+                        // If the instance is derived from T, extend the table schema
+                        // and get the properties and fields.
+                        ExtendTable(table, instance.GetType());
+                        fi = instance.GetType().GetFields();
+                        pi = instance.GetType().GetProperties();
+                    }
+
+                    // Add the property and field values of the instance to an array.
+                    Object[] values = new object[table.Columns.Count];
+                    foreach (FieldInfo f in fi)
+                    {
+                        values[_ordinalMap[f.Name]] = f.GetValue(instance);
+                    }
+
+                    foreach (PropertyInfo p in pi)
+                    {
+                        values[_ordinalMap[p.Name]] = p.GetValue(instance, null);
+                    }
+
+                    // Return the property and field values of the instance.
+                    return values;
+                }
+
+                public DataTable ExtendTable(DataTable table, Type type)
+                {
+                    // Extend the table schema if the input table was null or if the value 
+                    // in the sequence is derived from type T.            
+                    foreach (FieldInfo f in type.GetFields())
+                    {
+                        if (!_ordinalMap.ContainsKey(f.Name))
+                        {
+                            // Add the field as a column in the table if it doesn't exist
+                            // already.
+                            DataColumn dc = table.Columns.Contains(f.Name) ? table.Columns[f.Name]
+                                : table.Columns.Add(f.Name, f.FieldType);
+
+                            // Add the field to the ordinal map.
+                            _ordinalMap.Add(f.Name, dc.Ordinal);
+                        }
+                    }
+                    foreach (PropertyInfo p in type.GetProperties())
+                    {
+
+                        if (!_ordinalMap.ContainsKey(p.Name))
+                        {
+                            // Add the property as a column in the table if it doesn't exist
+                            // already.
+                            DataColumn dc = table.Columns.Contains(p.Name) ? table.Columns[p.Name]
+                                : table.Columns.Add(p.Name, p.PropertyType);
+
+                            // Add the property to the ordinal map.
+                            _ordinalMap.Add(p.Name, dc.Ordinal);
+                        }
+
+                    }
+
+                    // Return the table.
+                    return table;
+                }
+            }
+
+        }
         /* input image with width = height is suggested to get the best result */
         /* png support in icon was introduced in Windows Vista */
         public bool ConvertImageToIcon(System.IO.Stream input_stream, System.IO.Stream output_stream, int size, bool keep_aspect_ratio = false)
