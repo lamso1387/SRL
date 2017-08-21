@@ -47,7 +47,7 @@ namespace SRL
         {
             if (is_width_center_align)
             {
-                new SRL.WinTools().AliagnChildWidthToParent(this, pnlLoginForm);
+                new SRL.WinTools().AliagnChildToParent(this, pnlLoginForm,WinTools.AliagnType.Width);
                 x = pnlLoginForm.Location.X;
             }
             pnlLoginForm.Location = new Point(x, y);

@@ -61,7 +61,7 @@ namespace SRL
         private void btnSend_Click(object sender, EventArgs e)
         {
             bool control_is_valid = false;
-            control_validation.CheckAllField(new List<Control> { tbMobile, tbEmail }, out  control_is_valid);
+           control_is_valid= control_validation.CheckAllField(new List<Control> { tbMobile, tbEmail });
             if (control_is_valid)
             {
                 SRL.Security sec = new SRL.Security();
@@ -83,7 +83,7 @@ namespace SRL
         private void btnActivate_Click(object sender, EventArgs e)
         {
             bool control_is_valid = false;
-            control_validation.CheckAllField(new List<Control> { tbMobile, tbEmail }, out  control_is_valid);
+           control_is_valid= control_validation.CheckAllField(new List<Control> { tbMobile, tbEmail });
             if (control_is_valid)
             {
                 string message = "";

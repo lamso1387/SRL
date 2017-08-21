@@ -50,6 +50,7 @@
             this.btnEnter.Location = new System.Drawing.Point(5, 173);
             this.btnEnter.Margin = new System.Windows.Forms.Padding(5);
             this.btnEnter.Name = "btnEnter";
+            this.btnEnter.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
             this.btnEnter.Size = new System.Drawing.Size(164, 41);
             this.btnEnter.TabIndex = 2;
             this.btnEnter.Text = "ورود";

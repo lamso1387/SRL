@@ -626,7 +626,7 @@ namespace SRL
         /// <param name="parent_to_refresh"></param>
         /// <param name="types_to_refresh"></param>
         /// <param name="controls_to_refresh">new List Type() { typeof(Button), typeof(TextBox),... }</param>
-        public void RefreshFormControls(Control parent_to_refresh, List<Type> types_to_refresh = null, List<Control> controls_to_refresh = null)
+        public void RefreshFormControls(Control parent_to_refresh, List<Type> types_to_refresh = null, List<Control> controls_to_refresh = null, List<Control> controls_to_enable = null)
         {
             IEnumerable<Control> childs = GetAllChildrenControls(parent_to_refresh);
 
@@ -644,6 +644,11 @@ namespace SRL
                 {
                     if (control is TextBox || control is ComboBox || control is MaskedTextBox) control.Text = string.Empty;
                     if (control is RadioButton || control is CheckBox) control.Checked = false;
+                }
+            if(controls_to_enable !=null)
+                foreach (dynamic item in controls_to_enable)
+                {
+                    item.Enabled = true;
                 }
         }
 
@@ -1527,6 +1532,12 @@ namespace SRL
     }
     public class WinTools
     {
+        public enum AliagnType
+        {
+            Width,
+            Height,
+            All
+        }
         public class DataGridViewTool
         {
             /// <summary>
@@ -1659,9 +1670,9 @@ namespace SRL
             public void Filter(string expression)
             {
                 //"c2 > 6"
-                ((DataTable)dgv.DataSource).DefaultView.RowFilter =expression ;
+                ((DataTable)dgv.DataSource).DefaultView.RowFilter = expression;
             }
-            
+
         }
         public class ComboTool
         {
@@ -1702,7 +1713,7 @@ namespace SRL
             /// <param name="empty_row_value">empty row is added to top</param>
             public void ComboBoxDataBind<ValueT>(ComboBox cb, IEnumerable<dynamic> enumerable_data_source, ValueT empty_row_value)
             {
-                var data_source = enumerable_data_source.ToList();
+                var data_source = enumerable_data_source.OrderBy(x => x.Text).ToList();
                 // cb.Items.Clear();
                 cb.DataSource = null;
                 cb.DisplayMember = "Text";
@@ -1793,18 +1804,15 @@ namespace SRL
 
         }
 
-
-
-
-
-        public void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false)
+        public void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false, bool clear_parent = true, AliagnType aliagn_type = AliagnType.All)
         {
             if (reset_child_font) child.Font = default(Font);
-            parent.Controls.Clear();
+            if (clear_parent) parent.Controls.Clear();
+            AliagnChildToParent(parent, child, aliagn_type);
             parent.Controls.Add(child);
-            AliagnChildToParent(parent, child);
+            
         }
-        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false, bool use_parent_font_size = false, bool reset_child_font = false)
+        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false, bool use_parent_font_size = false, bool reset_child_font = false, AliagnType aliagn_type = AliagnType.All, bool clear_parent = true)
         {
             FontFamily font_family = child.Font.FontFamily;
             FontStyle font_style = child.Font.Style;
@@ -1832,41 +1840,57 @@ namespace SRL
 
             decimal x_relative = Decimal.Divide(parent.Width, child.Width);
             decimal y_relative = Decimal.Divide(parent.Height, child.Height);
-            var f = (x_relative + y_relative) / 2;
+
+            decimal f = 0;
+            switch (aliagn_type)
+            {
+                case AliagnType.Width:
+                    f = x_relative;
+                    break;
+                case AliagnType.Height:
+                    f = y_relative;
+                    break;
+                case AliagnType.All:
+                    f = (x_relative + y_relative) / 2;
+                    break;
+            }
+
+
             f *= font_factor;
 
 
             child.Font = new Font(font_family, child_font_size * (float)f, font_style);
 
-            AddChildToParentControlsAliagn(parent, child, reset_child_font);
+            AddChildToParentControlsAliagn(parent, child, reset_child_font, clear_parent, aliagn_type);
 
         }
 
-        public void AliagnChildToParent(Control parent, Control child)
+        public void AliagnChildToParent(Control parent, Control child, AliagnType aliagn_type = AliagnType.All)
         {
-            child.Location = new Point(
-    parent.ClientSize.Width / 2 - child.Size.Width / 2,
-    parent.ClientSize.Height / 2 - child.Size.Height / 2);
-            child.Anchor = AnchorStyles.None;
-
-        }
-
-        public void AliagnChildWidthToParent(Control parent, Control child)
-        {
-            child.Location = new Point(
+            switch (aliagn_type)
+            {
+                case AliagnType.Width:
+                    child.Location = new Point(
     parent.ClientSize.Width / 2 - child.Size.Width / 2,
     child.Location.Y);
-            child.Anchor = AnchorStyles.None;
-
-        }
-        public void AliagnChildHeightToParent(Control parent, Control child)
-        {
-            child.Location = new Point(
+                    break;
+                case AliagnType.Height:
+                    child.Location = new Point(
     child.Location.X,
     parent.ClientSize.Height / 2 - child.Size.Height / 2);
+                    break;
+                case AliagnType.All:
+                    child.Location = new Point(
+    parent.ClientSize.Width / 2 - child.Size.Width / 2,
+    parent.ClientSize.Height / 2 - child.Size.Height / 2);
+                    break;
+            }
+
             child.Anchor = AnchorStyles.None;
 
         }
+
+
         public void AdjustChildToParent(Control parent_form, Control child, double child_width_relative, double child_height_relative)
         {
             int form_x = parent_form.Width;
@@ -1996,7 +2020,10 @@ namespace SRL
                 IntegerInput_NotNull = 7,
 
                 [Description("ایمیل صحیح اجباری است")]
-                EmailPattern_NotNull = 8
+                EmailPattern_NotNull = 8,
+
+                [Description("عدد صحیح")]
+                IntegerInput = 9
 
             }
 
@@ -2008,21 +2035,37 @@ namespace SRL
                 force_cancel = force_cancel_;
             }
 
-            public void CheckAllField(List<Control> controls, out bool validation_result)
+            /// <summary>
+            /// if no controls passes then all fields will be checked. If some passes, only they will be checked.
+            /// </summary>
+            /// <param name="controls"></param>
+            /// <returns></returns>
+            public bool CheckAllField(List<Control> controls = null)
             {
-                validation_result = false;
+                bool validation_result = false;
                 bool main_force_cancel = force_cancel;
                 force_cancel = true;
-                foreach (Control control in controls)
+
+                if (controls != null)
                 {
-                    control.Focus();
+                    foreach (Control control in controls)
+                        control.Focus();
+
+                    if (user_control is UserControl)
+                        validation_result = ((UserControl)user_control).Validate();
+                    else if (user_control is Form) 
+                        validation_result=((Form)user_control).Validate();
                 }
-                if (user_control is UserControl)
-                    validation_result = ((UserControl)user_control).ValidateChildren(ValidationConstraints.Enabled);
-                else if (user_control is Form)
-                    validation_result = ((Form)user_control).ValidateChildren(ValidationConstraints.Enabled);
+                else
+                {
+                    if (user_control is UserControl)
+                        validation_result = ((UserControl)user_control).ValidateChildren(ValidationConstraints.Enabled);
+                    else if (user_control is Form)
+                        validation_result = ((Form)user_control).ValidateChildren(ValidationConstraints.Enabled);
+                }
                 force_cancel = main_force_cancel;
-                // user_control.Validate();
+                return validation_result;
+
             }
             /// <summary>
             /// each control can use this method one time. eather add item to ErrorType enum source code or test another UserControlValidation object
@@ -2061,6 +2104,9 @@ namespace SRL
                     case ErrorTypes.IntegerInput_NotNull:
                         control.KeyPress += new System.Windows.Forms.KeyPressEventHandler(integer_input_KeyPress);
                         control.Validating += new System.ComponentModel.CancelEventHandler(not_null_Validating);
+                        break;
+                    case ErrorTypes.IntegerInput:
+                        control.KeyPress += new System.Windows.Forms.KeyPressEventHandler(integer_input_KeyPress);
                         break;
                     case ErrorTypes.EmailPattern_NotNull:
                         control.Validating += new System.ComponentModel.CancelEventHandler(not_null_email_pattern_Validating);
@@ -2782,7 +2828,15 @@ namespace SRL
         }
 
 
+        public void UpdateDgvCellValueToDb<EntityT>(DataGridView dgv, int row_index, string primary_column, string update_column, DbContext db)
+        {
+            var cell_value = dgv.Rows[row_index].Cells[update_column].Value.ToString();
+            long id = (long)dgv.Rows[row_index].Cells[primary_column].Value;
+            string tb_name = typeof(EntityT).Name;
+            string sql = "update " + tb_name + " set " + update_column + " = '" + cell_value + "' where " + primary_column + " = " + id;
+            ExecuteQuery(db, sql);
 
+        }
         public void EntityRemoveAll<EntityType>(DbContext db) where EntityType : class
         {
             foreach (var item in db.Set<EntityType>())
@@ -2972,6 +3026,12 @@ namespace SRL
                 error = ex.Message;
             }
             return error;
+        }
+        public long GetSqliteNewRowId(DbContext db, string table_name)
+        {
+            var query = SqlQuery<long>(db, "SELECT seq FROM sqlite_sequence WHERE (name = '" + table_name + "')");
+            return query[0] + 1;
+
         }
         public List<OutputType> SqlQuery<OutputType>(DbContext db, string query)
         {

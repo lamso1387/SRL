@@ -149,7 +149,7 @@ namespace SRL
         {
             if (tbPass.Text != tbPassRep.Text) return;
             bool res = false;
-            srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, tbPass, tbRole }, out res);
+           res= srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, tbPass, tbRole });
             if (res)
             {
                 AddNewUser();
@@ -185,7 +185,7 @@ namespace SRL
             if (tbPass.Text != tbPassRep.Text) return;
 
             bool res = false;
-            srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, tbPass, tbRole }, out res);
+           res= srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, tbPass, tbRole });
             if (res)
             {
                 EditUser();
