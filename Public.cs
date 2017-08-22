@@ -2146,6 +2146,155 @@ namespace SRL
 
         public class DataGridViewTool
         {
+            public class DataGridViewWithPaging
+            {
+
+                private int _CurrentPage = 1;
+                private string _FirstButtonText = string.Empty;
+                private string _LastButtonText = string.Empty;
+                private string _PreviousButtonText = string.Empty;
+                private string _NextButtonText = string.Empty;
+                private int _Width;
+                private int _Height;
+                private int _PateSize = 10;
+                private DataTable _DataSource;
+                private TextBox txtPaging = new TextBox();
+                private DataGridView dataGridView1 = new DataGridView();
+
+
+
+
+                public int PageSize
+                {
+                    get
+                    {
+                        return _PateSize;
+                    }
+                    set
+                    {
+                        _PateSize = value;
+                    }
+                }
+                public DataTable DataSource
+                {
+                    get
+                    {
+                        return _DataSource;
+                    }
+                    set
+                    {
+                        _DataSource = value;
+                    }
+                }
+
+                /// <summary>
+                /// call DataBind
+                /// </summary>
+                /// <param name="dgv"></param>
+                /// <param name="controlFirst_"></param>
+                /// <param name="controlPrevious_"></param>
+                /// <param name="controlNext_"></param>
+                /// <param name="controlLast_"></param>
+                /// <param name="tbpaging_"></param>
+                public DataGridViewWithPaging(DataGridView dgv, Control controlFirst_, Control controlPrevious_, Control controlNext_, Control controlLast_, TextBox tbpaging_)
+                {
+
+                    dataGridView1 = dgv;
+                    controlFirst_.Click += btnFirst_Click;
+                    controlPrevious_.Click += btnPrevious_Click;
+                    controlNext_.Click += btnNext_Click;
+                    controlLast_.Click += btnLast_Click;
+                    txtPaging = tbpaging_;
+
+                }
+
+
+                private DataTable ShowData(int pageNumber)
+                {
+                    DataTable dt = new DataTable();
+                    int startIndex = PageSize * (pageNumber - 1);
+                    var result = DataSource.AsEnumerable().Where((s, k) => (k >= startIndex && k < (startIndex + PageSize)));
+
+                    foreach (DataColumn colunm in DataSource.Columns)
+                    {
+                        dt.Columns.Add(colunm.ColumnName);
+                    }
+
+                    foreach (var item in result)
+                    {
+                        dt.ImportRow(item);
+                    }
+
+                    txtPaging.Text = string.Format("Page {0} Of {1} Pages", pageNumber, (DataSource.Rows.Count / PageSize) + 1);
+                    return dt;
+                }
+                public void DataBind(DataTable dataTable)
+                {
+                    DataSource = dataTable;
+                    dataGridView1.DataSource = ShowData(1);
+                }
+
+                private void DataGridViewWithPaging_Load(object sender, System.EventArgs e)
+                {
+
+                }
+
+                private void btnFirst_Click(object sender, System.EventArgs e)
+                {
+                    if (_CurrentPage == 1)
+                    {
+                        MessageBox.Show("You are already on First Page.");
+                    }
+                    else
+                    {
+                        _CurrentPage = 1;
+                        dataGridView1.DataSource = ShowData(_CurrentPage);
+                    }
+                }
+
+                private void btnPrevious_Click(object sender, System.EventArgs e)
+                {
+                    if (_CurrentPage == 1)
+                    {
+                        MessageBox.Show("You are already on First page, you can not go to previous of First page.");
+                    }
+                    else
+                    {
+                        _CurrentPage -= 1;
+                        dataGridView1.DataSource = ShowData(_CurrentPage);
+                    }
+                }
+
+                private void btnNext_Click(object sender, System.EventArgs e)
+                {
+                    int lastPage = (DataSource.Rows.Count / PageSize) + 1;
+                    if (_CurrentPage == lastPage)
+                    {
+                        MessageBox.Show("You are already on Last page, you can not go to next page of Last page.");
+                    }
+                    else
+                    {
+                        _CurrentPage += 1;
+                        dataGridView1.DataSource = ShowData(_CurrentPage);
+                    }
+                }
+
+                private void btnLast_Click(object sender, System.EventArgs e)
+                {
+                    int previousPage = _CurrentPage;
+                    _CurrentPage = (DataSource.Rows.Count / PageSize) + 1;
+
+                    if (previousPage == _CurrentPage)
+                    {
+                        MessageBox.Show("You are already on Last Page.");
+                    }
+                    else
+                    {
+                        dataGridView1.DataSource = ShowData(_CurrentPage);
+                    }
+                }
+            }
+
             /// <summary>
             /// Add column show/hide capability to a DataGridView. When user right-clicks 
             /// the cell origin a popup, containing a list of checkbox and column names, is
