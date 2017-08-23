@@ -2400,36 +2400,7 @@ namespace SRL
             }
 
         }
-        public class DataGridViewFiltering
-        {
-            public DataGridView dgv;
-            public DataGridViewFiltering(DataGridView dgv_with_columns)
-            {
-                dgv = dgv_with_columns;
-            }
-
-            public DataTable GetDataTable()
-            {
-                DataTable table = new DataTable();
-
-                foreach (DataGridViewColumn item in dgv.Columns)
-                {
-                    DataColumn dc = new DataColumn(item.Name);
-                    table.Columns.Add(dc);
-                }
-
-                dgv.Columns.Clear();
-                dgv.DataSource = table;
-                return table;
-            }
-
-            public void Filter(string expression)
-            {
-                //"c2 > 6"
-                ((DataTable)dgv.DataSource).DefaultView.RowFilter = expression;
-            }
-
-        }
+      
         public class ComboTool
         {
             /// <summary>
@@ -3551,7 +3522,8 @@ namespace SRL
                             // Add the property as a column in the table if it doesn't exist
                             // already.
                             DataColumn dc = table.Columns.Contains(p.Name) ? table.Columns[p.Name]
-                                : table.Columns.Add(p.Name, p.PropertyType);
+                                : table.Columns.Add(
+                                p.Name, Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType);
 
                             // Add the property to the ordinal map.
                             _ordinalMap.Add(p.Name, dc.Ordinal);

@@ -62,6 +62,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System.Data.Entity" />
+    <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
     <Reference Include="System.Net.Http, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -116,6 +117,62 @@
     </Compile>
     <Compile Include="setup\Setup.designer.cs">
       <DependentUpon>Setup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\ColumnFilterEvent.cs" />
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\DgvBaseColumnFilter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\DgvBaseFilterHost.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\DgvFilterManager.cs" />
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvDateRangeColumnFilter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvDateRangeColumnFilter.designer.cs">
+      <DependentUpon>DgvDateRangeColumnFilter.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvMonthYearColumnFilter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvMonthYearColumnFilter.designer.cs">
+      <DependentUpon>DgvMonthYearColumnFilter.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvNumRangeColumnFilter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvNumRangeColumnFilter.designer.cs">
+      <DependentUpon>DgvNumRangeColumnFilter.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvCheckBoxColumnFilter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvCheckBoxColumnFilter.designer.cs">
+      <DependentUpon>DgvCheckBoxColumnFilter.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvComboBoxColumnFilter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvComboBoxColumnFilter.designer.cs">
+      <DependentUpon>DgvComboBoxColumnFilter.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvDateColumnFilter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvDateColumnFilter.designer.cs">
+      <DependentUpon>DgvDateColumnFilter.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvFilterHost.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvFilterHost.designer.cs">
+      <DependentUpon>DgvFilterHost.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvTextBoxColumnFilter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvTextBoxColumnFilter.designer.cs">
+      <DependentUpon>DgvTextBoxColumnFilter.cs</DependentUpon>
     </Compile>
     <Compile Include="tools\MessageBoxForm.cs">
       <SubType>Form</SubType>
@@ -193,6 +250,10 @@
     <None Include="doc\select2.rtf" />
     <None Include="doc\sqlite.docx" />
     <None Include="setup\app.manifest" />
+    <None Include="tools\DgvFilterPopup\Diagrams\BasicDiagram.cd" />
+    <None Include="tools\DgvFilterPopup\Diagrams\DetailDiagram.cd" />
+    <None Include="tools\DgvFilterPopup\Diagrams\Extensions.cd" />
+    <None Include="tools\DgvFilterPopup\Diagrams\Implementations.cd" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="license\WinLicenseActivation.resx">
@@ -216,6 +277,30 @@
     </EmbeddedResource>
     <EmbeddedResource Include="setup\Setup.resx">
       <DependentUpon>Setup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvDateRangeColumnFilter.resx">
+      <DependentUpon>DgvDateRangeColumnFilter.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvMonthYearColumnFilter.resx">
+      <DependentUpon>DgvMonthYearColumnFilter.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvNumRangeColumnFilter.resx">
+      <DependentUpon>DgvNumRangeColumnFilter.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvCheckBoxColumnFilter.resx">
+      <DependentUpon>DgvCheckBoxColumnFilter.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvComboBoxColumnFilter.resx">
+      <DependentUpon>DgvComboBoxColumnFilter.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvDateColumnFilter.resx">
+      <DependentUpon>DgvDateColumnFilter.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvFilterHost.resx">
+      <DependentUpon>DgvFilterHost.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\DgvFilterPopup\FilterPopup\Implementations\DgvTextBoxColumnFilter.resx">
+      <DependentUpon>DgvTextBoxColumnFilter.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="tools\MessageBoxForm.resx">
       <DependentUpon>MessageBoxForm.cs</DependentUpon>
