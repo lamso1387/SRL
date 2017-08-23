@@ -33,6 +33,7 @@ using System.Drawing.Text;
 using System.Linq.Expressions;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms.Design;
+using System.Web.Script.Serialization;
 
 namespace SRL
 {
@@ -647,7 +648,7 @@ namespace SRL
                     if (control is TextBox || control is ComboBox || control is MaskedTextBox) control.Text = string.Empty;
                     if (control is RadioButton || control is CheckBox) control.Checked = false;
                 }
-            if(controls_to_enable !=null)
+            if (controls_to_enable != null)
                 foreach (dynamic item in controls_to_enable)
                 {
                     item.Enabled = true;
@@ -2493,12 +2494,12 @@ namespace SRL
                 }
             }
 
-            public void LoadNumbersFromDgv(DataGridView dgv, ToolStripItem item_to_show_all, ToolStripItem item_to_show_current,bool? isForward, int count)
+            public void LoadNumbersFromDgv(DataGridView dgv, ToolStripItem item_to_show_all, ToolStripItem item_to_show_current, bool? isForward, int count)
             {
                 var tag = dgv.Tag;
                 if (tag == null) return;
                 int all = int.Parse(tag.ToString());
-                item_to_show_all.Text =Math.Ceiling(Decimal.Divide( all, count)).ToString();
+                item_to_show_all.Text = Math.Ceiling(Decimal.Divide(all, count)).ToString();
 
                 int page = 1;
                 if (!string.IsNullOrWhiteSpace(item_to_show_current.Text))
@@ -2604,7 +2605,7 @@ namespace SRL
             if (clear_parent) parent.Controls.Clear();
             AliagnChildToParent(parent, child, aliagn_type);
             parent.Controls.Add(child);
-            
+
         }
         public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false, bool use_parent_font_size = false, bool reset_child_font = false, AliagnType aliagn_type = AliagnType.All, bool clear_parent = true)
         {
@@ -2892,8 +2893,8 @@ namespace SRL
 
                     if (user_control is UserControl)
                         validation_result = ((UserControl)user_control).Validate();
-                    else if (user_control is Form) 
-                        validation_result=((Form)user_control).Validate();
+                    else if (user_control is Form)
+                        validation_result = ((Form)user_control).Validate();
                 }
                 else
                 {
@@ -3866,6 +3867,21 @@ namespace SRL
         public T StringToJson<T>(string input) where T : new()
         {
             return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input);
+        }
+        public string ClassObjectToToJson(object obj)
+        {
+            try
+            {
+                return Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+            }
+            catch (Exception)
+            {
+
+                return new JavaScriptSerializer().Serialize(obj);
+            }
+           
+            
+           
         }
         public bool IsJson(string input)
         {
