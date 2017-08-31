@@ -198,7 +198,7 @@ namespace DgvFilterPopup {
             this.mDataGridViewColumn = gridColumn;
             this.mBoundDataView = boundDataView;
             this.mOriginalDataGridViewColumnHeaderText = gridColumn.HeaderText;
-            if (gridColumn.DataPropertyName != "")
+            if (gridColumn.DataPropertyName != "" && boundDataView.Table.Columns[gridColumn.DataPropertyName] !=null)
                 this.mColumnDataType = boundDataView.Table.Columns[gridColumn.DataPropertyName].DataType;
             else
                 this.mColumnDataType = typeof(string);

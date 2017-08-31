@@ -2306,14 +2306,22 @@ namespace SRL
             /// </summary>
             public class DataGridViewColumnSelector
             {
+                public enum PopupType
+                {
+                    AllCells,
+                    TopCorner,
+                    ControlClick
+                }
+                public Control control_to_show_popup;
+                private PopupType popup_type;
+
                 // the DataGridView to which the DataGridViewColumnSelector is attached
                 private DataGridView mDataGridView = null;
                 // a CheckedListBox containing the column header text and checkboxes
                 private CheckedListBox mCheckedListBox;
                 // a ToolStripDropDown object used to show the popup
                 private ToolStripDropDown mPopup;
-
-                private bool allow_all_cell_click = false;
+                                
 
                 /// <summary>
                 /// The max height of the popup
@@ -2347,28 +2355,68 @@ namespace SRL
                 // DataGridView columns (column additions or name changes and so on).
                 void mDataGridView_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
                 {
-                    bool click_cell = allow_all_cell_click ? true : (e.RowIndex == -1 && e.ColumnIndex == -1);
-                    if (e.Button == MouseButtons.Right && click_cell)
+                    bool show_popup = false;
+
+                    switch (popup_type)
                     {
-                        mCheckedListBox.Items.Clear();
-                        foreach (DataGridViewColumn c in mDataGridView.Columns)
-                        {
-                            mCheckedListBox.Items.Add(c.HeaderText, c.Visible);
-                        }
-                        int PreferredHeight = (mCheckedListBox.Items.Count * 16) + 7;
-                        mCheckedListBox.Height = (PreferredHeight < PopupMaxHeight) ? PreferredHeight : PopupMaxHeight;
-                        mCheckedListBox.Width = this.PopupWidth;
-                        int x_location = e.X;
+                        case PopupType.AllCells:
+                            show_popup = e.Button == MouseButtons.Right;
+                            break;
+                        case PopupType.TopCorner:
+                            show_popup = e.Button == MouseButtons.Right && e.RowIndex == -1 && e.ColumnIndex == -1;
+                            break;
+                        case PopupType.ControlClick:
+                            show_popup = false;
+                            break;
+                    }
+
+                    if (show_popup)
+                    {
+                        ShowPopUp(e);
+                    }
+                }
+
+                private void ShowPopUp(DataGridViewCellMouseEventArgs e)
+                {
+                    int x_location = 0;
+                    int y_location = 0;
+                    Point location;
+
+                    if (popup_type == PopupType.ControlClick)
+                    {
+                        x_location = control_to_show_popup.Location.X;
+                        y_location = control_to_show_popup.Location.Y;
+
+                        location = new Point(x_location, y_location);
+                    }
+                    else
+                    {
+                        x_location = e.X;
+                        y_location = e.Y;
                         if (mDataGridView.RightToLeft == RightToLeft.Yes) x_location += mDataGridView.Width;
 
-                        mPopup.Show(mDataGridView.PointToScreen(new Point(x_location, e.Y)));
+                        location = new Point(x_location, y_location);
                     }
+
+
+                    mCheckedListBox.Items.Clear();
+                    foreach (DataGridViewColumn c in mDataGridView.Columns)
+                    {
+                        mCheckedListBox.Items.Add(c.HeaderText, c.Visible);
+                    }
+                    int PreferredHeight = (mCheckedListBox.Items.Count * 16) + 7;
+                    mCheckedListBox.Height = (PreferredHeight < PopupMaxHeight) ? PreferredHeight : PopupMaxHeight;
+                    mCheckedListBox.Width = this.PopupWidth;
+                    
+                    
+
+                    mPopup.Show(mDataGridView.PointToScreen(location));
                 }
 
                 // The constructor creates an instance of CheckedListBox and ToolStripDropDown.
                 // the CheckedListBox is hosted by ToolStripControlHost, which in turn is
                 // added to ToolStripDropDown.
-                public DataGridViewColumnSelector()
+                public DataGridViewColumnSelector(DataGridView dgv, PopupType popup_type_,Control control_to_show_popup_=null)
                 {
                     mCheckedListBox = new CheckedListBox();
                     mCheckedListBox.CheckOnClick = true;
@@ -2382,13 +2430,23 @@ namespace SRL
                     mPopup = new ToolStripDropDown();
                     mPopup.Padding = Padding.Empty;
                     mPopup.Items.Add(mControlHost);
+
+                    this.DataGridView = dgv;
+                    popup_type = popup_type_;
+                    SetControlClickPopup(control_to_show_popup_);
                 }
 
-                public DataGridViewColumnSelector(DataGridView dgv, bool all_cell_click = false)
-                    : this()
+                private void SetControlClickPopup(Control control_to_show_popup_)
                 {
-                    this.DataGridView = dgv;
-                    this.allow_all_cell_click = all_cell_click;
+                    if (control_to_show_popup_ == null) return;
+                    control_to_show_popup = control_to_show_popup_;
+                    control_to_show_popup.Click += control_to_show_popup_Click;
+                }
+
+
+                void control_to_show_popup_Click(object sender, EventArgs e)
+                {
+                    ShowPopUp(null);
                 }
 
                 // When user checks / unchecks a checkbox, the related column visibility is 

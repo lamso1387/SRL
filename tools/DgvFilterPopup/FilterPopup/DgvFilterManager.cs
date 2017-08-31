@@ -561,6 +561,7 @@ namespace DgvFilterPopup {
             if (e.ColumnFilter==null) {
                 Type DataType = null;
                 if (c.DataPropertyName != "") {
+                    if (mBoundDataView.Table.Columns[c.DataPropertyName] !=null)
                     DataType = mBoundDataView.Table.Columns[c.DataPropertyName].DataType;
 
                     switch (c.GetType().Name) {
