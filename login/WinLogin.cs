@@ -47,7 +47,7 @@ namespace SRL
         {
             if (is_width_center_align)
             {
-                new SRL.WinTools().AliagnChildToParent(this, pnlLoginForm,WinTools.AliagnType.Width);
+                SRL.WinTools.AliagnChildToParent(this, pnlLoginForm,WinTools.AliagnType.Width);
                 x = pnlLoginForm.Location.X;
             }
             pnlLoginForm.Location = new Point(x, y);
@@ -57,7 +57,7 @@ namespace SRL
         {
             lblFotNote.Text = str;           
             lblFotNote.Font = new Font(lblFotNote.Font.FontFamily, font_size,lblFotNote.Font.Style);
-            if (is_center_align) new SRL.WinTools().AliagnChildToParent(pnlFoot, lblFotNote);
+            if (is_center_align) SRL.WinTools.AliagnChildToParent(pnlFoot, lblFotNote);
             else lblFotNote.Location = new Point(x, y);
         }
         public void ChangeTitle(string str, int x, int y)
@@ -78,7 +78,7 @@ namespace SRL
             Application.DoEvents();
 
             string sql = "select ID,username,password, name, family from " + entity_name + " where username='" + tbUsername.Text + "'";
-            var user = new SRL.Database().SqlQuery<UserClass>(db, sql);
+            var user = SRL.Database.SqlQuery<UserClass>(db, sql);
             if (!user.Any() || !(tbPassword.Text == user.First().password))
             {
                 MessageBox.Show("نام کاربری یا رمز عبور اشتباه است");

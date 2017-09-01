@@ -44,7 +44,7 @@ namespace SRL
 
         private void button1_Click(object sender, EventArgs e)
         {
-            new SRL.FileManagement().CopyToClipboard(tbUid.Text);
+            SRL.FileManagement.CopyToClipboard(tbUid.Text);
             tbUid.DeselectAll();
         }
 
@@ -64,7 +64,7 @@ namespace SRL
            control_is_valid= control_validation.CheckAllField(new List<Control> { tbMobile, tbEmail });
             if (control_is_valid)
             {
-                SRL.Security sec = new SRL.Security();
+                 
                 StringBuilder sb = new StringBuilder();
                 sb.Append("\n app_name: ");
                 sb.Append(assembly.GetName().Name);
@@ -74,7 +74,7 @@ namespace SRL
                 sb.Append(tbMobile.Text);
                 sb.Append("\n email: ");
                 sb.Append(tbEmail.Text);
-                string error = sec.SendEmail("lamso1387", "soheillamso@gmail.com", "فعالسازی نرم افزار", sb.ToString(), "KhaneBazaar@gmail.com", "2050130351");
+                string error = SRL.Security.SendEmail("lamso1387", "soheillamso@gmail.com", "فعالسازی نرم افزار", sb.ToString(), "KhaneBazaar@gmail.com", "2050130351");
                 if (!string.IsNullOrWhiteSpace(error)) MessageBox.Show(error, "خطا در ارسال:اتصال به اینترنت را بررسی کنید");
                 else MessageBox.Show("ارسال با موفقیت انجام شد. بعد از تایید، کد به ایمیل شما ارسال میگردد");
             }

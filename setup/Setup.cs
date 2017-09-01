@@ -49,9 +49,9 @@ namespace SRL
 
         private void InstallFiles(Control clicker)
         {
-            srl_file.ReplaceAllFilesFromDirToDir(tbSource.Text, tbDestination.Text);
+            SRL.FileManagement.ReplaceAllFilesFromDirToDir(tbSource.Text, tbDestination.Text);
             progressBar1.Value = 60;
-            srl_file.MakeShortcut(app_display_name, srl_file.GetDesktopDirectory(), tbDestination.Text, app_exe_name + ".exe", icon_full_path_from_source_directory);
+            SRL.FileManagement.MakeShortcut(app_display_name, SRL.FileManagement.GetDesktopDirectory(), tbDestination.Text, app_exe_name + ".exe", icon_full_path_from_source_directory);
             progressBar1.Value = 100;
             clicker.Text = end_string;
             button1.Enabled = false;
@@ -71,7 +71,7 @@ namespace SRL
 
         private void Setup_Load(object sender, EventArgs e)
         {
-            tbSource.Text = srl_file.GetCurrentDirectory();
+            tbSource.Text = SRL.FileManagement.GetCurrentDirectory();
             tbDestination.Text = dir_install_name;
         }
 
