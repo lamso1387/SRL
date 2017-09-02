@@ -2667,14 +2667,6 @@ namespace SRL
 
         }
 
-        public void AliagnChildToParent(Control parent, Control child)
-        {
-            child.Location = new Point(
-    parent.ClientSize.Width / 2 - child.Size.Width / 2,
-    parent.ClientSize.Height / 2 - child.Size.Height / 2);
-            child.Anchor = AnchorStyles.None;
-
-        }
 
         public void AliagnChildToParent(Control parent, Control child, AliagnType aliagn_type = AliagnType.All)
         {
