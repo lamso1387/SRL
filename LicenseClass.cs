@@ -471,7 +471,7 @@ namespace SRL
         public void SaveLicenseToFileInRoot(string file_name, string license_key, out string message)
         {
             message = "License accepted, the application will be close. Please restart it later";
-            new FileManagement().SaveToFile(Path.Combine(Application.StartupPath, file_name), license_key.Trim());
+            SRL.FileManagement.SaveToFile(Path.Combine(Application.StartupPath, file_name), license_key.Trim());
             MessageBox.Show(message, string.Empty, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 

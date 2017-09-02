@@ -54,23 +54,22 @@ namespace SRL
 
         private void button2_Click(object sender, EventArgs e)
         {
-            srl_file.CopyToClipboard(textBox2.Text);
+            SRL.FileManagement.CopyToClipboard(textBox2.Text);
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
-            srl_file.CopyToClipboard(textBox2.Text);
+            SRL.FileManagement.CopyToClipboard(textBox2.Text);
         }
 
         private void btnDesktop_Click(object sender, EventArgs e)
         {
-            srl_file.SaveToFile(System.IO.Path.Combine(srl_file.GetDesktopDirectory(), "license.lic"), textBox2.Text);
+            SRL.FileManagement.SaveToFile(System.IO.Path.Combine(SRL.FileManagement.GetDesktopDirectory(), "license.lic"), textBox2.Text);
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
-            SRL.Security sec = new Security();
-            string mess = sec.SendEmail("lamso1387", tbEmail.Text, tbsubject.Text, tbEmailMes.Text, "soheillamso@gmail.com", "2050130351", textBox2.Text, tbFileName.Text);
+            string mess = SRL.Security.SendEmail("lamso1387", tbEmail.Text, tbsubject.Text, tbEmailMes.Text, "soheillamso@gmail.com", "2050130351", textBox2.Text, tbFileName.Text);
             if (mess != "") MessageBox.Show(mess);
         }
     }

@@ -39,7 +39,7 @@ namespace SRL
 {
     public class Print
     {
-        public void PrintPaperSize(PrintDialog print_dialog, string paper_name = "Custom", int height = 584, int width = 827)
+        public static void PrintPaperSize(PrintDialog print_dialog, string paper_name = "Custom", int height = 584, int width = 827)
         {
             PaperSize psz = new PaperSize();
             psz.PaperName = paper_name;
@@ -408,21 +408,21 @@ namespace SRL
         /// <param name="dt"></param>
         /// <param name="format"></param>
         /// <returns></returns>
-        public string DateTimeToSring(DateTime? dt, string format)
+        public static string DateTimeToSring(DateTime? dt, string format)
         {
             return dt.Value.ToString(format);
         }
-        public string GetCurrentKeyboardShort()
+        public static string GetCurrentKeyboardShort()
         {
 
             return InputLanguage.CurrentInputLanguage.Culture.Name;
         }
-        public string ChangeKeyboardAltShift()
+        public static string ChangeKeyboardAltShift()
         {
             SendKeys.Send("%+");
             return GetCurrentKeyboardShort();
         }
-        public DateTime? TryGetDateTimeValue(string datetime_string)
+        public static DateTime? TryGetDateTimeValue(string datetime_string)
         {
             DateTime dt = new DateTime();
             if (!DateTime.TryParse(datetime_string, out dt)) return null;
@@ -454,14 +454,14 @@ namespace SRL
         public void InitiateSetting(Dictionary<string, string> keyValuesetting)
         {
 
-            srl_database.EntityRemoveAll<SettingEntity>(db);
+            SRL.Database.EntityRemoveAll<SettingEntity>(db);
 
             foreach (var item in keyValuesetting)
             {
                 var instance = class_mgnt.CreateInstance();
                 class_mgnt.SetProperty("key", instance, item.Key);
                 class_mgnt.SetProperty("value", instance, item.Value);
-                srl_database.EntityAdd<SettingEntity>(db, instance);
+                SRL.Database.EntityAdd<SettingEntity>(db, instance);
             }
 
             db.SaveChanges();
@@ -497,7 +497,7 @@ namespace SRL
 
                 Dictionary<string, string> default_setting = new Dictionary<string, string>();
                 string sql = "select key, value from " + setting_table_name;
-                var query_rows = srl_database.SqlQuery<DefaultSetting>(db, sql);
+                var query_rows = SRL.Database.SqlQuery<DefaultSetting>(db, sql);
                 foreach (var row in query_rows)
                 {
                     default_setting[row.key] = row.value;
@@ -507,17 +507,17 @@ namespace SRL
                 string default_setting_json = Newtonsoft.Json.JsonConvert.SerializeObject(default_setting);
 
                 sql = "select value from " + setting_table_name + " where key='default_setting' ";
-                var query = srl_database.SqlQuery<string>(db, sql).DefaultIfEmpty(null).FirstOrDefault();
+                var query = SRL.Database.SqlQuery<string>(db, sql).DefaultIfEmpty(null).FirstOrDefault();
 
                 if (query == null)
                 {
                     sql = "insert into " + setting_table_name + " (key, value) values ('default_setting', '" + default_setting_json + "') ";
-                    srl_database.ExecuteQuery(db, sql);
+                    SRL.Database.ExecuteQuery(db, sql);
                 }
                 else
                 {
                     sql = "update " + setting_table_name + " set value='" + default_setting_json + "' where  key ='default_setting' ";
-                    srl_database.ExecuteQuery(db, sql);
+                    SRL.Database.ExecuteQuery(db, sql);
                 }
             }
             catch (Exception exc)
@@ -534,14 +534,14 @@ namespace SRL
             try
             {
                 string sql = "select value from " + setting_table_name + " where key='default_setting' ";
-                var query = srl_database.SqlQuery<string>(db, sql).DefaultIfEmpty(null).FirstOrDefault();
+                var query = SRL.Database.SqlQuery<string>(db, sql).DefaultIfEmpty(null).FirstOrDefault();
                 if (query == null)
                 {
                     error = "no app default setting found";
                     return error;
 
                 }
-                if (!new SRL.Json().IsJson(query))
+                if (!SRL.Json.IsJson(query))
                 {
                     error = "app default setting not saved in json format";
                     return error;
@@ -577,7 +577,7 @@ namespace SRL
         public string ExecuteUpdateSettingTable(string key, string value)
         {
             string sql = "update " + setting_table_name + " set value='" + value + "' where key='" + key + "'";
-            return srl_database.ExecuteQuery(db, sql);
+            return SRL.Database.ExecuteQuery(db, sql);
         }
         public bool CheckSettingIsSet()
         {
@@ -589,7 +589,7 @@ namespace SRL
         {
 
             string sql = "select value from " + setting_table_name + " where key='" + key + "'";
-            var query = srl_database.SqlQuery<string>(db, sql).DefaultIfEmpty(default_if_empty).FirstOrDefault();
+            var query = SRL.Database.SqlQuery<string>(db, sql).DefaultIfEmpty(default_if_empty).FirstOrDefault();
             return query;
 
         }
@@ -597,7 +597,7 @@ namespace SRL
     }
     public class ChildParent
     {
-        public IEnumerable<Control> GetAllChildrenControls(Control root)
+        public static IEnumerable<Control> GetAllChildrenControls(Control root)
         {
             var q = new Queue<Control>(root.Controls.Cast<Control>());
             while (q.Any())
@@ -609,7 +609,7 @@ namespace SRL
             }
         }
 
-        public void ClearControlsValue<ControlType>(IEnumerable<Control> controls_to_search, string property_to_clear, object clear_value)
+        public static void ClearControlsValue<ControlType>(IEnumerable<Control> controls_to_search, string property_to_clear, object clear_value)
         {
             SRL.ClassManagement<ControlType> class_mgnt = new ClassManagement<ControlType>();
 
@@ -629,7 +629,7 @@ namespace SRL
         /// <param name="parent_to_refresh"></param>
         /// <param name="types_to_refresh"></param>
         /// <param name="controls_to_refresh">new List Type() { typeof(Button), typeof(TextBox),... }</param>
-        public void RefreshFormControls(Control parent_to_refresh, List<Type> types_to_refresh = null, List<Control> controls_to_refresh = null, List<Control> controls_to_enable = null)
+        public static void RefreshFormControls(Control parent_to_refresh, List<Type> types_to_refresh = null, List<Control> controls_to_refresh = null, List<Control> controls_to_enable = null)
         {
             IEnumerable<Control> childs = GetAllChildrenControls(parent_to_refresh);
 
@@ -657,23 +657,23 @@ namespace SRL
 
 
 
-        public object AddCategory<EntityT>(DbContext db, string categoryName, EntityT newCategory) where EntityT : class
+        public static object AddCategory<EntityT>(DbContext db, string categoryName, EntityT newCategory) where EntityT : class
         {
             SRL.ClassManagement<EntityT> class_mgnt = new ClassManagement<EntityT>();
 
             class_mgnt.SetProperty("categoryName", newCategory, categoryName);
-            SRL.Database srl_database = new Database();
-            srl_database.EntityAdd<EntityT>(db, newCategory);
+          
+            SRL.Database.EntityAdd<EntityT>(db, newCategory);
             db.SaveChanges();
             return class_mgnt.GetProperty("ID", newCategory);
         }
-        public void AddChildParent<EntityT>(DbContext db, long childId, long parentId, EntityT categoryClass) where EntityT : class
+        public static void AddChildParent<EntityT>(DbContext db, long childId, long parentId, EntityT categoryClass) where EntityT : class
         {
             SRL.ClassManagement<EntityT> class_mgnt = new ClassManagement<EntityT>();
             class_mgnt.SetProperty("parentID", categoryClass, parentId);
             class_mgnt.SetProperty("childID", categoryClass, childId);
-            SRL.Database srl_database = new Database();
-            srl_database.EntityAdd<EntityT>(db, categoryClass);
+           
+            SRL.Database.EntityAdd<EntityT>(db, categoryClass);
             db.SaveChanges();
         }
         public static void DeleteNodeChilds(DbContext db, long parentId)
@@ -855,14 +855,14 @@ namespace SRL
 
             }
 
-            public void MaximizeForm(Form form)
+            public static void MaximizeForm(Form form)
             {
                 if (form.WindowState == FormWindowState.Normal)
                     form.WindowState = FormWindowState.Maximized;
                 else form.WindowState = FormWindowState.Normal;
             }
 
-            public void RoundBorderForm(Form frm)
+            public static void RoundBorderForm(Form frm)
             {
                 //make a regtangular witd one point(x,y) and it's width and height:
                 Rectangle Bounds = new Rectangle(0, 0, frm.Width, frm.Height);
@@ -1237,7 +1237,7 @@ namespace SRL
 
 
 
-        public void FullScreenNoTaskbar(Control control)
+        public static void FullScreenNoTaskbar(Control control)
         {
             control.Left = control.Top = 0;
             control.Width = Screen.PrimaryScreen.WorkingArea.Width;
@@ -1398,7 +1398,7 @@ namespace SRL
 
 
         }
-        public Icon ResizeIcon(Icon icon, int width_multi_8 = 16, int height = 16)
+        public static Icon ResizeIcon(Icon icon, int width_multi_8 = 16, int height = 16)
         {
             Size size = new Size(width_multi_8, height);
             Bitmap bitmap = new Bitmap(size.Width, size.Height);
@@ -1495,7 +1495,7 @@ namespace SRL
 
         public class DatagridviewClass
         {
-            public void StyleDatagridviewDefault(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
+            public static  void StyleDatagridviewDefault(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
             {
                 dataGridView1.DefaultCellStyle.Font = new Font(dataGridView1.DefaultCellStyle.Font.FontFamily, cell_size);
 
@@ -1509,7 +1509,7 @@ namespace SRL
 
         public class MenuClass
         {
-            public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, string basic_back_color_name)
+            public static void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, string basic_back_color_name)
             {
                 foreach (ToolStripMenuItem item in menu_strip.Items.OfType<ToolStripMenuItem>())
                 {
@@ -1519,7 +1519,7 @@ namespace SRL
                 menu_strip.Items[item_name_to_alter_color].BackColor = Color.FromName(basic_back_color_name);
 
             }
-            public void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, Color back_color, Color fore_color)
+            public static void MenuStripClickColoring(MenuStrip menu_strip, string item_name_to_alter_color, Color back_color, Color fore_color)
             {
                 foreach (ToolStripMenuItem item in menu_strip.Items.OfType<ToolStripMenuItem>())
                 {
@@ -2306,14 +2306,22 @@ namespace SRL
             /// </summary>
             public class DataGridViewColumnSelector
             {
+                public enum PopupType
+                {
+                    AllCells,
+                    TopCorner,
+                    ControlClick
+                }
+                public Control control_to_show_popup;
+                private PopupType popup_type;
+
                 // the DataGridView to which the DataGridViewColumnSelector is attached
                 private DataGridView mDataGridView = null;
                 // a CheckedListBox containing the column header text and checkboxes
                 private CheckedListBox mCheckedListBox;
                 // a ToolStripDropDown object used to show the popup
                 private ToolStripDropDown mPopup;
-
-                private bool allow_all_cell_click = false;
+                                
 
                 /// <summary>
                 /// The max height of the popup
@@ -2347,28 +2355,68 @@ namespace SRL
                 // DataGridView columns (column additions or name changes and so on).
                 void mDataGridView_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
                 {
-                    bool click_cell = allow_all_cell_click ? true : (e.RowIndex == -1 && e.ColumnIndex == -1);
-                    if (e.Button == MouseButtons.Right && click_cell)
+                    bool show_popup = false;
+
+                    switch (popup_type)
                     {
-                        mCheckedListBox.Items.Clear();
-                        foreach (DataGridViewColumn c in mDataGridView.Columns)
-                        {
-                            mCheckedListBox.Items.Add(c.HeaderText, c.Visible);
-                        }
-                        int PreferredHeight = (mCheckedListBox.Items.Count * 16) + 7;
-                        mCheckedListBox.Height = (PreferredHeight < PopupMaxHeight) ? PreferredHeight : PopupMaxHeight;
-                        mCheckedListBox.Width = this.PopupWidth;
-                        int x_location = e.X;
+                        case PopupType.AllCells:
+                            show_popup = e.Button == MouseButtons.Right;
+                            break;
+                        case PopupType.TopCorner:
+                            show_popup = e.Button == MouseButtons.Right && e.RowIndex == -1 && e.ColumnIndex == -1;
+                            break;
+                        case PopupType.ControlClick:
+                            show_popup = false;
+                            break;
+                    }
+
+                    if (show_popup)
+                    {
+                        ShowPopUp(e);
+                    }
+                }
+
+                private void ShowPopUp(DataGridViewCellMouseEventArgs e)
+                {
+                    int x_location = 0;
+                    int y_location = 0;
+                    Point location;
+
+                    if (popup_type == PopupType.ControlClick)
+                    {
+                        x_location = control_to_show_popup.Location.X;
+                        y_location = control_to_show_popup.Location.Y;
+
+                        location = new Point(x_location, y_location);
+                    }
+                    else
+                    {
+                        x_location = e.X;
+                        y_location = e.Y;
                         if (mDataGridView.RightToLeft == RightToLeft.Yes) x_location += mDataGridView.Width;
 
-                        mPopup.Show(mDataGridView.PointToScreen(new Point(x_location, e.Y)));
+                        location = new Point(x_location, y_location);
                     }
+
+
+                    mCheckedListBox.Items.Clear();
+                    foreach (DataGridViewColumn c in mDataGridView.Columns)
+                    {
+                        mCheckedListBox.Items.Add(c.HeaderText, c.Visible);
+                    }
+                    int PreferredHeight = (mCheckedListBox.Items.Count * 16) + 7;
+                    mCheckedListBox.Height = (PreferredHeight < PopupMaxHeight) ? PreferredHeight : PopupMaxHeight;
+                    mCheckedListBox.Width = this.PopupWidth;
+                    
+                    
+
+                    mPopup.Show(mDataGridView.PointToScreen(location));
                 }
 
                 // The constructor creates an instance of CheckedListBox and ToolStripDropDown.
                 // the CheckedListBox is hosted by ToolStripControlHost, which in turn is
                 // added to ToolStripDropDown.
-                public DataGridViewColumnSelector()
+                public DataGridViewColumnSelector(DataGridView dgv, PopupType popup_type_,Control control_to_show_popup_=null)
                 {
                     mCheckedListBox = new CheckedListBox();
                     mCheckedListBox.CheckOnClick = true;
@@ -2382,13 +2430,23 @@ namespace SRL
                     mPopup = new ToolStripDropDown();
                     mPopup.Padding = Padding.Empty;
                     mPopup.Items.Add(mControlHost);
+
+                    this.DataGridView = dgv;
+                    popup_type = popup_type_;
+                    SetControlClickPopup(control_to_show_popup_);
                 }
 
-                public DataGridViewColumnSelector(DataGridView dgv, bool all_cell_click = false)
-                    : this()
+                private void SetControlClickPopup(Control control_to_show_popup_)
                 {
-                    this.DataGridView = dgv;
-                    this.allow_all_cell_click = all_cell_click;
+                    if (control_to_show_popup_ == null) return;
+                    control_to_show_popup = control_to_show_popup_;
+                    control_to_show_popup.Click += control_to_show_popup_Click;
+                }
+
+
+                void control_to_show_popup_Click(object sender, EventArgs e)
+                {
+                    ShowPopUp(null);
                 }
 
                 // When user checks / unchecks a checkbox, the related column visibility is 
@@ -2409,7 +2467,7 @@ namespace SRL
             /// <param name="cb"></param>
             /// <param name="height"></param>
             /// <param name="pad"></param>
-            public void MakeComboBoxSizable(ComboBox cb, int height, Padding pad)
+            public static void MakeComboBoxSizable(ComboBox cb, int height, Padding pad)
             {
                 cb.DrawMode = DrawMode.OwnerDrawFixed;
 
@@ -2438,7 +2496,7 @@ namespace SRL
             /// <param name="cb"></param>
             /// <param name="enumerable_data_source">enumerable_data_source is IEnumerable query of  new {string Text=?, object Value=? }</param>
             /// <param name="empty_row_value">empty row is added to top</param>
-            public void ComboBoxDataBind<ValueT>(ComboBox cb, IEnumerable<dynamic> enumerable_data_source, ValueT empty_row_value)
+            public static void ComboBoxDataBind<ValueT>(ComboBox cb, IEnumerable<dynamic> enumerable_data_source, ValueT empty_row_value)
             {
                 var data_source = enumerable_data_source.OrderBy(x => x.Text).ToList();
                 // cb.Items.Clear();
@@ -2449,8 +2507,6 @@ namespace SRL
                 cb.DataSource = data_source;
 
             }
-
-
         }
 
         public class NavigatorTools
@@ -2493,7 +2549,7 @@ namespace SRL
 
 
         }
-        public string GetAppName(string default_app_name, string folder_containing_exe_path, List<string> file_not_searching, string app_extention_pattern = "*.exe")
+        public static string GetAppName(string default_app_name, string folder_containing_exe_path, List<string> file_not_searching, string app_extention_pattern = "*.exe")
         {
             string app_name = default_app_name;
             var dirs = System.IO.Directory.GetFiles(folder_containing_exe_path, app_extention_pattern).Select(x => x);
@@ -2506,7 +2562,7 @@ namespace SRL
             return app_name;
         }
 
-        public T CloneControl<T>(T controlToClone)
+        public static T CloneControl<T>(T controlToClone)
             where T : Control
         {
             PropertyInfo[] controlProperties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
@@ -2556,7 +2612,7 @@ namespace SRL
             /// </summary>
             /// <param name="control"></param>
             /// <returns></returns>
-            public string GetRawStringMaskedTextBox(MaskedTextBox control)
+            public static string GetRawStringMaskedTextBox(MaskedTextBox control)
             {
                 string raw_text = "";
                 MaskFormat format = control.TextMaskFormat;
@@ -2570,7 +2626,7 @@ namespace SRL
 
         }
 
-        public void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false, bool clear_parent = true, AliagnType aliagn_type = AliagnType.All)
+        public static void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false, bool clear_parent = true, AliagnType aliagn_type = AliagnType.All)
         {
             if (reset_child_font) child.Font = default(Font);
             if (clear_parent) parent.Controls.Clear();
@@ -2578,7 +2634,7 @@ namespace SRL
             parent.Controls.Add(child);
 
         }
-        public void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false, bool use_parent_font_size = false, bool reset_child_font = false, AliagnType aliagn_type = AliagnType.All, bool clear_parent = true)
+        public static void AddChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false, bool use_parent_font_size = false, bool reset_child_font = false, AliagnType aliagn_type = AliagnType.All, bool clear_parent = true)
         {
             FontFamily font_family = child.Font.FontFamily;
             FontStyle font_style = child.Font.Style;
@@ -2629,7 +2685,7 @@ namespace SRL
 
             AddChildToParentControlsAliagn(parent, child, reset_child_font, clear_parent, aliagn_type);
         }
-        public void ChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false, bool use_parent_font_size = false, bool reset_child_font = false)
+        public static void ChildToParentControlsZoomAndAliagn(Control parent, Control child, decimal font_factor = 1, bool use_parent_font_family = false, bool use_parent_font_size = false, bool reset_child_font = false)
         {
             FontFamily font_family = child.Font.FontFamily;
             FontStyle font_style = child.Font.Style;
@@ -2668,7 +2724,8 @@ namespace SRL
         }
 
 
-        public void AliagnChildToParent(Control parent, Control child, AliagnType aliagn_type = AliagnType.All)
+
+        public static void AliagnChildToParent(Control parent, Control child, AliagnType aliagn_type = AliagnType.All)
         {
             switch (aliagn_type)
             {
@@ -2694,7 +2751,7 @@ namespace SRL
         }
 
 
-        public void AdjustChildToParent(Control parent_form, Control child, double child_width_relative, double child_height_relative)
+        public static void AdjustChildToParent(Control parent_form, Control child, double child_width_relative, double child_height_relative)
         {
             int form_x = parent_form.Width;
             int form_y = parent_form.Height;
@@ -2702,7 +2759,7 @@ namespace SRL
             child.Width = int.Parse(Math.Floor(child_width_relative * form_x).ToString());
             child.Height = int.Parse(Math.Floor(child_height_relative * form_y).ToString());
         }
-        public void AdjustAndAliagnChildToParent(Control parent_form, Control child, double child_width_relative, double child_height_relative)
+        public static void AdjustAndAliagnChildToParent(Control parent_form, Control child, double child_width_relative, double child_height_relative)
         {
             int form_x = parent_form.Width;
             int form_y = parent_form.Height;
@@ -2716,14 +2773,14 @@ namespace SRL
         public class Media
         {
 
-            public float GetScreenDpi(Control control, out float dpiX, out float dpiY)
+            public static float GetScreenDpi(Control control, out float dpiX, out float dpiY)
             {
                 Graphics graphics = control.CreateGraphics();
                 dpiX = graphics.DpiX;
                 dpiY = graphics.DpiY;
                 return (dpiX + dpiY) / 2;
             }
-            public float GetScreenDpi(Control control)
+            public static float GetScreenDpi(Control control)
             {
                 float dpiX, dpiY;
                 Graphics graphics = control.CreateGraphics();
@@ -2732,7 +2789,7 @@ namespace SRL
                 return (dpiX + dpiY) / 2;
             }
 
-            private Image CaptureScreen(Form form)
+            public static Image CaptureScreen(Form form)
             {
                 Bitmap memoryImage;
                 Graphics myGraphics = form.CreateGraphics();
@@ -2768,12 +2825,12 @@ namespace SRL
                 this.Width = width_ + borders.right + borders.left;
                 this.Height = height_ + borders.top + borders.bottom;
 
-                new WinTools().AddChildToParentControlsAliagn(this, user_control);
+                SRL.WinTools.AddChildToParentControlsAliagn(this, user_control);
             }
 
 
         }
-        public bool ValidationInLabel(Label lblError, List<Control> fieldNotNull = null, List<TextBox> tbMobile = null)
+        public static bool ValidationInLabel(Label lblError, List<Control> fieldNotNull = null, List<TextBox> tbMobile = null)
         {
             lblError.Text = string.Empty;
             if (fieldNotNull != null)
@@ -2985,7 +3042,7 @@ namespace SRL
 
                 var dt = new DateTime();
 
-                if (new WinTools.TextBoxTool().GetRawStringMaskedTextBox(control).Any())
+                if (SRL.WinTools.TextBoxTool.GetRawStringMaskedTextBox(control).Any())
                     if (!DateTime.TryParse(control.Text, out dt))
                     {
                         e.Cancel = force_cancel;
@@ -3020,7 +3077,7 @@ namespace SRL
             {
                 Control control = sender as Control;
                 bool status = control.Text.Any() ?
-                   (!(new SRL.Convertor().IsValidEmail(control.Text)) ? true : false)
+                   (!(SRL.Convertor.IsValidEmail(control.Text)) ? true : false)
                    : true;
                 if (status)
                 {
@@ -3077,13 +3134,13 @@ namespace SRL
             NotActivated = 1,
             Activated = 2
         }
-        public void WinCheckLogin(DbContext db, string entity_name, WinSessionId session)
+        public static void WinCheckLogin(DbContext db, string entity_name, WinSessionId session)
         {
             new SRL.WinLogin(db, entity_name, session).ShowDialog();
 
             if (!session.IsLogined) Environment.Exit(0);
         }
-        public void CreateSession(string key, object value, System.Web.UI.Page page)
+        public static void CreateSession(string key, object value, System.Web.UI.Page page)
         {
             page.Session[key] = value;
         }
@@ -3096,7 +3153,7 @@ namespace SRL
                 //  MessageBox(session["username"].ToString(), response);
             }
         }
-        public void SendActivationEmail(string username, string registerHashValue, string registerActivationUri, string toMail, string subject, string body, Dictionary<string, object> response, string fromMail, string password)
+        public static void SendActivationEmail(string username, string registerHashValue, string registerActivationUri, string toMail, string subject, string body, Dictionary<string, object> response, string fromMail, string password)
         {
             try
             {
@@ -3106,8 +3163,8 @@ namespace SRL
                 mailMessage.From = from;
                 mailMessage.Subject = subject;
                 mailMessage.Body = body;
-                SRL.Convertor convertor = new SRL.Convertor();
-                string activationLink = convertor.MakeActivationLink(username, registerHashValue, registerActivationUri);
+                
+                string activationLink = SRL.Convertor.MakeActivationLink(username, registerHashValue, registerActivationUri);
                 mailMessage.Body += activationLink;
                 System.Net.Mail.SmtpClient smtpClient = new System.Net.Mail.SmtpClient("smtp.gmail.com");
                 smtpClient.Port = 587;
@@ -3123,7 +3180,7 @@ namespace SRL
             }
         }
 
-        public string SendEmail(string username, string toMail, string subject, string body, string fromMail, string password, string attach_text_file_content = null, string attach_text_file_name = null)
+        public static string SendEmail(string username, string toMail, string subject, string body, string fromMail, string password, string attach_text_file_content = null, string attach_text_file_name = null)
         {
             string error = "";
             try
@@ -3167,7 +3224,7 @@ namespace SRL
                 return true;
             }
         }
-        public string GetSHA1(string input)
+        public static string GetSHA1(string input)
         {
             using (System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed())
             {
@@ -3531,7 +3588,7 @@ namespace SRL
         }
         /* input image with width = height is suggested to get the best result */
         /* png support in icon was introduced in Windows Vista */
-        public bool ConvertImageToIcon(System.IO.Stream input_stream, System.IO.Stream output_stream, int size, bool keep_aspect_ratio = false)
+        public static bool ConvertImageToIcon(System.IO.Stream input_stream, System.IO.Stream output_stream, int size, bool keep_aspect_ratio = false)
         {
             System.Drawing.Bitmap input_bit = (System.Drawing.Bitmap)System.Drawing.Bitmap.FromStream(input_stream);
             if (input_bit != null)
@@ -3604,7 +3661,7 @@ namespace SRL
             return false;
         }
 
-        public bool ConvertImageToIcon(string input_image, string output_icon, int size, bool keep_aspect_ratio = false)
+        public static bool ConvertImageToIcon(string input_image, string output_icon, int size, bool keep_aspect_ratio = false)
         {
             System.IO.FileStream input_stream = new System.IO.FileStream(input_image, System.IO.FileMode.Open);
             System.IO.FileStream output_stream = new System.IO.FileStream(output_icon, System.IO.FileMode.OpenOrCreate);
@@ -3617,15 +3674,15 @@ namespace SRL
             return result;
         }
 
-        public int InchToPixel(float inch, float dpi = 96)
+        public static int InchToPixel(float inch, float dpi = 96)
         {
             return (int)(inch * dpi);
         }
-        public float PixelToInch(int pixel, float dpi = 96)
+        public static float PixelToInch(int pixel, float dpi = 96)
         {
             return (pixel / dpi);
         }
-        public decimal StringToDecimal(string value_to_parse, decimal? default_value = null, string app_decimal_symbol = "/", bool show_alarm_error = true)
+        public static decimal StringToDecimal(string value_to_parse, decimal? default_value = null, string app_decimal_symbol = "/", bool show_alarm_error = true)
         {
             if (string.IsNullOrWhiteSpace(value_to_parse)) return 0;
 
@@ -3658,16 +3715,16 @@ namespace SRL
 
         }
 
-        public bool StringToFloatTry(string str, out float number)
+        public static bool StringToFloatTry(string str, out float number)
         {
 
             return float.TryParse(str, NumberStyles.Any, CultureInfo.CurrentCulture, out number);
         }
-        public bool StringToDecimalTry(string str, out Decimal number)
+        public static bool StringToDecimalTry(string str, out Decimal number)
         {
             return Decimal.TryParse(str, NumberStyles.Any, CultureInfo.CurrentCulture, out number);
         }
-        public DateTime EnglishToPersianDateTime(DateTime date)
+        public static DateTime EnglishToPersianDateTime(DateTime date)
         {
 
             PersianCalendar p = new System.Globalization.PersianCalendar();
@@ -3680,7 +3737,7 @@ namespace SRL
             string str = string.Format("{0}/{1}/{2}  {3}:{4}:{5}", year, month, day, h, m, s);
             return DateTime.Parse(str);
         }
-        public List<string> EnglishToPersianDateString(DateTime d)
+        public static List<string> EnglishToPersianDateString(DateTime d)
         {
             List<string> date_list = new List<string>();
             PersianCalendar pc = new PersianCalendar();
@@ -3708,21 +3765,21 @@ namespace SRL
 
             return date_list;
         }
-        public DateTime PersianToEnglishDate(int year, int month, int day)
+        public static DateTime PersianToEnglishDate(int year, int month, int day)
         {
             PersianCalendar pc = new PersianCalendar();
             DateTime dt = new DateTime(year, month, day, pc);
             return dt;
         }
 
-        public DateTime PersianToEnglishDate(int year, int month, int day, int hour, int minute, int second, int milsec)
+        public static DateTime PersianToEnglishDate(int year, int month, int day, int hour, int minute, int second, int milsec)
         {
             PersianCalendar pc = new PersianCalendar();
             DateTime dt = pc.ToDateTime(year, month, day, hour, minute, second, milsec);
 
             return dt;
         }
-        public void CopyDataTableToDataTable(DataTable dt_from, DataTable dt_to)
+        public static void CopyDataTableToDataTable(DataTable dt_from, DataTable dt_to)
         {
 
             if (dt_from.Columns.Count > dt_to.Columns.Count)
@@ -3739,7 +3796,7 @@ namespace SRL
                 dt_to.Rows.Add(row.ItemArray);
             }
         }
-        public void MakeDataTableFromDGV(DataGridView dgview, DataTable table, int devider, int index)
+        public static void MakeDataTableFromDGV(DataGridView dgview, DataTable table, int devider, int index)
         {
 
             foreach (DataGridViewColumn col in dgview.Columns)
@@ -3768,11 +3825,11 @@ namespace SRL
                 table.Rows.Add();
             }
         }
-        public string StringToRegx(string input)
+        public static string StringToRegx(string input)
         {
             return System.Text.RegularExpressions.Regex.Unescape(input);
         }
-        public string MakeHashValue(string textToHash)
+        public static string MakeHashValue(string textToHash)
         {
             if (String.IsNullOrEmpty(textToHash))
                 return String.Empty;
@@ -3783,7 +3840,7 @@ namespace SRL
                 return BitConverter.ToString(hashValue).Replace("-", String.Empty);
             }
         }
-        public string MakeActivationLink(string username, string registerHashValue, string registerActivationUri)
+        public static string MakeActivationLink(string username, string registerHashValue, string registerActivationUri)
         {
             //string host = HttpContext.Current.Request.Url.Authority;
             string host = System.Web.HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority);
@@ -3804,7 +3861,7 @@ namespace SRL
             return national_id;
         }
 
-        public bool IsValidEmail(string email)
+        public static bool IsValidEmail(string email)
         {
             try
             {
@@ -3828,11 +3885,11 @@ namespace SRL
         {
 
         }
-        public T StringToJson<T>(string input) where T : new()
+        public static T StringToJson<T>(string input) where T : new()
         {
             return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input);
         }
-        public string ClassObjectToToJson(object obj)
+        public static string ClassObjectToToJson(object obj)
         {
             try
             {
@@ -3847,14 +3904,14 @@ namespace SRL
             
            
         }
-        public bool IsJson(string input)
+        public static bool IsJson(string input)
         {
             input = input.Trim();
             return input.StartsWith("{") && input.EndsWith("}")
                    || input.StartsWith("[") && input.EndsWith("]");
         }
 
-        public DataTable ConvertJsonToDataTable(List<Dictionary<string, object>> list)
+        public  DataTable ConvertJsonToDataTable(List<Dictionary<string, object>> list)
         {
             DataTable dt = new DataTable();
 
@@ -3895,7 +3952,7 @@ namespace SRL
     }
     public class WinChart
     {
-        public void MakeChart(Chart chart, string xValue, string yValue, IQueryable<object> query)
+        public static void MakeChart(Chart chart, string xValue, string yValue, IQueryable<object> query)
         {
             string chartName = "name";
             chart.ChartAreas.Clear();
@@ -3916,7 +3973,7 @@ namespace SRL
             chart.DataBind();
         }
 
-        public void ShowDataOnChart(System.Windows.Forms.DataVisualization.Charting.Chart chart, string xValue, string yValue, IQueryable<object> query)
+        public static void ShowDataOnChart(System.Windows.Forms.DataVisualization.Charting.Chart chart, string xValue, string yValue, IQueryable<object> query)
         {
             string chartName = "name";
             chart.ChartAreas.Clear();
@@ -3951,7 +4008,7 @@ namespace SRL
         }
 
 
-        public void UpdateDgvCellValueToDb<EntityT>(DataGridView dgv, int row_index, string primary_column, string update_column, DbContext db)
+        public static void UpdateDgvCellValueToDb<EntityT>(DataGridView dgv, int row_index, string primary_column, string update_column, DbContext db)
         {
             var cell_value = dgv.Rows[row_index].Cells[update_column].Value.ToString();
             long id = (long)dgv.Rows[row_index].Cells[primary_column].Value;
@@ -3960,7 +4017,7 @@ namespace SRL
             ExecuteQuery(db, sql);
 
         }
-        public void EntityRemoveAll<EntityType>(DbContext db) where EntityType : class
+        public static void EntityRemoveAll<EntityType>(DbContext db) where EntityType : class
         {
             foreach (var item in db.Set<EntityType>())
             {
@@ -3970,13 +4027,13 @@ namespace SRL
 
         }
 
-        public void EntityAdd<EntityType>(DbContext db, EntityType instance) where EntityType : class
+        public static void EntityAdd<EntityType>(DbContext db, EntityType instance) where EntityType : class
         {
             db.Set<EntityType>().Add(instance);
             db.SaveChanges();
 
         }
-        public string ShowTableInDatagridview(string sql, DataGridView dgv, string connection_string)
+        public static string ShowTableInDatagridview(string sql, DataGridView dgv, string connection_string)
         {
             string error = string.Empty;
             try
@@ -3995,7 +4052,7 @@ namespace SRL
             }
             return error;
         }
-        public string ShowTablesInDB(string connection_string, DataTable dt, string where_cluase = null)
+        public static string ShowTablesInDB(string connection_string, DataTable dt, string where_cluase = null)
         {
             string sql = "SELECT table_name FROM INFORMATION_SCHEMA.TABLES   ";
             //WHERE TABLE_NAME LIKE '%TEST_%'
@@ -4016,7 +4073,7 @@ namespace SRL
             }
             return error;
         }
-        public List<string> AddTableToDB(DbContext db, string table_name, DataGridView dataGridView1)
+        public static List<string> AddTableToDB(DbContext db, string table_name, DataGridView dataGridView1)
         {
             string tb_name = table_name;
             string sql = "CREATE TABLE " + tb_name + " ( ID bigint IDENTITY(1,1) PRIMARY KEY)";
@@ -4046,7 +4103,7 @@ namespace SRL
             return columns;
         }
 
-        public string InserRowToTable(DbContext db, string table_name, DataGridView dataGridView1, Dictionary<string, string> other_value)
+        public  string InserRowToTable(DbContext db, string table_name, DataGridView dataGridView1, Dictionary<string, string> other_value)
         {
             string error = string.Empty;
 
@@ -4097,7 +4154,7 @@ namespace SRL
 
         }
 
-        public string SearchTable(DbContext db, string table_name, Dictionary<string, string> filter, DataGridView dgv, Label lblCount, string connection_string)
+        public static string SearchTable(DbContext db, string table_name, Dictionary<string, string> filter, DataGridView dgv, Label lblCount, string connection_string)
         {
             string error = string.Empty;
 
@@ -4130,12 +4187,12 @@ namespace SRL
 
         }
 
-        public void TruncateTable(DbContext db, string table_name)
+        public static void TruncateTable(DbContext db, string table_name)
         {
             db.Database.ExecuteSqlCommand("truncate table " + table_name);
             db.SaveChanges();
         }
-        public string ExecuteQuery(DbContext db, string query)
+        public static string ExecuteQuery(DbContext db, string query)
         {
             string error = string.Empty;
 
@@ -4150,13 +4207,13 @@ namespace SRL
             }
             return error;
         }
-        public long GetSqliteNewRowId(DbContext db, string table_name)
+        public static long GetSqliteNewRowId(DbContext db, string table_name)
         {
             var query = SqlQuery<long>(db, "SELECT seq FROM sqlite_sequence WHERE (name = '" + table_name + "')");
             return query[0] + 1;
 
         }
-        public List<OutputType> SqlQuery<OutputType>(DbContext db, string query)
+        public static List<OutputType> SqlQuery<OutputType>(DbContext db, string query)
         {
             var result = db.Database.SqlQuery<OutputType>(query).ToList();
             return result;
@@ -4188,7 +4245,7 @@ namespace SRL
 
         }
 
-        public void UpdateConnectionStringAndRestart(string conStr, string conStrName, Control control_to_load)
+        public static void UpdateConnectionStringAndRestart(string conStr, string conStrName, Control control_to_load)
         {
             using (SRL.Database dbsrl = new SRL.Database())
             {
@@ -4212,7 +4269,7 @@ namespace SRL
             : base(btn)
         {
         }
-        public void LoadDGVFromExcelNoHead(OpenFileDialog ofDialog, Label lblFileName, DataGridView dgv)
+        public static void LoadDGVFromExcelNoHead(OpenFileDialog ofDialog, Label lblFileName, DataGridView dgv)
         {
             ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
             ofDialog.ShowDialog();
@@ -4253,7 +4310,7 @@ namespace SRL
             }
         }
 
-        public void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv)
+        public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv)
         {
             ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
             ofDialog.ShowDialog();
@@ -4296,7 +4353,7 @@ namespace SRL
             else MessageBox.Show(check_header);
         }
 
-        public string CheckExcelHeaders(ExcelLibrary.Office.Excel.CellCollection cells, string[] main_headers)
+        public static string CheckExcelHeaders(ExcelLibrary.Office.Excel.CellCollection cells, string[] main_headers)
         {
 
             foreach (var file_header in cells.GetRow(cells.FirstRowIndex))
@@ -4324,7 +4381,7 @@ namespace SRL
             return "true";
 
         }
-        public void ExportToExcell(DataGridView dgview, int devider, string fileFullName)
+        public  void ExportToExcell(DataGridView dgview, int devider, string fileFullName)
         {
 
 
@@ -4337,12 +4394,12 @@ namespace SRL
                 ButtonLoader(table_count);
                 DataTable table = new DataTable(i.ToString());
                 ds.Tables.Add(table);
-                new Convertor().MakeDataTableFromDGV(dgview, table, devider, index);
+                SRL.Convertor.MakeDataTableFromDGV(dgview, table, devider, index);
                 index += devider;
             }
             DataTable _table = new DataTable("else");
             ds.Tables.Add(_table);
-            new Convertor().MakeDataTableFromDGV(dgview, _table, devider, index);
+            SRL.Convertor.MakeDataTableFromDGV(dgview, _table, devider, index);
 
             //ExcelLibrary.DataSetHelper.CreateWorkbook(@Publics.desktop_root + "exported.xls", ds);
             ExcelLibrary.DataSetHelper.CreateWorkbook(@fileFullName, ds);
@@ -4520,7 +4577,7 @@ namespace SRL
         /// </summary>
         /// <param name="filePath">@"C:\hami.exe"</param>
         /// <param name="icon_full_path">@"e:\myfile.ico"</param>
-        public void ExtractFileIcon(string filePath, string icon_full_path)
+        public static void ExtractFileIcon(string filePath, string icon_full_path)
         {
             //@"e:\myfile.ico"
             //  var filePath = @"C:\Users\lamso1387\Documents\Visual Studio 2012\Projects\hami\hami\bin\Release\hami.exe";
@@ -4538,7 +4595,7 @@ namespace SRL
 
         }
 
-        public void MakeShortcutUrl(string shortcut_name, string shortcut_directory, string full_path_to_file)
+        public static void MakeShortcutUrl(string shortcut_name, string shortcut_directory, string full_path_to_file)
         {
 
             using (StreamWriter writer = new StreamWriter(shortcut_directory + "\\" + shortcut_name + ".url"))
@@ -4548,7 +4605,7 @@ namespace SRL
                 writer.Flush();
             }
         }
-        public void MakeShortcut(string shortcut_name, string shortcut_directory, string file_directory_path, string file_with_extention, string icon_full_path_from_file_directory = null)
+        public static void MakeShortcut(string shortcut_name, string shortcut_directory, string file_directory_path, string file_with_extention, string icon_full_path_from_file_directory = null)
         {
             string full_path_to_file = System.IO.Path.Combine(file_directory_path, file_with_extention);
 
@@ -4572,7 +4629,7 @@ namespace SRL
 
             shortcut.Save();
         }
-        public string ReplaceAllFilesFromDirToDir(string SourceFolderFullPath, string DestinationFolderFullPath)
+        public static string ReplaceAllFilesFromDirToDir(string SourceFolderFullPath, string DestinationFolderFullPath)
         {
             try
             {
@@ -4595,11 +4652,11 @@ namespace SRL
 
         }
 
-        public void CreateFolderOverwrite(string FolderFullPath)
+        public static void CreateFolderOverwrite(string FolderFullPath)
         {
             System.IO.Directory.CreateDirectory(FolderFullPath);
         }
-        public string GetFilePathInRoot(string fileName)
+        public static string GetFilePathInRoot(string fileName)
         {
             string path = Path.GetDirectoryName(System.AppDomain.CurrentDomain.BaseDirectory);
 
@@ -4610,12 +4667,12 @@ namespace SRL
             return path;
         }
 
-        public string GetDesktopDirectory()
+        public static string GetDesktopDirectory()
         {
             return Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
 
         }
-        public string GetCurrentDirectory()
+        public static string GetCurrentDirectory()
         {
             //System.IO.Path.GetDirectoryName(Application.ExecutablePath);  c:\users\1\documents\visual studio 2015\Projects\test_licence\test_licence\bin\Debug
             //System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location); c:\users\1\documents\visual studio 2015\Projects\test_licence\test_licence\bin\Debug
@@ -4626,7 +4683,7 @@ namespace SRL
             return System.AppDomain.CurrentDomain.BaseDirectory; // c:\users\1\documents\visual studio 2015\Projects\test_licence\test_licence\bin\Debug\
 
         }
-        public IEnumerable<string> GetFileLines(string fileFullName)
+        public static IEnumerable<string> GetFileLines(string fileFullName)
         {
 
             string path = @fileFullName;
@@ -4635,7 +4692,7 @@ namespace SRL
 
             return get_line;
         }
-        public string GetFileContent(string fileFullName, int line)
+        public static string GetFileContent(string fileFullName, int line)
         {
             string path = @fileFullName;
 
@@ -4644,7 +4701,7 @@ namespace SRL
             return get_line.Count() < 1 ? "" : get_line.First();
         }
 
-        public void SaveToFile(string fileFullName, string content, int line)
+        public static void SaveToFile(string fileFullName, string content, int line)
         {
             string path = @fileFullName;
 
@@ -4665,18 +4722,18 @@ namespace SRL
         /// </summary>
         /// <param name="fileFullName">Path.Combine(Application.StartupPath, fileName)</param>
         /// <param name="content"></param>
-        public void SaveToFile(string fileFullName, string content)
+        public static void SaveToFile(string fileFullName, string content)
         {
             System.IO.File.WriteAllText(fileFullName, content);
 
         }
 
 
-        public void CopyToClipboard(string content)
+        public static void CopyToClipboard(string content)
         {
             Clipboard.SetText(content);
         }
-        public void SaveToFileDialog(SaveFileDialog dlgSaveFile, string content)
+        public static void SaveToFileDialog(SaveFileDialog dlgSaveFile, string content)
         {
             if (dlgSaveFile.ShowDialog() == DialogResult.OK)
             {

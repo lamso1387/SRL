@@ -33,7 +33,7 @@ namespace SRL
             entity_name = entity_name_;
             session = session_;
 
-            foreach (var item in new SRL.ChildParent().GetAllChildrenControls(this).OfType<Button>())
+            foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
             {
                 new SRL.WinUI.ButtonClass.StyleButton(item, btn_color, Color.Black,Color.FromKnownColor(KnownColor.Control));
             }
@@ -44,7 +44,7 @@ namespace SRL
         {
             dgv.Rows.Clear();
             string sql = "select ID,password, name, family, username,role  from " + entity_name;
-            var users = srl_db.SqlQuery<UserClass>(db, sql);
+            var users = SRL.Database.SqlQuery<UserClass>(db, sql);
             foreach (var item in users)
             {
                 dgv.Rows.Add(item.ID, item.password, item.name, item.family, item.username, item.role);
@@ -55,7 +55,7 @@ namespace SRL
 
         private void DeleteUser(long id_del)
         {
-            string err = srl_db.ExecuteQuery(db, "delete from " + entity_name + " where ID=" + id_del.ToString() + "");
+            string err = SRL.Database .ExecuteQuery(db, "delete from " + entity_name + " where ID=" + id_del.ToString() + "");
             if (err != "") MessageBox.Show(err);
         }
 
@@ -66,7 +66,7 @@ namespace SRL
 
             string sql = "insert into " + entity_name + "(name,family,username,password, role)" +
                      " values ('" + tbname.Text + "','" + tbFamily.Text + "','" + tbUsername.Text + "','" + tbPass.Text + "','" + tbRole.Text + "')";
-            string err = srl_db.ExecuteQuery(db, sql);
+            string err = SRL.Database.ExecuteQuery(db, sql);
             if (err != "") MessageBox.Show(err);
             LoadUsersInDgv(dgvUsers);
         }
@@ -75,7 +75,7 @@ namespace SRL
         {
             user_id_duplicate = null;
             string sql = "select *  from " + entity_name + " where username='" + tbUsername.Text + "'";
-            var user = srl_db.SqlQuery<UserClass>(db, sql);
+            var user = SRL.Database.SqlQuery<UserClass>(db, sql);
             if (user.Any())
             {
                 user_id_duplicate = user.First().ID;
@@ -103,7 +103,7 @@ namespace SRL
             long? user_id_dup = null;
             if (!CheckUsernameUnique(out user_id_dup, id_edit)) return;
 
-            string err = srl_db.ExecuteQuery(db, "update " + entity_name + " set name='" + tbname.Text +
+            string err = SRL.Database.ExecuteQuery(db, "update " + entity_name + " set name='" + tbname.Text +
             "' , family='" + tbFamily.Text + "' , username='" + tbUsername.Text + "' , password='" + tbPass.Text + "' , role='" + tbRole.Text + "' " +
                 " where ID=" + id_edit.ToString());
             if (err != "") MessageBox.Show(err);
@@ -111,7 +111,7 @@ namespace SRL
         }
         private void ClearFields()
         {
-            new SRL.ChildParent().RefreshFormControls(this, new List<Type> { typeof(TextBox), typeof(ComboBox) });
+            SRL.ChildParent.RefreshFormControls(this, new List<Type> { typeof(TextBox), typeof(ComboBox) });
             tbRole.Text = UserRoles.user.ToString();
         }
 
@@ -120,14 +120,14 @@ namespace SRL
         {
             LoadUsersInDgv(dgvUsers);
             srl_valid = new WinTools.UserControlValidation(this, errorProvider1, false);
-            foreach (var item in new SRL.ChildParent().GetAllChildrenControls(this).OfType<TextBox>())
+            foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<TextBox>())
             {
 
                 srl_valid.ControlValidation(item, WinTools.UserControlValidation.ErrorTypes.NotNull);
             }
             srl_valid.ControlValidation(tbRole, WinTools.UserControlValidation.ErrorTypes.NotNull);
 
-            foreach (var item in new SRL.ChildParent().GetAllChildrenControls(this).OfType<Button>())
+            foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
             {
               //  new SRL.WinUI.StyleButton(item, Color.Blue, Color.Black);
             }
