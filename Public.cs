@@ -34,6 +34,7 @@ using System.Linq.Expressions;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms.Design;
 using System.Web.Script.Serialization;
+using System.ServiceModel;
 
 namespace SRL
 {
@@ -438,7 +439,7 @@ namespace SRL
             public string value { get; set; }
         }
         SRL.Database srl_database = new Database();
-        SRL.ClassManagement<SettingEntity> class_mgnt = new SRL.ClassManagement<SettingEntity>();
+
         string setting_table_name;
         static DbContext db;
         /// <summary>
@@ -451,6 +452,22 @@ namespace SRL
             setting_table_name = typeof(SettingEntity).Name;
         }
 
+        public void MigrateDatabase(Dictionary<string, string> migration_version_query)
+        {
+            string db_version = GetDbVersion();
+            string app_version = SRL.Security.GetAppVersion().Major.ToString();
+
+            if (db_version == app_version) return;
+
+            string query = "";
+
+            if (db_version != null)
+                if (migration_version_query.ContainsKey(db_version))
+                    query = migration_version_query[db_version];
+
+            UpdateTableSchema(query, app_version);
+        }
+
         public void InitiateSetting(Dictionary<string, string> keyValuesetting)
         {
 
@@ -458,15 +475,15 @@ namespace SRL
 
             foreach (var item in keyValuesetting)
             {
-                var instance = class_mgnt.CreateInstance();
-                class_mgnt.SetProperty("key", instance, item.Key);
-                class_mgnt.SetProperty("value", instance, item.Value);
+                var instance = SRL.ClassManagement.CreateInstance<SettingEntity>();
+                SRL.ClassManagement.SetProperty("key", instance, item.Key);
+                SRL.ClassManagement.SetProperty("value", instance, item.Value);
                 SRL.Database.EntityAdd<SettingEntity>(db, instance);
             }
 
             db.SaveChanges();
         }
-        public Dictionary<string, string> CreateKeyValueSetting()
+        public static Dictionary<string, string> CreateKeyValueSetting()
         {
             Dictionary<string, string> kv = new Dictionary<string, string>();
             kv["setting_is_set"] = "true";
@@ -488,6 +505,24 @@ namespace SRL
 
             return kv;
         }
+
+        public string GetDbVersion()
+        {
+            AddKeyToSettingTB("db_version");
+            var res = SqlQuerySettingTable("db_version");
+            return res;
+        }
+
+        private void AddKeyToSettingTB(string key)
+        {
+            string sql = "select * from " + setting_table_name + " where [key]='" + key + "'";
+            if (!SRL.Database.SqlQuery<object>(db, sql).Any())
+            {
+                sql = "insert into " + setting_table_name + " ([key]) values('" + key + "')";
+                SRL.Database.ExecuteQuery(db, sql);
+            }
+        }
+
         public string SetDefaultSetting()
         {
             string error = string.Empty;
@@ -560,23 +595,26 @@ namespace SRL
             return error;
 
         }
-        public void ShowSettingInControls(Control form_font_size = null)
+        public void ShowSettingInControls(Control form_font_size = null, Control font_factor = null)
         {
             if (form_font_size != null) form_font_size.Text = SqlQuerySettingTable("form_font_size");
+            if (font_factor != null) font_factor.Text = SqlQuerySettingTable("font_factor");
         }
 
-        public string UpdateSetting(string form_font_size = null)
+        public string UpdateSetting(string form_font_size = null, string font_factor = null)
         {
             string error = string.Empty;
 
             if (form_font_size != null) error = ExecuteUpdateSettingTable("form_font_size", form_font_size);
+            if (font_factor != null) error = ExecuteUpdateSettingTable("font_factor", font_factor);
 
             return error;
         }
 
         public string ExecuteUpdateSettingTable(string key, string value)
         {
-            string sql = "update " + setting_table_name + " set value='" + value + "' where key='" + key + "'";
+
+            string sql = "update " + setting_table_name + " set value='" + value + "' where [key]='" + key + "'";
             return SRL.Database.ExecuteQuery(db, sql);
         }
         public bool CheckSettingIsSet()
@@ -585,14 +623,25 @@ namespace SRL
             int row_count = db.Set<SettingEntity>().Count();
             return query == null || query == "false" ? false : true;
         }
+
+        public void UpdateTableSchema(string exe_query, string new_version)
+        {
+            if (exe_query != null && exe_query != "") SRL.Database.ExecuteQuery(db, exe_query);
+            ExecuteUpdateSettingTable("db_version", new_version);
+        }
+
         public string SqlQuerySettingTable(string key, string default_if_empty = null)
         {
 
-            string sql = "select value from " + setting_table_name + " where key='" + key + "'";
-            var query = SRL.Database.SqlQuery<string>(db, sql).DefaultIfEmpty(default_if_empty).FirstOrDefault();
+            string sql = "select value from " + setting_table_name + " where [key]='" + key + "'";
+            var queryList = SRL.Database.SqlQuery<string>(db, sql).DefaultIfEmpty(default_if_empty);
+            var query = queryList.FirstOrDefault();
             return query;
 
         }
+
+
+
 
     }
     public class ChildParent
@@ -611,14 +660,14 @@ namespace SRL
 
         public static void ClearControlsValue<ControlType>(IEnumerable<Control> controls_to_search, string property_to_clear, object clear_value)
         {
-            SRL.ClassManagement<ControlType> class_mgnt = new ClassManagement<ControlType>();
+
 
             var q = new Queue<ControlType>();
             controls_to_search.OfType<ControlType>().ToList().ForEach(q.Enqueue);
             while (q.Any())
             {
                 var next = q.Dequeue();
-                class_mgnt.SetProperty(property_to_clear, next, clear_value);
+                SRL.ClassManagement.SetProperty<ControlType>(property_to_clear, next, clear_value);
             }
 
         }
@@ -659,20 +708,20 @@ namespace SRL
 
         public static object AddCategory<EntityT>(DbContext db, string categoryName, EntityT newCategory) where EntityT : class
         {
-            SRL.ClassManagement<EntityT> class_mgnt = new ClassManagement<EntityT>();
 
-            class_mgnt.SetProperty("categoryName", newCategory, categoryName);
-          
+
+            SRL.ClassManagement.SetProperty<EntityT>("categoryName", newCategory, categoryName);
+
             SRL.Database.EntityAdd<EntityT>(db, newCategory);
             db.SaveChanges();
-            return class_mgnt.GetProperty("ID", newCategory);
+            return SRL.ClassManagement.GetProperty<EntityT>("ID", newCategory);
         }
         public static void AddChildParent<EntityT>(DbContext db, long childId, long parentId, EntityT categoryClass) where EntityT : class
         {
-            SRL.ClassManagement<EntityT> class_mgnt = new ClassManagement<EntityT>();
-            class_mgnt.SetProperty("parentID", categoryClass, parentId);
-            class_mgnt.SetProperty("childID", categoryClass, childId);
-           
+
+            SRL.ClassManagement.SetProperty<EntityT>("parentID", categoryClass, parentId);
+            SRL.ClassManagement.SetProperty<EntityT>("childID", categoryClass, childId);
+
             SRL.Database.EntityAdd<EntityT>(db, categoryClass);
             db.SaveChanges();
         }
@@ -696,6 +745,15 @@ namespace SRL
     }
     public class ActionManagement
     {
+        public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value, string log = "")
+        {
+            string tb_name = typeof(ActionLogT).Name;
+            var date = DateTime.Now.ToString("yyyyMMdd");
+
+            string sql = "insert into " + tb_name + " (title,[date],value,[log]) values ( '" + title + "','" + date + "' , '" + value + "' , '" + log + "');";
+            return SRL.Database.ExecuteQuery(db, sql);
+
+        }
         public static void ParallelSend(System.Data.Entity.DbContext db, List<System.Data.Entity.DbSet> DBitems, string from, string parallel)
         {
             int all = DBitems.Count;
@@ -717,29 +775,36 @@ namespace SRL
             Task.WaitAll(task_list.ToArray());
         }
     }
-    public class ClassManagement<ClassType> // where ClassType : class 
+    public class ClassManagement
     {
 
-        public ClassType CreateInstance()
+        public static ClassType CreateInstance<ClassType>()
         {
             return (ClassType)Activator.CreateInstance(typeof(ClassType));
         }
 
+        public static object CreateInstance(string className)
+        {
+            return System.Reflection.Assembly.GetExecutingAssembly().CreateInstance(className);
+        }
+        public static ClassType CreateInstance<ClassType>(string className)
+        {
+            return (ClassType)System.Reflection.Assembly.GetExecutingAssembly().CreateInstance(className);
+        }
 
-
-        public void SetProperty(string property_name, ClassType instance, object value)
+        public static void SetProperty<ClassType>(string property_name, ClassType instance, object value)
         {
             PropertyInfo propk = typeof(ClassType).GetProperty(property_name);
             propk.SetValue(instance, value, null);
 
         }
-        public object GetProperty(string property_name, ClassType instance)
+        public static object GetProperty<ClassType>(string property_name, ClassType instance)
         {
             PropertyInfo propk = typeof(ClassType).GetProperty(property_name);
             return propk.GetValue(instance);
 
         }
-        public string GetEnumDescription(ClassType enum_value)
+        public static string GetEnumDescription<ClassType>(ClassType enum_value)
         {
             //   enum with Description example:
             //       public enum MyEnum
@@ -1495,7 +1560,7 @@ namespace SRL
 
         public class DatagridviewClass
         {
-            public static  void StyleDatagridviewDefault(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
+            public static void StyleDatagridviewDefault(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
             {
                 dataGridView1.DefaultCellStyle.Font = new Font(dataGridView1.DefaultCellStyle.Font.FontFamily, cell_size);
 
@@ -1504,6 +1569,7 @@ namespace SRL
                 dataGridView1.MultiSelect = false;
                 dataGridView1.RowTemplate.Height = 25;
                 dataGridView1.AllowUserToAddRows = false;
+                dataGridView1.AllowUserToDeleteRows = false;
             }
         }
 
@@ -2321,7 +2387,7 @@ namespace SRL
                 private CheckedListBox mCheckedListBox;
                 // a ToolStripDropDown object used to show the popup
                 private ToolStripDropDown mPopup;
-                                
+
 
                 /// <summary>
                 /// The max height of the popup
@@ -2407,8 +2473,8 @@ namespace SRL
                     int PreferredHeight = (mCheckedListBox.Items.Count * 16) + 7;
                     mCheckedListBox.Height = (PreferredHeight < PopupMaxHeight) ? PreferredHeight : PopupMaxHeight;
                     mCheckedListBox.Width = this.PopupWidth;
-                    
-                    
+
+
 
                     mPopup.Show(mDataGridView.PointToScreen(location));
                 }
@@ -2416,7 +2482,7 @@ namespace SRL
                 // The constructor creates an instance of CheckedListBox and ToolStripDropDown.
                 // the CheckedListBox is hosted by ToolStripControlHost, which in turn is
                 // added to ToolStripDropDown.
-                public DataGridViewColumnSelector(DataGridView dgv, PopupType popup_type_,Control control_to_show_popup_=null)
+                public DataGridViewColumnSelector(DataGridView dgv, PopupType popup_type_, Control control_to_show_popup_ = null)
                 {
                     mCheckedListBox = new CheckedListBox();
                     mCheckedListBox.CheckOnClick = true;
@@ -2458,7 +2524,7 @@ namespace SRL
             }
 
         }
-      
+
         public class ComboTool
         {
             /// <summary>
@@ -2625,7 +2691,13 @@ namespace SRL
             }
 
         }
+        public static void AddChildToParentControls(Control parent, Control child, bool reset_child_font = false, bool clear_parent = true)
+        {
+            if (reset_child_font) child.Font = default(Font);
+            if (clear_parent) parent.Controls.Clear();
+            parent.Controls.Add(child);
 
+        }
         public static void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false, bool clear_parent = true, AliagnType aliagn_type = AliagnType.All)
         {
             if (reset_child_font) child.Font = default(Font);
@@ -3046,7 +3118,7 @@ namespace SRL
                     if (!DateTime.TryParse(control.Text, out dt))
                     {
                         e.Cancel = force_cancel;
-                        var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.MaskDatePattern);
+                        var msg = SRL.ClassManagement.GetEnumDescription<ErrorTypes>(ErrorTypes.MaskDatePattern);
 
                         errorProvider1.SetError(control, msg);
 
@@ -3064,7 +3136,7 @@ namespace SRL
                 if (status)
                 {
                     e.Cancel = force_cancel;
-                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.NotNull_MobilePattern);
+                    var msg = SRL.ClassManagement.GetEnumDescription<ErrorTypes>(ErrorTypes.NotNull_MobilePattern);
 
                     errorProvider1.SetError(control, msg);
 
@@ -3082,7 +3154,7 @@ namespace SRL
                 if (status)
                 {
                     e.Cancel = force_cancel;
-                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.EmailPattern_NotNull);
+                    var msg = SRL.ClassManagement.GetEnumDescription<ErrorTypes>(ErrorTypes.EmailPattern_NotNull);
 
                     errorProvider1.SetError(control, msg);
 
@@ -3098,7 +3170,7 @@ namespace SRL
                     if (control.Text.Length != 11 || control.Text.Substring(0, 1) != "0")
                     {
                         e.Cancel = force_cancel;
-                        var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.MobilePattern);
+                        var msg = SRL.ClassManagement.GetEnumDescription<ErrorTypes>(ErrorTypes.MobilePattern);
 
                         errorProvider1.SetError(control, msg);
 
@@ -3112,7 +3184,7 @@ namespace SRL
                 if (control.Text.Trim() == "")
                 {
                     e.Cancel = force_cancel;
-                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.NotNull);
+                    var msg = SRL.ClassManagement.GetEnumDescription<ErrorTypes>(ErrorTypes.NotNull);
 
                     errorProvider1.SetError(control, msg);
 
@@ -3133,6 +3205,20 @@ namespace SRL
             NotRegistered = 0,
             NotActivated = 1,
             Activated = 2
+        }
+        public enum HashAlgoritmType
+        {
+            Sha1,
+            MD5,
+            Sha256
+        }
+        public static Version GetAppVersion()
+        {
+            return Assembly.GetEntryAssembly().GetName().Version;
+        }
+        public static string GetComputerCurrentUsername()
+        {
+            return System.Security.Principal.WindowsIdentity.GetCurrent().Name;
         }
         public static void WinCheckLogin(DbContext db, string entity_name, WinSessionId session)
         {
@@ -3163,7 +3249,7 @@ namespace SRL
                 mailMessage.From = from;
                 mailMessage.Subject = subject;
                 mailMessage.Body = body;
-                
+
                 string activationLink = SRL.Convertor.MakeActivationLink(username, registerHashValue, registerActivationUri);
                 mailMessage.Body += activationLink;
                 System.Net.Mail.SmtpClient smtpClient = new System.Net.Mail.SmtpClient("smtp.gmail.com");
@@ -3224,19 +3310,35 @@ namespace SRL
                 return true;
             }
         }
-        public static string GetSHA1(string input)
+        public static string GetHashString(string input, HashAlgoritmType algorytmType = HashAlgoritmType.Sha1)
         {
-            using (System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed())
-            {
-                var hash = sha1.ComputeHash(Encoding.UTF8.GetBytes(input));
-                var sb = new StringBuilder(hash.Length * 2);
-                foreach (byte b in hash)
-                {
-                    sb.Append(b.ToString("X2"));
-                }
-                return sb.ToString();
+            byte[] hash = null;
 
+            switch (algorytmType)
+            {
+                case HashAlgoritmType.Sha1:
+                    System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed();
+                    hash = sha1.ComputeHash(Encoding.UTF8.GetBytes(input));
+                    break;
+                case HashAlgoritmType.MD5:
+                    HashAlgorithm algorithm = MD5.Create();
+                    hash = algorithm.ComputeHash(Encoding.UTF8.GetBytes(input));
+                    break;
+                case HashAlgoritmType.Sha256:
+                    HashAlgorithm sh256 = SHA256.Create();
+                    hash = sh256.ComputeHash(Encoding.UTF8.GetBytes(input));
+                    break;
             }
+
+
+            var sb = new StringBuilder(hash.Length * 2);
+            foreach (byte b in hash)
+            {
+                sb.Append(b.ToString("X2"));
+            }
+            return sb.ToString();
+
+
         }
 
     }
@@ -3268,11 +3370,11 @@ namespace SRL
 
         public void CreateInput<inputType, entityType>(entityType entity_instance) where inputType : class where entityType : class
         {
-            SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
+
 
             foreach (var prop in typeof(inputType).GetProperties())
             {
-                input[prop.Name] = entityTypeClass.GetProperty(GetEntityPropName(prop.Name), entity_instance);
+                input[prop.Name] = SRL.ClassManagement.GetProperty<entityType>(GetEntityPropName(prop.Name), entity_instance);
             }
         }
 
@@ -3307,8 +3409,7 @@ namespace SRL
             string http_status_code = response.StatusCode.ToString();
             if (!string.IsNullOrWhiteSpace(status_code_field_name))
             {
-                SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
-                entityTypeClass.SetProperty(status_code_field_name, entity_to_update, http_status_code);
+                SRL.ClassManagement.SetProperty<entityType>(status_code_field_name, entity_to_update, http_status_code);
                 db.SaveChanges();
             }
         }
@@ -3318,8 +3419,7 @@ namespace SRL
             string result = response.Content.ReadAsStringAsync().Result;
             if (!string.IsNullOrWhiteSpace(http_response_field_name))
             {
-                SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
-                entityTypeClass.SetProperty(http_response_field_name, entity_to_update, System.Text.RegularExpressions.Regex.Unescape(result));
+                SRL.ClassManagement.SetProperty<entityType>(http_response_field_name, entity_to_update, System.Text.RegularExpressions.Regex.Unescape(result));
                 db.SaveChanges();
             }
         }
@@ -3345,7 +3445,7 @@ namespace SRL
 
         private outputType GetHttpOutput<outputType>(HttpResponseMessage response, SendType send_type)
         {
-            outputType data = new SRL.ClassManagement<outputType>().CreateInstance();
+            outputType data = SRL.ClassManagement.CreateInstance<outputType>();
             string result = response.Content.ReadAsStringAsync().Result;
 
             if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3367,13 +3467,13 @@ namespace SRL
 
         public int SaveResult<outputType, entityType>(outputType object_to_save, entityType entity_to_update) where outputType : class where entityType : class
         {
-            SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
-            SRL.ClassManagement<outputType> outputTypeClass = new SRL.ClassManagement<outputType>();
+
+
 
 
             foreach (var prop in typeof(outputType).GetProperties())
             {
-                entityTypeClass.SetProperty(prop.Name, entity_to_update, outputTypeClass.GetProperty(prop.Name, object_to_save));
+                SRL.ClassManagement.SetProperty<entityType>(prop.Name, entity_to_update, SRL.ClassManagement.GetProperty<outputType>(prop.Name, object_to_save));
 
             }
 
@@ -3382,7 +3482,7 @@ namespace SRL
         }
 
     }
-    public class WebResponse
+    public class Web
     {
 
 
@@ -3394,6 +3494,22 @@ namespace SRL
             msg += "</script>";
             response.Write(message);
             // response.Write(msg);
+        }
+
+        /// <summary>
+        /// TChannel like IDataCollectorService, CidWebServiceSoap,IVOServicesSoap
+        /// </summary>
+        /// <typeparam name="TChannel">The type of channel produced by the channel factory. This type must be either IOutputChannel ( interface that a channel must implement to send a message) or IRequestChannel (contract that a channel must implement)</typeparam>
+        /// <param name="ser_"></param>
+        /// <param name="svc_address"></param>
+        public static void UpdateSoapAddress<TChannel>(System.ServiceModel.ClientBase<TChannel> ser_, string svc_address) where TChannel : class
+        {
+            ser_.ChannelFactory.Endpoint.Address = new EndpointAddress(svc_address);
+            ser_.ChannelFactory.CreateChannel();
+        }
+        public static string GetSoapAddress<TChannel>(System.ServiceModel.ClientBase<TChannel> ser_) where TChannel : class
+        {
+            return ser_.ChannelFactory.Endpoint.Address.Uri.AbsoluteUri;
         }
     }
     public class Convertor
@@ -3900,9 +4016,9 @@ namespace SRL
 
                 return new JavaScriptSerializer().Serialize(obj);
             }
-           
-            
-           
+
+
+
         }
         public static bool IsJson(string input)
         {
@@ -3911,7 +4027,7 @@ namespace SRL
                    || input.StartsWith("[") && input.EndsWith("]");
         }
 
-        public  DataTable ConvertJsonToDataTable(List<Dictionary<string, object>> list)
+        public DataTable ConvertJsonToDataTable(List<Dictionary<string, object>> list)
         {
             DataTable dt = new DataTable();
 
@@ -3952,26 +4068,7 @@ namespace SRL
     }
     public class WinChart
     {
-        public static void MakeChart(Chart chart, string xValue, string yValue, IQueryable<object> query)
-        {
-            string chartName = "name";
-            chart.ChartAreas.Clear();
-            chart.ChartAreas.Add(chartName);
-            chart.Series.Clear();
-            chart.Series.Add(chartName);
-            chart.Series[chartName].XValueMember = xValue;
-            chart.Series[chartName].YValueMembers = yValue;
 
-            chart.Series[chartName].IsValueShownAsLabel = true;
-
-            chart.ChartAreas[0].AxisX.MajorGrid.Enabled = false;
-            chart.ChartAreas[0].AxisY.MajorGrid.Enabled = false;
-
-            chart.ChartAreas[0].AxisX.Interval = 1;
-
-            chart.DataSource = query.ToList();
-            chart.DataBind();
-        }
 
         public static void ShowDataOnChart(System.Windows.Forms.DataVisualization.Charting.Chart chart, string xValue, string yValue, IQueryable<object> query)
         {
@@ -3996,6 +4093,7 @@ namespace SRL
     }
     public class Database : SRL.ControlLoad
     {
+
         public Database()
             : base()
         {
@@ -4052,7 +4150,32 @@ namespace SRL
             }
             return error;
         }
-        public static string ShowTablesInDB(string connection_string, DataTable dt, string where_cluase = null)
+        public class SqliteShowTablesFiled
+        {
+            public string type { get; set; }
+            public string name { get; set; }
+            public string tbl_name { get; set; }
+            public long rootpage { get; set; }
+            public string sql { get; set; }
+
+        }
+        public static List<SqliteShowTablesFiled> ShowTablesInSQLiteDB(DbContext db)
+        {
+            var result = new List<SqliteShowTablesFiled>();
+
+            string sql = "SELECT * FROM sqlite_master WHERE type='table' ";
+
+            try
+            {
+                result = SRL.Database.SqlQuery<SqliteShowTablesFiled>(db, sql);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            return result;
+        }
+        public static string ShowTablesInSQLDB(string connection_string, DataTable dt, string where_cluase = null)
         {
             string sql = "SELECT table_name FROM INFORMATION_SCHEMA.TABLES   ";
             //WHERE TABLE_NAME LIKE '%TEST_%'
@@ -4103,7 +4226,7 @@ namespace SRL
             return columns;
         }
 
-        public  string InserRowToTable(DbContext db, string table_name, DataGridView dataGridView1, Dictionary<string, string> other_value)
+        public string InserRowToTable(DbContext db, string table_name, DataGridView dataGridView1, Dictionary<string, string> other_value, string encoder = "N")
         {
             string error = string.Empty;
 
@@ -4128,12 +4251,12 @@ namespace SRL
 
                 foreach (DataGridViewCell cell in row.Cells)
                 {
-                    cells.Add(cell.Value == null ? "N''" : "N'" + cell.Value.ToString() + "'");
+                    cells.Add(cell.Value == null ? encoder + "''" : encoder + "'" + cell.Value.ToString() + "'");
                 }
 
                 string other_sql = "";
 
-                if (other_value != null) other_sql = " , N'" + string.Join("' , N'", other_value.Values.ToList()) + "'";
+                if (other_value != null) other_sql = " , " + encoder + "'" + string.Join("' , " + encoder + "'", other_value.Values.ToList()) + "'";
 
                 string cells_sql = string.Join(" ,", cells) + other_sql;
 
@@ -4195,11 +4318,12 @@ namespace SRL
         public static string ExecuteQuery(DbContext db, string query)
         {
             string error = string.Empty;
+            int exe;
 
             try
             {
                 db.Database.ExecuteSqlCommand(query);
-                db.SaveChanges();
+                exe = db.SaveChanges();
             }
             catch (Exception ex)
             {
@@ -4215,11 +4339,43 @@ namespace SRL
         }
         public static List<OutputType> SqlQuery<OutputType>(DbContext db, string query)
         {
-            var result = db.Database.SqlQuery<OutputType>(query).ToList();
-            return result;
+            try
+            {
+                var result = db.Database.SqlQuery<OutputType>(query).ToList();
+                return result;
+            }
+
+            catch (Exception exe)
+            {
+
+                MessageBox.Show(exe.Message);
+                return null;
+            }
 
         }
 
+        public static string GetConnectionString(string conStrName)
+        {
+            var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            var connectionStringsSection = (ConnectionStringsSection)config.GetSection("connectionStrings");
+            string last_con = connectionStringsSection.ConnectionStrings[conStrName].ConnectionString;
+            return last_con;
+        }
+        public static string GetDataSourceOfConnectionString(string conStrName)
+        {
+            ConnectionStringSettings genusSettings = ConfigurationManager.ConnectionStrings[conStrName];
+            if (genusSettings == null || string.IsNullOrEmpty(genusSettings.ConnectionString))
+            {
+                return "(SRL)Fatal error: Missing connection string config file";
+            }
+            string genusConnectionString = genusSettings.ConnectionString;
+            System.Data.Entity.Core.EntityClient.EntityConnectionStringBuilder entityConnectionStringBuilder =
+                new System.Data.Entity.Core.EntityClient.EntityConnectionStringBuilder(genusConnectionString);
+            SqlConnectionStringBuilder sqlConnectionStringBuilder = new SqlConnectionStringBuilder(entityConnectionStringBuilder.ProviderConnectionString);
+            string genusSqlServerName = sqlConnectionStringBuilder.DataSource;
+
+            return genusSqlServerName;
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -4228,8 +4384,8 @@ namespace SRL
         /// <param name="control_to_load"></param>
         public bool UpdateConnectionString(string conStr, string conStrName, Control control_to_load = null)
         {
-            //for sqlite: @"metadata=res://*/Model.Model1.csdl|res://*/Model.Model1.ssdl|res://*/Model.Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=C:\Program Files\hami\MyDatabase.sqlite'"
-            // or :       @"metadata=res://*/Model.Model1.csdl|res://*/Model.Model1.ssdl|res://*/Model.Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=&quot;MyDatabase.sqlite&quot;'"
+            //for sqlite: @"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=C:\Program Files\hami\MyDatabase.sqlite'"
+            // or :       @"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=&quot;MyDatabase.sqlite&quot;'"
 
             if (control_to_load != null) ControlLoader(control_to_load, "connecting database...");
 
@@ -4269,7 +4425,7 @@ namespace SRL
             : base(btn)
         {
         }
-        public static void LoadDGVFromExcelNoHead(OpenFileDialog ofDialog, Label lblFileName, DataGridView dgv)
+        public static void LoadDGVFromExcelNoHead(OpenFileDialog ofDialog, Label lblFileName, DataGridView dgv, Label lblCount = null)
         {
             ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
             ofDialog.ShowDialog();
@@ -4306,11 +4462,11 @@ namespace SRL
                     //    file_row.GetCell(24).Value, file_row.GetCell(25).Value, file_row.GetCell(26).Value, file_row.GetCell(27).Value, file_row.GetCell(28).Value, file_row.GetCell(29).Value, file_row.GetCell(30).Value
                     //    );
                 }
-
+                if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
         }
 
-        public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv)
+        public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
             ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
             ofDialog.ShowDialog();
@@ -4348,6 +4504,7 @@ namespace SRL
                     //    );
                 }
 
+                if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
 
             else MessageBox.Show(check_header);
@@ -4381,10 +4538,39 @@ namespace SRL
             return "true";
 
         }
-        public  void ExportToExcell(DataGridView dgview, int devider, string fileFullName)
+
+        public enum ExcelPathType
         {
+            NotSet,
+            DesktopDatetimeToSecond
+        }
+        public void ExportToExcell(DataGridView dgview, int? devider=null, string fileFullNameNoExtention=null, TextBox tbCountDynamic = null, ExcelPathType excel_naming = ExcelPathType.NotSet, string default_name = "")
+        {
+            string path = fileFullNameNoExtention + ".xls";
 
+            switch (excel_naming)
+            {
+                case ExcelPathType.DesktopDatetimeToSecond:
+                    string file = default_name + DateTime.Now.ToString("yyyyMMddHHmmss")+".xls";
+                    path = System.IO.Path.Combine(SRL.FileManagement.GetDesktopDirectory(), @file);
+                    break;
+            }
 
+            if (tbCountDynamic == null)
+            {
+                ExportToExcellFile(dgview, (int)devider, path);
+            }
+            else
+            {
+                int cont;
+                if (string.IsNullOrWhiteSpace(tbCountDynamic.Text) || !int.TryParse(tbCountDynamic.Text, out cont)) return;
+
+                ExportToExcellFile(dgview, cont, path);
+            }
+        }
+
+        private void ExportToExcellFile(DataGridView dgview, int devider, string path)
+        {
             DataSet ds = new DataSet();
             int table_count = dgview.Rows.Count / devider;
             int index = 0;
@@ -4401,10 +4587,8 @@ namespace SRL
             ds.Tables.Add(_table);
             SRL.Convertor.MakeDataTableFromDGV(dgview, _table, devider, index);
 
-            //ExcelLibrary.DataSetHelper.CreateWorkbook(@Publics.desktop_root + "exported.xls", ds);
-            ExcelLibrary.DataSetHelper.CreateWorkbook(@fileFullName, ds);
+            ExcelLibrary.DataSetHelper.CreateWorkbook(@path, ds);
         }
-
     }
     public class ControlLoad : IDisposable
     {
@@ -4629,7 +4813,7 @@ namespace SRL
 
             shortcut.Save();
         }
-        public static string ReplaceAllFilesFromDirToDir(string SourceFolderFullPath, string DestinationFolderFullPath)
+        public static string ReplaceAllFilesFromDirToDir(string SourceFolderFullPath, string DestinationFolderFullPath, List<string> not_copy_files = null)
         {
             try
             {
@@ -4642,7 +4826,11 @@ namespace SRL
 
                 foreach (string newPath in Directory.GetFiles(SourceFolderFullPath, "*.*",
                     SearchOption.AllDirectories))
+                {
+                    if (not_copy_files != null)
+                        if (not_copy_files.Contains(Path.GetFileName(newPath))) continue;
                     System.IO.File.Copy(newPath, newPath.Replace(SourceFolderFullPath, DestinationFolderFullPath), true);
+                }
                 return "";
             }
             catch (Exception exc)

@@ -19,45 +19,53 @@ namespace SRL
         string end_string = "پایان";
         SRL.FileManagement srl_file = new SRL.FileManagement();
         string dir_install_name = "";
+        string dir_installations_files_name = "";
         public string app_exe_name = "";
         List<string> update_file_list;
         string app_display_name = "";
         string icon_full_path_from_source_directory;
 
         /// <summary>
-        /// for update or you can use is_update=true or you can use is_update=false and remove db and license and .. files from sourec
+        /// for update or you can use is_update_or_null_if_all=true or you can use is_update_or_null_if_all=false and remove db and license and .. files from sourec
         /// </summary>
         /// <param name="application_name_without_extention"></param>
         /// <param name="application_to_display_name_"></param>
         /// <param name="directory_install_path_">e.i. @"C:\Program Files\hami\" </param>
-        /// <param name="is_update"></param>
+        /// <param name="is_update_or_null_if_all"></param>
         /// <param name="update_file_list_"></param>
 
-        public Setup(string application_name_without_extention, string application_to_display_name_, string directory_install_path_, bool is_update, List<string> update_file_list_ = null, string icon_full_path_from_source_directory_ = null)
+        public Setup(string application_name_without_extention, string application_to_display_name_, string directory_install_path_, string directory_installations_files_path_
+            , bool? is_update_or_null_if_all, List<string> update_file_list_ = null, string icon_full_path_from_source_directory_ = null)
 
         {
+            //var directory_install_path_ =Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),@"PmLite");
+            // var directory_installations_files_path_ = Path.Combine(SRL.FileManagement.GetCurrentDirectory(), "Release");
             InitializeComponent();
             icon_full_path_from_source_directory = icon_full_path_from_source_directory_;
             dir_install_name = directory_install_path_;
+            dir_installations_files_name = directory_installations_files_path_;
             app_exe_name = application_name_without_extention;
             update_file_list = update_file_list_;
-            app_display_name= application_to_display_name_;
+            app_display_name = application_to_display_name_;
 
-            if (is_update) btnCopy.Enabled = false;
-            else btnUpdate.Enabled = false;
+            if (is_update_or_null_if_all != null)
+            {
+                if ((bool)is_update_or_null_if_all) btnCopy.Enabled = false;
+                else btnUpdate.Enabled = false;
+            }
         }
 
-        private void InstallFiles(Control clicker)
+        private void InstallFiles(Control clicker, List<string> update_file_list = null)
         {
-            SRL.FileManagement.ReplaceAllFilesFromDirToDir(tbSource.Text, tbDestination.Text);
+            SRL.FileManagement.ReplaceAllFilesFromDirToDir(tbSource.Text, tbDestination.Text, update_file_list);
             progressBar1.Value = 60;
             SRL.FileManagement.MakeShortcut(app_display_name, SRL.FileManagement.GetDesktopDirectory(), tbDestination.Text, app_exe_name + ".exe", icon_full_path_from_source_directory);
             progressBar1.Value = 100;
             clicker.Text = end_string;
             button1.Enabled = false;
-           
-          
-            
+
+
+
         }
 
         private void KeepUpdateFiles()
@@ -66,20 +74,26 @@ namespace SRL
             {
                 File.Copy(tbDestination.Text + item, tbSource.Text + item, true);
             }
-           
+
         }
 
         private void Setup_Load(object sender, EventArgs e)
         {
-            tbSource.Text = SRL.FileManagement.GetCurrentDirectory();
+            tbSource.Text = dir_installations_files_name;
             tbDestination.Text = dir_install_name;
+            this.Text = app_exe_name;
         }
 
         private void btnCopy_Click(object sender, EventArgs e)
         {
-            Control c=sender as Control;
-            if(c.Text==end_string) this.Close();
-            else InstallFiles(c);
+
+            Control c = sender as Control;
+            if (c.Text == end_string) this.Close();
+            else
+            {
+                if (SRL.MessageBoxForm2.Show("با نصب برنامه اگر قبلا برنامه نصب بوده باشد اطلاعات از بین می رود. آیا برای نصب مطئن هستید؟", "تایید نصب", MessageBoxForm2.Buttons.YesNo) == DialogResult.No) return;
+                else InstallFiles(c);
+            }
 
         }
 
@@ -104,17 +118,25 @@ namespace SRL
             else
             {
 
-                if (update_file_list != null) KeepUpdateFiles();
-
-                InstallFiles(c);
+                //   if (update_file_list != null) KeepUpdateFiles();
+                SRL.MessageBoxForm2.Show("برای بروزرسانی لازم است محل نصب نرم افزار بدرستی انتخاب شود");
+                InstallFiles(c, update_file_list);
             }
-        }     
+        }
 
         private void button1_Click(object sender, EventArgs e)
         {
             this.Close();
         }
 
+        private void label1_Click(object sender, EventArgs e)
+        {
 
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

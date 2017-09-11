@@ -761,8 +761,7 @@ namespace SRL
         public void LicenseSettingsControl<LicenseT>(PropertyGrid pgLicenseSettings_) where LicenseT : LicenseEntity
         {
             pgLicenseSettings = pgLicenseSettings_;
-            var class_mgnt = new SRL.ClassManagement<LicenseT>();
-            License = class_mgnt.CreateInstance();
+            License = SRL.ClassManagement.CreateInstance<LicenseT>();
             pgLicenseSettings.SelectedObject = License;
         }
 

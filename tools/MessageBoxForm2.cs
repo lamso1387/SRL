@@ -81,6 +81,11 @@ namespace SRL
         {
             _msgBox = new MessageBoxForm2();
             _msgBox._lblMessage.Text = message;
+
+            MessageBoxForm2.InitButtons(Buttons.OK);
+            _msgBox.Size = MessageBoxForm2.MessageSize(message);
+            MessageBoxForm2.InitIcon(Icon.Info);
+
             _msgBox.ShowDialog();
             MessageBeep(0);
         }
