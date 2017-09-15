@@ -41,10 +41,10 @@
             this.btnUpdate = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.panel1 = new System.Windows.Forms.Panel();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
@@ -73,20 +73,20 @@
             // 
             // tbSource
             // 
-            this.tbSource.Font = new System.Drawing.Font("Times New Roman", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
-            this.tbSource.Location = new System.Drawing.Point(50, 34);
+            this.tbSource.Font = new System.Drawing.Font("Times New Roman", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
+            this.tbSource.Location = new System.Drawing.Point(50, 37);
             this.tbSource.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
             this.tbSource.Name = "tbSource";
-            this.tbSource.Size = new System.Drawing.Size(574, 26);
+            this.tbSource.Size = new System.Drawing.Size(574, 21);
             this.tbSource.TabIndex = 2;
             // 
             // tbDestination
             // 
-            this.tbDestination.Font = new System.Drawing.Font("Times New Roman", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
-            this.tbDestination.Location = new System.Drawing.Point(50, 125);
+            this.tbDestination.Font = new System.Drawing.Font("Times New Roman", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
+            this.tbDestination.Location = new System.Drawing.Point(50, 128);
             this.tbDestination.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
             this.tbDestination.Name = "tbDestination";
-            this.tbDestination.Size = new System.Drawing.Size(574, 26);
+            this.tbDestination.Size = new System.Drawing.Size(574, 21);
             this.tbDestination.TabIndex = 3;
             // 
             // btnCopy
@@ -147,13 +147,6 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // progressBar1
-            // 
-            this.progressBar1.Location = new System.Drawing.Point(33, 337);
-            this.progressBar1.Name = "progressBar1";
-            this.progressBar1.Size = new System.Drawing.Size(646, 23);
-            this.progressBar1.TabIndex = 9;
-            // 
             // panel1
             // 
             this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
@@ -174,9 +167,16 @@
             this.pictureBox1.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox1.Image")));
             this.pictureBox1.Location = new System.Drawing.Point(33, 10);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(159, 141);
+            this.pictureBox1.Size = new System.Drawing.Size(163, 141);
             this.pictureBox1.TabIndex = 11;
             this.pictureBox1.TabStop = false;
+            // 
+            // progressBar1
+            // 
+            this.progressBar1.Location = new System.Drawing.Point(33, 337);
+            this.progressBar1.Name = "progressBar1";
+            this.progressBar1.Size = new System.Drawing.Size(646, 23);
+            this.progressBar1.TabIndex = 9;
             // 
             // Setup
             // 
@@ -215,10 +215,10 @@
         private System.Windows.Forms.Button btnUpdate;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.OpenFileDialog openFileDialog1;
-        private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.PictureBox pictureBox1;
+        private System.Windows.Forms.ProgressBar progressBar1;
     }
 }
 
