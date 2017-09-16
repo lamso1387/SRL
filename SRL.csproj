@@ -119,6 +119,26 @@
     <Compile Include="setup\Setup.designer.cs">
       <DependentUpon>Setup.cs</DependentUpon>
     </Compile>
+    <Compile Include="tools\BPersianCalender\BPersianTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\BPersianTextBox.designer.cs">
+      <DependentUpon>BPersianTextBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\ConvertDate.cs" />
+    <Compile Include="tools\BPersianCalender\DateValidation.cs" />
+    <Compile Include="tools\BPersianCalender\PCalander.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\PCalander.designer.cs">
+      <DependentUpon>PCalander.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\SMIO_DataGridView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\SMIO_DataGridView.designer.cs">
+      <DependentUpon>SMIO_DataGridView.cs</DependentUpon>
+    </Compile>
     <Compile Include="tools\DgvFilterPopup\FilterPopup\ColumnFilterEvent.cs" />
     <Compile Include="tools\DgvFilterPopup\FilterPopup\DgvBaseColumnFilter.cs">
       <SubType>UserControl</SubType>
@@ -240,6 +260,10 @@
     <Content Include="script\jquery.min.js" />
     <Content Include="script\select2.min.js" />
     <Content Include="script\SRL.js" />
+    <None Include="tools\BPersianCalender\Resources\Calendar-1128083418.png" />
+    <None Include="tools\BPersianCalender\Resources\Calendar.png" />
+    <None Include="tools\BPersianCalender\Resources\1413037734_Last1.png" />
+    <None Include="tools\BPersianCalender\Resources\1413037734_Last.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="content\font\glyphicons-halflings-regular.eot" />
@@ -251,6 +275,7 @@
     <None Include="doc\select2.rtf" />
     <None Include="doc\sqlite.docx" />
     <None Include="setup\app.manifest" />
+    <None Include="snippet\AcceptButtonInUserControl.snippet" />
     <None Include="tools\DgvFilterPopup\Diagrams\BasicDiagram.cd" />
     <None Include="tools\DgvFilterPopup\Diagrams\DetailDiagram.cd" />
     <None Include="tools\DgvFilterPopup\Diagrams\Extensions.cd" />
@@ -278,6 +303,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="setup\Setup.resx">
       <DependentUpon>Setup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\BPersianCalender\PCalander.resx">
+      <DependentUpon>PCalander.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvDateRangeColumnFilter.resx">
       <DependentUpon>DgvDateRangeColumnFilter.cs</DependentUpon>

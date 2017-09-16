@@ -782,7 +782,10 @@ namespace SRL
         {
             return (ClassType)Activator.CreateInstance(typeof(ClassType));
         }
-
+        public static ClassType CreateInstance<ClassType>(params object[] inputs)
+        {
+            return (ClassType)Activator.CreateInstance(typeof(ClassType), inputs);
+        }
         public static object CreateInstance(string className)
         {
             return System.Reflection.Assembly.GetExecutingAssembly().CreateInstance(className);
@@ -2615,6 +2618,9 @@ namespace SRL
 
 
         }
+    
+
+      
         public static string GetAppName(string default_app_name, string folder_containing_exe_path, List<string> file_not_searching, string app_extention_pattern = "*.exe")
         {
             string app_name = default_app_name;
@@ -2825,6 +2831,9 @@ namespace SRL
 
         public static void AdjustChildToParent(Control parent_form, Control child, double child_width_relative, double child_height_relative)
         {
+
+
+
             int form_x = parent_form.Width;
             int form_y = parent_form.Height;
 
@@ -4544,14 +4553,14 @@ namespace SRL
             NotSet,
             DesktopDatetimeToSecond
         }
-        public void ExportToExcell(DataGridView dgview, int? devider=null, string fileFullNameNoExtention=null, TextBox tbCountDynamic = null, ExcelPathType excel_naming = ExcelPathType.NotSet, string default_name = "")
+        public void ExportToExcell(DataGridView dgview, int? devider = null, string fileFullNameNoExtention = null, TextBox tbCountDynamic = null, ExcelPathType excel_naming = ExcelPathType.NotSet, string default_name = "")
         {
             string path = fileFullNameNoExtention + ".xls";
 
             switch (excel_naming)
             {
                 case ExcelPathType.DesktopDatetimeToSecond:
-                    string file = default_name + DateTime.Now.ToString("yyyyMMddHHmmss")+".xls";
+                    string file = default_name + DateTime.Now.ToString("yyyyMMddHHmmss") + ".xls";
                     path = System.IO.Path.Combine(SRL.FileManagement.GetDesktopDirectory(), @file);
                     break;
             }
@@ -4812,6 +4821,10 @@ namespace SRL
             shortcut.IconLocation = icon_full_path;
 
             shortcut.Save();
+        }
+        public static void CutPasteFile(string sourceFilePath, string destnationFilePath)
+        {
+            System.IO.File.Move(sourceFilePath, destnationFilePath);
         }
         public static string ReplaceAllFilesFromDirToDir(string SourceFolderFullPath, string DestinationFolderFullPath, List<string> not_copy_files = null)
         {
