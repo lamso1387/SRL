@@ -4394,7 +4394,7 @@ namespace SRL
         public bool UpdateConnectionString(string conStr, string conStrName, Control control_to_load = null)
         {
             //for sqlite: @"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=C:\Program Files\hami\MyDatabase.sqlite'"
-            // or :       @"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=&quot;MyDatabase.sqlite&quot;'"
+            // or :       @"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=MyDatabase.sqlite;'"
 
             if (control_to_load != null) ControlLoader(control_to_load, "connecting database...");
 

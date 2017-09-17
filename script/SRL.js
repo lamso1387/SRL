@@ -577,7 +577,10 @@ window.SRL = SRL;
         };
 
 
-        SRL.MapGoogleRender=function (mapId, centerLat, centerLon, zoom, mapPropNum,hasDefaultMarker, hasMarkerInfo, infoText, radius, markerZoom, hasHome) {// MapGoogleRender('mapDoctors', 35.6875572374694, 51.38837814331055, 12, 1);
+        SRL.MapGoogleRender=function (mapId, centerLat, centerLon, zoom, mapPropNum,hasDefaultMarker, hasMarkerInfo, infoText, radius, markerZoom, hasHome) {
+            //AIzaSyCgLiaA30V7dBrNUmOt1LQdjnC2H18nv7k
+
+            // MapGoogleRender('mapDoctors', 35.6875572374694, 51.38837814331055, 12, 1);
             //var tehranCenter = new google.maps.LatLng(35.6875572374694, 51.38837814331055);
             var center = new google.maps.LatLng(centerLat, centerLon);
             var mapProp1 = {
