@@ -25,6 +25,12 @@ namespace SRL
         /// <param name="license_pfx_file_name_">LicenseSign.pfx must be Embedded Resource build action and do not copy to output</param>       
         public WinLicenseAdminActivator(bool is_mobile_uid_input, Assembly assembly_, string license_pfx_file_name_ = "LicenseSign.pfx")
         {
+            /*use in load page: 
+             SRL.WinLicenseAdminActivator act = new SRL.WinLicenseAdminActivator(true, System.Reflection.Assembly.GetExecutingAssembly());
+            act.SettingControl<AppLicenseClass>();
+            act.ShowDialog();
+            this.Close();
+             */
             InitializeComponent();
             assembly = assembly_;
             license_pfx_file_name = license_pfx_file_name_;

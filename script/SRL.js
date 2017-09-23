@@ -1419,7 +1419,7 @@ SRL.SetCarouselHeight = function (carousel_selector, height) {
 
 SRL.SetCarouselImages = function (carousel_selector, pics_url) {
    // var pics = ["image/pmlite2.jpg" , "image/pmlite3.jpg"]
-
+    $(carousel_selector + ' .carousel-inner').empty();
     for (var i = 0 ; i < pics_url.length ; i++) {
         $('<div class="item"><img  width="1200" max-height="700" src="' + pics_url[i] + '">   </div>').appendTo(carousel_selector + ' .carousel-inner');
     }
@@ -1433,6 +1433,7 @@ SRL.SetClickEvent = function (fromId, toId) {
     });
   
 };
+
 
 
 SRL.SelectCategory = function (treeId, targetId) {
