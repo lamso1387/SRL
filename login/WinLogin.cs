@@ -113,6 +113,14 @@ namespace SRL
 
         }
 
+        public string user_name_family
+        {
+            get
+            {
+                return user_name + " "+ user_family;
+            }
+        }
+
     }
     public  class UserClass
     {
