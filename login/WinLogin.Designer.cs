@@ -29,10 +29,10 @@
         private void InitializeComponent()
         {
             this.btnEnter = new System.Windows.Forms.Button();
-            this.label1 = new System.Windows.Forms.Label();
+            this.lblUsername = new System.Windows.Forms.Label();
             this.tbUsername = new System.Windows.Forms.TextBox();
             this.tbPassword = new System.Windows.Forms.TextBox();
-            this.label2 = new System.Windows.Forms.Label();
+            this.lblPass = new System.Windows.Forms.Label();
             this.lblExit = new System.Windows.Forms.LinkLabel();
             this.pnlLoginForm = new System.Windows.Forms.Panel();
             this.pnlFoot = new System.Windows.Forms.Panel();
@@ -57,17 +57,17 @@
             this.btnEnter.UseVisualStyleBackColor = true;
             this.btnEnter.Click += new System.EventHandler(this.btnEnter_Click);
             // 
-            // label1
+            // lblUsername
             // 
-            this.label1.AutoSize = true;
-            this.label1.BackColor = System.Drawing.Color.Transparent;
-            this.label1.ForeColor = System.Drawing.SystemColors.ControlLightLight;
-            this.label1.Location = new System.Drawing.Point(103, 11);
-            this.label1.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(66, 26);
-            this.label1.TabIndex = 4;
-            this.label1.Text = "نام کاربری";
+            this.lblUsername.AutoSize = true;
+            this.lblUsername.BackColor = System.Drawing.Color.Transparent;
+            this.lblUsername.ForeColor = System.Drawing.SystemColors.ControlLightLight;
+            this.lblUsername.Location = new System.Drawing.Point(103, 11);
+            this.lblUsername.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            this.lblUsername.Name = "lblUsername";
+            this.lblUsername.Size = new System.Drawing.Size(66, 26);
+            this.lblUsername.TabIndex = 4;
+            this.lblUsername.Text = "نام کاربری";
             // 
             // tbUsername
             // 
@@ -86,17 +86,17 @@
             this.tbPassword.Size = new System.Drawing.Size(164, 34);
             this.tbPassword.TabIndex = 1;
             // 
-            // label2
+            // lblPass
             // 
-            this.label2.AutoSize = true;
-            this.label2.BackColor = System.Drawing.Color.Transparent;
-            this.label2.ForeColor = System.Drawing.SystemColors.ControlLightLight;
-            this.label2.Location = new System.Drawing.Point(112, 80);
-            this.label2.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(57, 26);
-            this.label2.TabIndex = 5;
-            this.label2.Text = "رمز عبور";
+            this.lblPass.AutoSize = true;
+            this.lblPass.BackColor = System.Drawing.Color.Transparent;
+            this.lblPass.ForeColor = System.Drawing.SystemColors.ControlLightLight;
+            this.lblPass.Location = new System.Drawing.Point(112, 80);
+            this.lblPass.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            this.lblPass.Name = "lblPass";
+            this.lblPass.Size = new System.Drawing.Size(57, 26);
+            this.lblPass.TabIndex = 5;
+            this.lblPass.Text = "رمز عبور";
             // 
             // lblExit
             // 
@@ -117,8 +117,8 @@
             // 
             this.pnlLoginForm.BackColor = System.Drawing.Color.Transparent;
             this.pnlLoginForm.Controls.Add(this.btnEnter);
-            this.pnlLoginForm.Controls.Add(this.label1);
-            this.pnlLoginForm.Controls.Add(this.label2);
+            this.pnlLoginForm.Controls.Add(this.lblUsername);
+            this.pnlLoginForm.Controls.Add(this.lblPass);
             this.pnlLoginForm.Controls.Add(this.tbUsername);
             this.pnlLoginForm.Controls.Add(this.tbPassword);
             this.pnlLoginForm.Location = new System.Drawing.Point(104, 175);
@@ -203,10 +203,10 @@
         #endregion
 
         private System.Windows.Forms.Button btnEnter;
-        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label lblUsername;
         private System.Windows.Forms.TextBox tbUsername;
         private System.Windows.Forms.TextBox tbPassword;
-        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Label lblPass;
         private System.Windows.Forms.LinkLabel lblExit;
         private System.Windows.Forms.Panel pnlLoginForm;
         private System.Windows.Forms.Panel pnlFoot;

@@ -433,6 +433,21 @@ namespace SRL
     }
     public class SettingClass<SettingEntity> where SettingEntity : class
     {
+        /*use: write CheckSetting() before   InitializeComponent(); and after connection update.
+         public static SRL.SettingClass<SettingTB> srlsetting = new SRL.SettingClass<SettingTB>(dbGlobal);
+
+          internal static void CheckSetting()
+        {
+            if (!srlsetting.CheckSettingIsSet())
+            {
+                Dictionary<string, string> kv = new Dictionary<string, string>();
+                kv["setting_is_set"] = "true";
+                kv["font_factor"] = "0/95";
+                kv["printer_name"] = new PrinterSettings().PrinterName;
+                srlsetting.InitiateSetting(kv);
+            }
+        }
+        */
         class DefaultSetting
         {
             public string key { get; set; }
@@ -454,6 +469,16 @@ namespace SRL
 
         public void MigrateDatabase(Dictionary<string, string> migration_version_query)
         {
+
+            /* use in load form: 
+              Dictionary<string, string> migration_version_query = new Dictionary<string, string>();
+
+            migration_version_query["1"] = "ALTER TABLE WorksTB ADD progress_status nvarchar(50);";
+            migration_version_query["2"] =migration_version_query["1"]+ " ...";
+            migration_version_query["3"] =migration_version_query["2"] + " ...";
+
+            Publics.srlsetting.MigrateDatabase(migration_version_query);
+             */
             string db_version = GetDbVersion();
             string app_version = SRL.Security.GetAppVersion().Major.ToString();
 
@@ -516,7 +541,8 @@ namespace SRL
         private void AddKeyToSettingTB(string key)
         {
             string sql = "select * from " + setting_table_name + " where [key]='" + key + "'";
-            if (!SRL.Database.SqlQuery<object>(db, sql).Any())
+            var get_version = SRL.Database.SqlQuery<object>(db, sql);
+            if ( get_version ==null ? true : !get_version.Any())
             {
                 sql = "insert into " + setting_table_name + " ([key]) values('" + key + "')";
                 SRL.Database.ExecuteQuery(db, sql);
@@ -620,7 +646,7 @@ namespace SRL
         public bool CheckSettingIsSet()
         {
             string query = SqlQuerySettingTable("setting_is_set", null);
-            int row_count = db.Set<SettingEntity>().Count();
+           // int row_count = db.Set<SettingEntity>().Count();
             return query == null || query == "false" ? false : true;
         }
 
@@ -634,9 +660,14 @@ namespace SRL
         {
 
             string sql = "select value from " + setting_table_name + " where [key]='" + key + "'";
-            var queryList = SRL.Database.SqlQuery<string>(db, sql).DefaultIfEmpty(default_if_empty);
-            var query = queryList.FirstOrDefault();
-            return query;
+            var queryGet = SRL.Database.SqlQuery<string>(db, sql);
+            if (queryGet == null) return default_if_empty;
+            else
+            {
+                var queryList = queryGet.DefaultIfEmpty(default_if_empty);
+                var query = queryList.FirstOrDefault();
+                return query;
+            }
 
         }
 
@@ -644,6 +675,7 @@ namespace SRL
 
 
     }
+
     public class ChildParent
     {
         public static IEnumerable<Control> GetAllChildrenControls(Control root)
@@ -745,12 +777,12 @@ namespace SRL
     }
     public class ActionManagement
     {
-        public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value, string log = "")
+        public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value,string user, string log)
         {
             string tb_name = typeof(ActionLogT).Name;
             var date = DateTime.Now.ToString("yyyyMMdd");
 
-            string sql = "insert into " + tb_name + " (title,[date],value,[log]) values ( '" + title + "','" + date + "' , '" + value + "' , '" + log + "');";
+            string sql = "insert into " + tb_name + " (title,[date],value,[user],[log]) values ( '" + title + "','" + date + "' , '" + value + "' , '" + user + "', '" + log + "');";
             return SRL.Database.ExecuteQuery(db, sql);
 
         }
@@ -2618,9 +2650,9 @@ namespace SRL
 
 
         }
-    
 
-      
+
+
         public static string GetAppName(string default_app_name, string folder_containing_exe_path, List<string> file_not_searching, string app_extention_pattern = "*.exe")
         {
             string app_name = default_app_name;
@@ -4319,16 +4351,15 @@ namespace SRL
 
         }
 
-        public static void TruncateTable(DbContext db, string table_name)
-        {
-            db.Database.ExecuteSqlCommand("truncate table " + table_name);
+        public static void TruncateTable(DbContext db, string table_name  )
+        { 
+            db.Database.ExecuteSqlCommand("delete from " + table_name);
             db.SaveChanges();
         }
         public static string ExecuteQuery(DbContext db, string query)
         {
             string error = string.Empty;
             int exe;
-
             try
             {
                 db.Database.ExecuteSqlCommand(query);
@@ -4350,19 +4381,23 @@ namespace SRL
         {
             try
             {
-                var result = db.Database.SqlQuery<OutputType>(query).ToList();
-                return result;
+                var result_ = db.Database.SqlQuery<OutputType>(query);
+                
+                if (result_.Any())
+                {
+                    var result = result_.ToList();
+                    return result;
+                }
+                else return new List<OutputType>();
             }
 
             catch (Exception exe)
             {
-
                 MessageBox.Show(exe.Message);
                 return null;
             }
 
         }
-
         public static string GetConnectionString(string conStrName)
         {
             var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
@@ -4412,6 +4447,7 @@ namespace SRL
 
         public static void UpdateConnectionStringAndRestart(string conStr, string conStrName, Control control_to_load)
         {
+            // example: SRL.Database.UpdateConnectionStringAndRestart(@"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=MyDatabase.sqlite;'", typeof(MyDatabaseEntities).Name, control);
             using (SRL.Database dbsrl = new SRL.Database())
             {
                 if (!dbsrl.UpdateConnectionString(conStr, conStrName, control_to_load))
@@ -4423,6 +4459,7 @@ namespace SRL
             }
 
         }
+
 
     }
     public class ExcelManagement : SRL.ControlLoad
@@ -4983,6 +5020,8 @@ namespace SRL
         /// <param name="contentFontName">Your font to be passed as a resource (i.e. "myfont.tff" that is WriteAllBytes). get it from </param>
         public void InstallFont(string contentFontName)
         {
+            //example:  srl_font.InstallFont(srl_font.GetContentFontNameFromByte(Properties.Resources.irsan, "irsan.ttf"));
+
             // Creates the full path where your font will be installed
             var fontDestination = Path.Combine(System.Environment.GetFolderPath
                                           (System.Environment.SpecialFolder.Fonts), contentFontName);

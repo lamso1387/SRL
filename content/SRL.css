@@ -128,3 +128,8 @@
 .visible {
 	visibility: visible;
 }
+
+.letter-space
+{
+     letter-spacing: 10px;
+}

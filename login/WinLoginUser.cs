@@ -43,11 +43,11 @@ namespace SRL
         private void LoadUsersInDgv(DataGridView dgv)
         {
             dgv.Rows.Clear();
-            string sql = "select ID,password, name, family, username,role  from " + entity_name;
+            string sql = "select id,password, name, family, username,role  from " + entity_name;
             var users = SRL.Database.SqlQuery<UserClass>(db, sql);
             foreach (var item in users)
             {
-                dgv.Rows.Add(item.ID, item.password, item.name, item.family, item.username, item.role);
+                dgv.Rows.Add(item.id, item.password, item.name, item.family, item.username, item.role);
 
             }
             dgv.ClearSelection();
@@ -55,7 +55,7 @@ namespace SRL
 
         private void DeleteUser(long id_del)
         {
-            string err = SRL.Database .ExecuteQuery(db, "delete from " + entity_name + " where ID=" + id_del.ToString() + "");
+            string err = SRL.Database .ExecuteQuery(db, "delete from " + entity_name + " where id=" + id_del.ToString() + "");
             if (err != "") MessageBox.Show(err);
         }
 
@@ -78,7 +78,7 @@ namespace SRL
             var user = SRL.Database.SqlQuery<UserClass>(db, sql);
             if (user.Any())
             {
-                user_id_duplicate = user.First().ID;
+                user_id_duplicate = user.First().id;
                 if (id_to_edit == user_id_duplicate) return true;
                 else
                     MessageBox.Show("نام کاربری تکراری است");
@@ -105,7 +105,7 @@ namespace SRL
 
             string err = SRL.Database.ExecuteQuery(db, "update " + entity_name + " set name='" + tbname.Text +
             "' , family='" + tbFamily.Text + "' , username='" + tbUsername.Text + "' , password='" + tbPass.Text + "' , role='" + tbRole.Text + "' " +
-                " where ID=" + id_edit.ToString());
+                " where id=" + id_edit.ToString());
             if (err != "") MessageBox.Show(err);
             LoadUsersInDgv(dgvUsers);
         }
