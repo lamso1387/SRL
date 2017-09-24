@@ -134,6 +134,7 @@ namespace SRL
             session.user_id = (long)user.First().id;
             session.user_name = user.First().name;
             session.user_family = user.First().family;
+            session.username = user.First().username;
             this.Close();
         }
 
@@ -148,6 +149,7 @@ namespace SRL
     public class WinSessionId
     {
         public long user_id;
+        public string username;
         public string user_name;
         public string user_family;
         public bool IsLogined = false;
@@ -155,6 +157,7 @@ namespace SRL
         {
             user_family = default_family;
             user_name = default_name;
+            IsLogined = false;
 
         }
 

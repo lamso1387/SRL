@@ -646,7 +646,7 @@ namespace SRL
         public bool CheckSettingIsSet()
         {
             string query = SqlQuerySettingTable("setting_is_set", null);
-            int row_count = db.Set<SettingEntity>().Count();
+           // int row_count = db.Set<SettingEntity>().Count();
             return query == null || query == "false" ? false : true;
         }
 
@@ -660,9 +660,14 @@ namespace SRL
         {
 
             string sql = "select value from " + setting_table_name + " where [key]='" + key + "'";
-            var queryList = SRL.Database.SqlQuery<string>(db, sql).DefaultIfEmpty(default_if_empty);
-            var query = queryList.FirstOrDefault();
-            return query;
+            var queryGet = SRL.Database.SqlQuery<string>(db, sql);
+            if (queryGet == null) return default_if_empty;
+            else
+            {
+                var queryList = queryGet.DefaultIfEmpty(default_if_empty);
+                var query = queryList.FirstOrDefault();
+                return query;
+            }
 
         }
 
@@ -670,6 +675,7 @@ namespace SRL
 
 
     }
+
     public class ChildParent
     {
         public static IEnumerable<Control> GetAllChildrenControls(Control root)
@@ -771,12 +777,12 @@ namespace SRL
     }
     public class ActionManagement
     {
-        public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value, string log = "")
+        public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value,string user, string log)
         {
             string tb_name = typeof(ActionLogT).Name;
             var date = DateTime.Now.ToString("yyyyMMdd");
 
-            string sql = "insert into " + tb_name + " (title,[date],value,[log]) values ( '" + title + "','" + date + "' , '" + value + "' , '" + log + "');";
+            string sql = "insert into " + tb_name + " (title,[date],value,[user],[log]) values ( '" + title + "','" + date + "' , '" + value + "' , '" + user + "', '" + log + "');";
             return SRL.Database.ExecuteQuery(db, sql);
 
         }
@@ -4345,16 +4351,15 @@ namespace SRL
 
         }
 
-        public static void TruncateTable(DbContext db, string table_name)
-        {
-            db.Database.ExecuteSqlCommand("truncate table " + table_name);
+        public static void TruncateTable(DbContext db, string table_name  )
+        { 
+            db.Database.ExecuteSqlCommand("delete from " + table_name);
             db.SaveChanges();
         }
         public static string ExecuteQuery(DbContext db, string query)
         {
             string error = string.Empty;
             int exe;
-
             try
             {
                 db.Database.ExecuteSqlCommand(query);
@@ -4377,12 +4382,13 @@ namespace SRL
             try
             {
                 var result_ = db.Database.SqlQuery<OutputType>(query);
+                
                 if (result_.Any())
                 {
                     var result = result_.ToList();
                     return result;
                 }
-                else return null;
+                else return new List<OutputType>();
             }
 
             catch (Exception exe)
