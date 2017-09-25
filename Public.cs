@@ -542,7 +542,7 @@ namespace SRL
         {
             string sql = "select * from " + setting_table_name + " where [key]='" + key + "'";
             var get_version = SRL.Database.SqlQuery<object>(db, sql);
-            if ( get_version ==null ? true : !get_version.Any())
+            if (get_version == null ? true : !get_version.Any())
             {
                 sql = "insert into " + setting_table_name + " ([key]) values('" + key + "')";
                 SRL.Database.ExecuteQuery(db, sql);
@@ -646,7 +646,7 @@ namespace SRL
         public bool CheckSettingIsSet()
         {
             string query = SqlQuerySettingTable("setting_is_set", null);
-           // int row_count = db.Set<SettingEntity>().Count();
+            // int row_count = db.Set<SettingEntity>().Count();
             return query == null || query == "false" ? false : true;
         }
 
@@ -687,6 +687,29 @@ namespace SRL
                 next.Controls.Cast<Control>().ToList().ForEach(q.Enqueue);
 
                 yield return next;
+            }
+        }
+        public static List<ToolStripMenuItem> GetAllMenuItems(MenuStrip menu)
+        {
+            List<ToolStripMenuItem> allItems = new List<ToolStripMenuItem>();
+            foreach (ToolStripMenuItem toolItem in menu.Items)
+            {
+                allItems.Add(toolItem);
+                //add sub items
+                allItems.AddRange(GetItems(toolItem));
+            }
+            return allItems;
+        }
+        private static IEnumerable<ToolStripMenuItem> GetItems(ToolStripMenuItem item)
+        {
+            foreach (ToolStripMenuItem dropDownItem in item.DropDownItems)
+            {
+                if (dropDownItem.HasDropDownItems)
+                {
+                    foreach (ToolStripMenuItem subItem in GetItems(dropDownItem))
+                        yield return subItem;
+                }
+                yield return dropDownItem;
             }
         }
 
@@ -777,7 +800,7 @@ namespace SRL
     }
     public class ActionManagement
     {
-        public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value,string user, string log)
+        public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value, string user, string log)
         {
             string tb_name = typeof(ActionLogT).Name;
             var date = DateTime.Now.ToString("yyyyMMdd");
@@ -2591,7 +2614,8 @@ namespace SRL
             }
 
             /// <summary>
-            /// this method make app slow. use it in your app rather than reference from SRL
+            /// this method make app slow. use it in your app rather than reference from SRL.
+            /// in your enumerable_data_source first write Text then Value like : .Select(x=>new{Text="text" , Value=10})
             /// </summary>
             /// <typeparam name="ValueT"></typeparam>
             /// <param name="cb"></param>
@@ -3266,6 +3290,25 @@ namespace SRL
             new SRL.WinLogin(db, entity_name, session).ShowDialog();
 
             if (!session.IsLogined) Environment.Exit(0);
+        }
+
+        public static void WinCheckAccess(string role, Dictionary<string, List<Component>> role_disable_component)
+        {
+            /*use:
+            SRL.Security.WinCheckAccess(Publics.srl_session.role, new Dictionary<string, List<Component>>() {
+                {"user", new List<Component> { miInsertData, miSensSms, miUsers, new Button() } }
+            }
+            );
+            */
+            List<Component> all = new List<Component>();
+
+            foreach (var item in role_disable_component) all.AddRange(item.Value);
+
+            foreach (var item in all) (item as dynamic).Enabled = true;
+
+            List<Component> list;
+            if (role_disable_component.TryGetValue(role, out list))
+                foreach (var item in list) (item as dynamic).Enabled = false;
         }
         public static void CreateSession(string key, object value, System.Web.UI.Page page)
         {
@@ -4146,7 +4189,59 @@ namespace SRL
 
         }
 
+        public class  Backup
+        {
+            ProgressBar progressBar1;
+            public  Backup(string filter, string source, ProgressBar progressBar1_)
+            {
+                progressBar1 = progressBar1_;
 
+                var open = new SaveFileDialog();
+                open.Filter = filter;
+                var result = open.ShowDialog();
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
+                {
+                    var x = new FileManagement.FileCopyProgress(source, open.FileName);
+                    if (progressBar1 != null) x.OnProgressChanged += X_OnProgressChanged;
+                    x.Copy();
+
+                }
+            }
+            private void X_OnProgressChanged(double Persentage, ref bool Cancel)
+            {
+                if (Persentage > 0) progressBar1.Visible = true;
+                progressBar1.Value = Convert.ToInt32(Persentage);
+                if (Persentage == 100) progressBar1.Visible = false;
+            }
+
+        }
+
+        public class Restore
+        {
+            ProgressBar progressBar1;
+            public Restore(string filter, string des, ProgressBar progressBar1_)
+            {
+                progressBar1 = progressBar1_;
+
+                var open = new OpenFileDialog();
+                open.Filter = filter;
+                var result = open.ShowDialog();
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
+                {
+                    var x = new FileManagement.FileCopyProgress(open.FileName,des);
+                    if (progressBar1 != null) x.OnProgressChanged += X_OnProgressChanged;
+                    x.Copy();
+
+                }
+            }
+            private void X_OnProgressChanged(double Persentage, ref bool Cancel)
+            {
+                if (Persentage > 0) progressBar1.Visible = true;
+                progressBar1.Value = Convert.ToInt32(Persentage);
+                if (Persentage == 100) progressBar1.Visible = false;
+            }
+
+        }
         public static void UpdateDgvCellValueToDb<EntityT>(DataGridView dgv, int row_index, string primary_column, string update_column, DbContext db)
         {
             var cell_value = dgv.Rows[row_index].Cells[update_column].Value.ToString();
@@ -4351,8 +4446,8 @@ namespace SRL
 
         }
 
-        public static void TruncateTable(DbContext db, string table_name  )
-        { 
+        public static void TruncateTable(DbContext db, string table_name)
+        {
             db.Database.ExecuteSqlCommand("delete from " + table_name);
             db.SaveChanges();
         }
@@ -4382,7 +4477,7 @@ namespace SRL
             try
             {
                 var result_ = db.Database.SqlQuery<OutputType>(query);
-                
+
                 if (result_.Any())
                 {
                     var result = result_.ToList();
@@ -4798,7 +4893,73 @@ namespace SRL
         {
 
         }
+     
+         
 
+        public class FileCopyProgress
+        {
+            public delegate void ProgressChangeDelegate(double Persentage, ref bool Cancel);
+            public delegate void Completedelegate();
+
+            /// <summary>
+            /// use OnProgressChanged event and then call Copy
+            /// </summary>
+            /// <param name="Source"></param>
+            /// <param name="Dest"></param>
+            public FileCopyProgress(string Source, string Dest)
+            {
+                this.SourceFilePath = Source;
+                this.DestFilePath = Dest;
+
+                OnProgressChanged += delegate { };
+                OnComplete += delegate { };
+            }
+
+            public void Copy()
+            {
+                byte[] buffer = new byte[1024 * 1024]; // 1MB buffer
+                bool cancelFlag = false;
+
+                using (FileStream source = new FileStream(SourceFilePath, FileMode.Open, FileAccess.Read))
+                {
+                    long fileLength = source.Length;
+                    if (System.IO.File.Exists(DestFilePath))
+                    {
+                        System.IO.File.Delete(DestFilePath);
+                    }
+                    using (FileStream dest = new FileStream(DestFilePath, FileMode.CreateNew, FileAccess.Write))
+                    {
+                        long totalBytes = 0;
+                        int currentBlockSize = 0;
+
+                        while ((currentBlockSize = source.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            totalBytes += currentBlockSize;
+                            double persentage = (double)totalBytes * 100.0 / fileLength;
+
+                            dest.Write(buffer, 0, currentBlockSize);
+
+                            cancelFlag = false;
+                            OnProgressChanged(persentage, ref cancelFlag);
+
+                            if (cancelFlag == true)
+                            {
+                                // Delete dest file here
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                OnComplete();
+            }
+
+            public string SourceFilePath { get; set; }
+            public string DestFilePath { get; set; }
+
+            public event ProgressChangeDelegate OnProgressChanged;
+            public event Completedelegate OnComplete;
+        }
 
 
 

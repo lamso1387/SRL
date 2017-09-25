@@ -116,11 +116,11 @@ namespace SRL
             Application.DoEvents();
 
             string sql = "select * from " + entity_name + " where [username]='" + tbUsername.Text + "'";
-            var user = SRL.Database.SqlQuery<UserClass>(db, sql);
+            var userQ = SRL.Database.SqlQuery<UserClass>(db, sql);
             bool loged = false;
-            if (user != null)
-                if (user.Any())
-                    if (tbPassword.Text == user.First().password)
+            if (userQ != null)
+                if (userQ.Any())
+                    if (tbPassword.Text == userQ.First().password)
                         loged = true;
 
             if (loged == false)
@@ -130,11 +130,14 @@ namespace SRL
                 return;
             }
 
+            var user = userQ.First();
+
             session.IsLogined = true;
-            session.user_id = (long)user.First().id;
-            session.user_name = user.First().name;
-            session.user_family = user.First().family;
-            session.username = user.First().username;
+            session.user_id = (long)user.id;
+            session.user_name = user.name;
+            session.user_family = user.family;
+            session.username = user.username;
+            session.role = user.role;
             this.Close();
         }
 
@@ -168,6 +171,8 @@ namespace SRL
                 return user_name + " "+ user_family;
             }
         }
+
+        public string role;
 
     }
     public class UserClass

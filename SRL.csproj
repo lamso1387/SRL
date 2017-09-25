@@ -105,6 +105,12 @@
     <Compile Include="license\WinLicenseForm.designer.cs">
       <DependentUpon>WinLicenseForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="login\WinLoginProfile.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="login\WinLoginProfile.designer.cs">
+      <DependentUpon>WinLoginProfile.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -290,6 +296,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="license\WinLicenseForm.resx">
       <DependentUpon>WinLicenseForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="login\WinLoginProfile.resx">
+      <DependentUpon>WinLoginProfile.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

@@ -33,11 +33,12 @@ namespace FormSample
 
         private void MigrateDatabase()
         {
+            // version 2 released
             Dictionary<string, string> migration_version_query = new Dictionary<string, string>();
 
             // migration_version_query["2"] = "...";
             // migration_version_query["1"] = "ALTER TABLE WorksTB ADD progress_status nvarchar(50);"+migration_version_query["2"];
-
+             
 
             Publics.srlsetting.MigrateDatabase(migration_version_query);
         }
