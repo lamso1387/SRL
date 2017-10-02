@@ -38,6 +38,183 @@ using System.ServiceModel;
 
 namespace SRL
 {
+    public class nf
+    {
+        /*
+        var x = GetAllNodesChild(treeView1.Nodes).Where(y => y.Checked).Select(i => i.Name).ToList();
+        var permissions_str = string.Join(";", x);
+
+            LoadPermissionsInTree("miNew;miBase;miManageSend;miAdd;miManage", treeView1);
+            EnableMenuBasedOnPermissions("miNew;miBase;miManageSend;miAdd;miManage", menuStrip1);
+            CheckAccess("user", Publics.dbGlobal, "PermissionTB", );
+
+*/
+        public void ConvertMenuToTreeView(MenuStrip menu, TreeView tree)
+        {
+            var list = SRL.ChildParent.GetAllMenuItems(menu);
+            Dictionary<ToolStripMenuItem, bool> menu_conversion = new Dictionary<ToolStripMenuItem, bool>();
+            while (menu_conversion.Keys.Count == 0 || menu_conversion.Values.Where(x => x.Equals(false)).Any())
+            {
+                foreach (var item in list)
+                {
+                    if (menu_conversion.ContainsKey(item))
+                        if (menu_conversion[item] == true) continue;
+                    var owner_item = item.OwnerItem;
+                    if (owner_item != null)
+                    {
+                        TreeNode[] node = tree.Nodes.Find(owner_item.Name, true);
+                        if (node.Any())
+                        {
+                            node.First().Nodes.Add(item.Name, item.Text);
+                            menu_conversion[item] = true;
+                        }
+                        else menu_conversion[item] = false;
+
+
+                    }
+                    else
+                    {
+                        tree.Nodes.Add(item.Name, item.Text);
+                        menu_conversion[item] = true;
+                    }
+                }
+            }
+        }
+
+        public static void CompatibleTreeChildAndParentCheck(TreeView tree)
+        {
+            tree.AfterCheck += Compatible_Tree_Child_Parent_AfterCheck;
+        }
+
+        private static void Compatible_Tree_Child_Parent_AfterCheck(object sender, TreeViewEventArgs e)
+        {
+            if (e.Action != TreeViewAction.Unknown)
+            {
+                if (e.Node.Nodes.Count > 0)
+                {
+                    CheckAllChildNodes(e.Node, e.Node.Checked);
+                }
+                CheckTreeParent(e.Node);
+            }
+
+
+        }
+
+        public static void CheckTreeParent(TreeNode node)
+        {
+            if (node != null)
+            {
+                if (node.Parent != null)
+                {
+                    bool? all_checked = null;
+                    var nodes = node.Parent.Nodes;
+                    foreach (TreeNode item in nodes)
+                    {
+                        if (item.Checked)
+                        {
+                            if (all_checked == true || all_checked == null)
+                                all_checked = true;
+                            else
+                            {
+                                all_checked = null;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            if (all_checked == false || all_checked == null)
+                                all_checked = false;
+                            else
+                            {
+                                all_checked = null;
+                                break;
+                            }
+                        }
+                    }
+
+                    node.Parent.Checked = all_checked != null ? (bool)all_checked : node.Parent.Checked;
+
+                }
+                CheckTreeParent(node.Parent);
+            }
+        }
+
+
+        public static void CheckAllChildNodes(TreeNode treeNode, bool nodeChecked)
+        {
+            foreach (TreeNode node in treeNode.Nodes)
+            {
+                node.Checked = nodeChecked;
+                if (node.Nodes.Count > 0)
+                {
+                    // If the current node has child nodes, call the CheckAllChildsNodes method recursively.
+                    CheckAllChildNodes(node, nodeChecked);
+                }
+            }
+        }
+
+
+
+        public static void CheckAccess(string role, DbContext db, string tb_name, MenuStrip menu)
+        {
+            var query = "select * from " + tb_name + " where [role]='" + role + "';";
+            var rezL = SRL.Database.SqlQuery<string>(db, query);
+            if (rezL != null)
+                if (rezL.Any())
+                {
+                    EnableMenuBasedOnPermissions(rezL.First(), menu);
+                }
+
+        }
+
+        private void LoadPermissionsInTree(string permission_str, TreeView tree)
+        {
+            var permissions_list = permission_str.Split(';');
+
+            foreach (var item in permissions_list)
+            {
+                var node = tree.Nodes.Find(item, true);
+                if (node.Any())
+                {
+                    node.First().Checked = true;
+                }
+            }
+        }
+
+        public static void EnableMenuBasedOnPermissions(string permission_str, MenuStrip menu)
+        {
+            var permissions_list = permission_str.Split(';');
+            var menu_items = SRL.ChildParent.GetAllMenuItems(menu);
+            foreach (var item in menu_items)
+            {
+                item.Enabled = false;
+            }
+            foreach (var item in permissions_list)
+            {
+
+                var menu_item = menu_items.Where(x => x.Name == item);
+                if (menu_item.Any())
+                {
+                    menu_item.First().Enabled = true;
+                }
+            }
+        }
+
+
+        internal static IEnumerable<TreeNode> GetAllNodesChild(TreeNodeCollection c)
+        {
+            foreach (var node in c.OfType<TreeNode>())
+            {
+                foreach (var child in GetAllNodesChild(node.Nodes))
+                {
+                    yield return child;
+                }
+                yield return node;
+            }
+        }
+
+
+    }
     public class Print
     {
         public static void PrintPaperSize(PrintDialog print_dialog, string paper_name = "Custom", int height = 584, int width = 827)
@@ -696,17 +873,17 @@ namespace SRL
             {
                 allItems.Add(toolItem);
                 //add sub items
-                allItems.AddRange(GetItems(toolItem));
+                allItems.AddRange(GetAllToolStripMenuItems(toolItem));
             }
             return allItems;
         }
-        private static IEnumerable<ToolStripMenuItem> GetItems(ToolStripMenuItem item)
+        public static IEnumerable<ToolStripMenuItem> GetAllToolStripMenuItems(ToolStripMenuItem item)
         {
             foreach (ToolStripMenuItem dropDownItem in item.DropDownItems)
             {
                 if (dropDownItem.HasDropDownItems)
                 {
-                    foreach (ToolStripMenuItem subItem in GetItems(dropDownItem))
+                    foreach (ToolStripMenuItem subItem in GetAllToolStripMenuItems(dropDownItem))
                         yield return subItem;
                 }
                 yield return dropDownItem;
@@ -1005,6 +1182,19 @@ namespace SRL
         }
         public class TextBoxClass
         {
+            public static void TextBoxSelectAllOnTab(List<TextBox> tbList)
+            {
+                foreach (var item in tbList)
+                {
+                    item.GotFocus += textbox_select_all_GotFocus;
+                }
+            }
+
+            private static void textbox_select_all_GotFocus(object sender, EventArgs e)
+            {
+                (sender as TextBox).SelectAll();
+            }
+
             public class TextBoxBorderColor
             {
                 /// <summary>
@@ -4189,10 +4379,10 @@ namespace SRL
 
         }
 
-        public class  Backup
+        public class Backup
         {
             ProgressBar progressBar1;
-            public  Backup(string filter, string source, ProgressBar progressBar1_)
+            public Backup(string filter, string source, ProgressBar progressBar1_)
             {
                 progressBar1 = progressBar1_;
 
@@ -4228,7 +4418,7 @@ namespace SRL
                 var result = open.ShowDialog();
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
                 {
-                    var x = new FileManagement.FileCopyProgress(open.FileName,des);
+                    var x = new FileManagement.FileCopyProgress(open.FileName, des);
                     if (progressBar1 != null) x.OnProgressChanged += X_OnProgressChanged;
                     x.Copy();
 
@@ -4457,7 +4647,7 @@ namespace SRL
             int exe;
             try
             {
-                db.Database.ExecuteSqlCommand(query);
+                exe = db.Database.ExecuteSqlCommand(query);
                 exe = db.SaveChanges();
             }
             catch (Exception ex)
@@ -4893,8 +5083,8 @@ namespace SRL
         {
 
         }
-     
-         
+
+
 
         public class FileCopyProgress
         {

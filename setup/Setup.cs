@@ -38,8 +38,17 @@ namespace SRL
             , bool? is_update_or_null_if_all, List<string> update_file_list_ = null, string icon_full_path_from_source_directory_ = null)
 
         {
-            //var directory_install_path_ =Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),@"PmLite");
-            // var directory_installations_files_path_ = Path.Combine(SRL.FileManagement.GetCurrentDirectory(), "Release");
+            /* use:
+             private void Form1_Load(object sender, EventArgs e)
+        {
+            var des =Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),@"sahmiye");
+            var source=Path.Combine(SRL.FileManagement.GetCurrentDirectory(), "Release");
+            var setup = new SRL.Setup("sahmiye", "sahmiye", des,source, null,new List<string> { "MyDatabase.sqlite" , "license.lic" }, "Fuel4Numbers.ico");
+            setup.ShowDialog();
+            this.Close();
+
+        }
+        */
             InitializeComponent();
             icon_full_path_from_source_directory = icon_full_path_from_source_directory_;
             dir_install_name = directory_install_path_;
@@ -99,15 +108,16 @@ namespace SRL
 
         private void btnBrowsSource_Click(object sender, EventArgs e)
         {
-            folderBrowserDialog1.ShowDialog();
-            tbSource.Text = folderBrowserDialog1.SelectedPath + @"\";
+
+            if (folderBrowserDialog1.ShowDialog() == DialogResult.OK && !string.IsNullOrWhiteSpace(folderBrowserDialog1.SelectedPath))
+                tbSource.Text = folderBrowserDialog1.SelectedPath + @"\";
 
         }
 
         private void btnBrowsDes_Click(object sender, EventArgs e)
         {
-            folderBrowserDialog1.ShowDialog();
-            tbDestination.Text = folderBrowserDialog1.SelectedPath + @"\";
+            if (folderBrowserDialog1.ShowDialog() == DialogResult.OK && !string.IsNullOrWhiteSpace(folderBrowserDialog1.SelectedPath))
+                tbDestination.Text = folderBrowserDialog1.SelectedPath + @"\";
 
         }
 
