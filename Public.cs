@@ -35,10 +35,11 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms.Design;
 using System.Web.Script.Serialization;
 using System.ServiceModel;
+using System.Data.OleDb;
 
 namespace SRL
 {
-    public class nf
+    public class TreeMenuAccess
     {
         /*
         var x = GetAllNodesChild(treeView1.Nodes).Where(y => y.Checked).Select(i => i.Name).ToList();
@@ -49,126 +50,39 @@ namespace SRL
             CheckAccess("user", Publics.dbGlobal, "PermissionTB", );
 
 */
-        public void ConvertMenuToTreeView(MenuStrip menu, TreeView tree)
+
+        public static void SavePermissionFromTree(object role_obj, TreeView tree, string personnel_entity, DbContext db)
         {
-            var list = SRL.ChildParent.GetAllMenuItems(menu);
-            Dictionary<ToolStripMenuItem, bool> menu_conversion = new Dictionary<ToolStripMenuItem, bool>();
-            while (menu_conversion.Keys.Count == 0 || menu_conversion.Values.Where(x => x.Equals(false)).Any())
-            {
-                foreach (var item in list)
+            if (role_obj != null)
+                if (role_obj.ToString() != "")
                 {
-                    if (menu_conversion.ContainsKey(item))
-                        if (menu_conversion[item] == true) continue;
-                    var owner_item = item.OwnerItem;
-                    if (owner_item != null)
-                    {
-                        TreeNode[] node = tree.Nodes.Find(owner_item.Name, true);
-                        if (node.Any())
-                        {
-                            node.First().Nodes.Add(item.Name, item.Text);
-                            menu_conversion[item] = true;
-                        }
-                        else menu_conversion[item] = false;
-
-
-                    }
-                    else
-                    {
-                        tree.Nodes.Add(item.Name, item.Text);
-                        menu_conversion[item] = true;
-                    }
-                }
-            }
-        }
-
-        public static void CompatibleTreeChildAndParentCheck(TreeView tree)
-        {
-            tree.AfterCheck += Compatible_Tree_Child_Parent_AfterCheck;
-        }
-
-        private static void Compatible_Tree_Child_Parent_AfterCheck(object sender, TreeViewEventArgs e)
-        {
-            if (e.Action != TreeViewAction.Unknown)
-            {
-                if (e.Node.Nodes.Count > 0)
-                {
-                    CheckAllChildNodes(e.Node, e.Node.Checked);
-                }
-                CheckTreeParent(e.Node);
-            }
-
-
-        }
-
-        public static void CheckTreeParent(TreeNode node)
-        {
-            if (node != null)
-            {
-                if (node.Parent != null)
-                {
-                    bool? all_checked = null;
-                    var nodes = node.Parent.Nodes;
-                    foreach (TreeNode item in nodes)
-                    {
-                        if (item.Checked)
-                        {
-                            if (all_checked == true || all_checked == null)
-                                all_checked = true;
-                            else
-                            {
-                                all_checked = null;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            if (all_checked == false || all_checked == null)
-                                all_checked = false;
-                            else
-                            {
-                                all_checked = null;
-                                break;
-                            }
-                        }
-                    }
-
-                    node.Parent.Checked = all_checked != null ? (bool)all_checked : node.Parent.Checked;
+                    var role = (string)role_obj;
+                    var x = SRL.ChildParent.GetAllNodesChild(tree.Nodes).Where(y => y.Checked).Select(i => i.Name).ToList();
+                    var permissions_str = string.Join(";", x);
+                    string query = "update " + personnel_entity + " set [permission]='" + permissions_str + "' where [role]='" + role + "';";
+                    SRL.Database.ExecuteQuery(db, query);
 
                 }
-                CheckTreeParent(node.Parent);
-            }
         }
-
-
-        public static void CheckAllChildNodes(TreeNode treeNode, bool nodeChecked)
-        {
-            foreach (TreeNode node in treeNode.Nodes)
-            {
-                node.Checked = nodeChecked;
-                if (node.Nodes.Count > 0)
-                {
-                    // If the current node has child nodes, call the CheckAllChildsNodes method recursively.
-                    CheckAllChildNodes(node, nodeChecked);
-                }
-            }
-        }
-
-
-
         public static void CheckAccess(string role, DbContext db, string tb_name, MenuStrip menu)
         {
             var query = "select * from " + tb_name + " where [role]='" + role + "';";
-            var rezL = SRL.Database.SqlQuery<string>(db, query);
+            var rezL = SRL.Database.SqlQuery<RoleClass>(db, query);
             if (rezL != null)
                 if (rezL.Any())
                 {
-                    EnableMenuBasedOnPermissions(rezL.First(), menu);
+                    EnableMenuBasedOnPermissions(rezL.First().permission, menu);
                 }
 
         }
 
-        private void LoadPermissionsInTree(string permission_str, TreeView tree)
+        public static bool LoadPermissionsInTree(object permission_obj, TreeView tree)
         {
+            SRL.ChildParent.UnCheckAllTreeNodes(tree);
+            if (permission_obj == null) return false;
+            if (permission_obj.ToString() == "") return false;
+
+            string permission_str = permission_obj.ToString();
             var permissions_list = permission_str.Split(';');
 
             foreach (var item in permissions_list)
@@ -179,6 +93,9 @@ namespace SRL
                     node.First().Checked = true;
                 }
             }
+            return true;
+
+
         }
 
         public static void EnableMenuBasedOnPermissions(string permission_str, MenuStrip menu)
@@ -200,18 +117,6 @@ namespace SRL
             }
         }
 
-
-        internal static IEnumerable<TreeNode> GetAllNodesChild(TreeNodeCollection c)
-        {
-            foreach (var node in c.OfType<TreeNode>())
-            {
-                foreach (var child in GetAllNodesChild(node.Nodes))
-                {
-                    yield return child;
-                }
-                yield return node;
-            }
-        }
 
 
     }
@@ -855,6 +760,99 @@ namespace SRL
 
     public class ChildParent
     {
+        internal static IEnumerable<TreeNode> GetAllNodesChild(TreeNodeCollection c)
+        {
+            foreach (var node in c.OfType<TreeNode>())
+            {
+                foreach (var child in GetAllNodesChild(node.Nodes))
+                {
+                    yield return child;
+                }
+                yield return node;
+            }
+        }
+
+        public static void UnCheckAllTreeNodes(TreeView tree)
+        {
+            foreach (TreeNode node in tree.Nodes)
+            {
+                node.Checked = false;
+                if (node.Nodes.Count > 0)
+                {
+                    // If the current node has child nodes, call the CheckAllChildsNodes method recursively.
+                    CheckAllChildNodes(node, false);
+                }
+            }
+        }
+        public static void CheckTreeParent(TreeNode node)
+        {
+            if (node != null)
+            {
+                if (node.Parent != null)
+                {
+                    bool? all_checked = null;
+                    var nodes = node.Parent.Nodes;
+                    foreach (TreeNode item in nodes)
+                    {
+                        if (item.Checked)
+                        {
+                            if (all_checked == true || all_checked == null)
+                                all_checked = true;
+                            else
+                            {
+                                all_checked = null;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            if (all_checked == false || all_checked == null)
+                                all_checked = false;
+                            else
+                            {
+                                all_checked = null;
+                                break;
+                            }
+                        }
+                    }
+
+                    node.Parent.Checked = all_checked != null ? (bool)all_checked : node.Parent.Checked;
+
+                }
+                CheckTreeParent(node.Parent);
+            }
+        }
+        public static void CheckAllChildNodes(TreeNode treeNode, bool nodeChecked)
+        {
+            foreach (TreeNode node in treeNode.Nodes)
+            {
+                node.Checked = nodeChecked;
+                if (node.Nodes.Count > 0)
+                {
+                    // If the current node has child nodes, call the CheckAllChildsNodes method recursively.
+                    CheckAllChildNodes(node, nodeChecked);
+                }
+            }
+        }
+        public static void CompatibleTreeChildAndParentCheck(TreeView tree)
+        {
+            tree.AfterCheck += Compatible_Tree_Child_Parent_AfterCheck;
+        }
+
+        private static void Compatible_Tree_Child_Parent_AfterCheck(object sender, TreeViewEventArgs e)
+        {
+            if (e.Action != TreeViewAction.Unknown)
+            {
+                if (e.Node.Nodes.Count > 0)
+                {
+                    CheckAllChildNodes(e.Node, e.Node.Checked);
+                }
+                CheckTreeParent(e.Node);
+            }
+
+
+        }
+
         public static IEnumerable<Control> GetAllChildrenControls(Control root)
         {
             var q = new Queue<Control>(root.Controls.Cast<Control>());
@@ -917,7 +915,19 @@ namespace SRL
             if (types_to_refresh != null)
                 foreach (var item in types_to_refresh)
                 {
-                    if (item == typeof(ComboBox)) ClearControlsValue<ComboBox>(childs, "SelectedValue", -1);
+                    if (item == typeof(ComboBox))
+                    {
+                        try
+                        {
+                            ClearControlsValue<ComboBox>(childs, "SelectedValue", -1);
+                        }
+                        catch (Exception)
+                        {
+
+                            ClearControlsValue<ComboBox>(childs, "Text", string.Empty);
+                        }
+
+                    }
                     if (item == typeof(TextBox)) ClearControlsValue<TextBox>(childs, "Text", string.Empty);
                     if (item == typeof(RadioButton)) ClearControlsValue<RadioButton>(childs, "Checked", false);
                     if (item == typeof(CheckBox)) ClearControlsValue<CheckBox>(childs, "Checked", false);
@@ -977,6 +987,83 @@ namespace SRL
     }
     public class ActionManagement
     {
+        /// <summary>
+        /// first create instance of class. then create event of instance.bg.RunWorkerCompleted += Bg_RunWorkerCompleted; and put after complete code in it then call RunMethodInBackground
+        /// </summary>
+        public class MethodBackgroundWorker
+        {
+            // if function hase loop, set report_progress=rue,
+            //and get bg from class instance,
+            //then add  bg.ReportProgress( list.IndexOf(item) *100 / list.Count); in loop
+
+            /* use: 
+             var method = new MethodBackgroundWorker( true, Publics.form_progress_bar,true);
+             method.bg.RunWorkerCompleted += Bg_RunWorkerCompleted; // because ob Async
+            method.RunMethodInBackground(() => InsertdataToDb(method.bg));
+             */
+
+            Action function;
+            bool report_progress;
+            ProgressBar progress_bar;
+            ProgressBarStyle main_style;
+            bool progress_bar_end_visible;
+            public BackgroundWorker bg = new BackgroundWorker();
+            public MethodBackgroundWorker(bool report_progress_, ProgressBar progress_bar_, bool progress_bar_end_visible_, ProgressBarStyle bar_style)
+            {
+
+                report_progress = report_progress_;
+
+                progress_bar_end_visible = progress_bar_end_visible_;
+                bg.DoWork += new DoWorkEventHandler(bg_DoWork);
+
+                bg.WorkerReportsProgress = report_progress;
+
+                if (progress_bar_ != null)
+                {
+                    bg.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bg_RunWorkerCompleted);
+                    bg.ProgressChanged += Bg_ProgressChanged;
+                    progress_bar = progress_bar_;
+                    progress_bar.Visible = true;
+                    main_style = progress_bar.Style;
+                    progress_bar.Style = bar_style;
+                }
+
+            }
+            public void RunMethodInBackground(Action function_)
+            {
+                function = function_;
+                bg.RunWorkerAsync();
+            }
+
+            private void Bg_ProgressChanged(object sender, ProgressChangedEventArgs e)
+            {
+                if (report_progress) progress_bar.Value = e.ProgressPercentage;
+            }
+
+            private void bg_DoWork(object sender, DoWorkEventArgs e)
+            {
+                SRL.ActionManagement.MethodInvoker(function);
+            }
+
+            private void bg_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+            {
+                progress_bar.Style = main_style;
+
+                progress_bar.Visible = progress_bar_end_visible;
+            }
+        }
+        public static void AddValueToAllDataTableRows(DataTable dt, string column, string value)
+        {
+            try
+            {
+                dt.Columns[column].Expression = value;
+            }
+            catch (Exception ex)
+            {
+                var mes = ex.Message;
+            }
+
+        }
         public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value, string user, string log)
         {
             string tb_name = typeof(ActionLogT).Name;
@@ -1006,6 +1093,44 @@ namespace SRL
             }
             Task.WaitAll(task_list.ToArray());
         }
+
+        public static void MethodDynamicInvoker(Action function, Control container_control)
+        { // use it for datagridviews_CellEndEdit event in error "Operation is not valid because it results in a reentrant call to the SetCurrentCellAddressCore function"
+          /* 
+      public void AddOrEditNewRole(int col , int row)
+      {
+
+          ...do what ever you want and any input in function
+      }
+
+           MethodDynamicInvoker( () => AddOrEditNewRole(3, 4), this); 
+      */
+            container_control.BeginInvoke(new MethodInvoker(() =>
+            {
+                function.DynamicInvoke();
+            }));
+            // return function.DynamicInvoke(parameters);
+
+        }
+
+        public static void MethodInvoker(Action function)
+        {
+            try
+            {
+                function.Invoke();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        public static object MethodDynamicInvoker<T>(Func<T> function, params object[] parameters)
+        {
+            return function.DynamicInvoke(parameters);
+        }
+
+
     }
     public class ClassManagement
     {
@@ -3455,6 +3580,7 @@ namespace SRL
         public Security() { }
 
 
+
         public enum UserRegistrationStatus
         {
             NotRegistered = 0,
@@ -3466,6 +3592,70 @@ namespace SRL
             Sha1,
             MD5,
             Sha256
+        }
+
+        /// <summary>
+        /// permission table must have columns: id , role , permission
+        /// </summary>
+        public class RolePermissionManagement
+        {
+
+            public static bool AddOrEditNewRole(string permission_entity, object role_obj, DbContext db, object edit_id)
+            {
+                if (edit_id == null ? false : edit_id.ToString() != "")
+                    return EditRoleTitle(permission_entity, role_obj, db, edit_id);
+                else
+                    return AddNewRole(permission_entity, role_obj, db, null);
+
+            }
+
+            public static bool DeleteRole(string permission_entity, object id_obj, DbContext db)
+            {
+                if (id_obj == null ? false : id_obj.ToString() != "")
+                {
+                    var q = "delete from " + permission_entity + " where id=" + long.Parse(id_obj.ToString());
+                    var res = SRL.Database.ExecuteQuery(db, q);
+                    return res == "" ? true : false;
+                }
+                else return false;
+
+            }
+            public static bool AddNewRole(string permission_entity, object role_obj, DbContext db, object edit_id)
+            {
+                if (CheckRoleIsUnique(permission_entity, role_obj, db))
+                {
+                    var q = "insert into " + permission_entity + " ([role]) values ('" + role_obj.ToString() + "');";
+                    var res = SRL.Database.ExecuteQuery(db, q);
+                    return res == "" ? true : false;
+                }
+                else return false;
+            }
+            public static bool EditRoleTitle(string permission_entity, object role_obj, DbContext db, object edit_id)
+            {
+                if (role_obj == null) return false;
+                if (role_obj.ToString() == "") return false;
+
+                var q = "update " + permission_entity + " set [role]='" + role_obj.ToString() + "' where id=" + long.Parse(edit_id.ToString());
+                var res = SRL.Database.ExecuteQuery(db, q);
+                return res == "" ? true : false;
+            }
+            public static bool CheckRoleIsUnique(string permission_entity, object role_obj, DbContext db)
+            {
+                if (role_obj == null) return false;
+                if (role_obj.ToString() == "") return false;
+
+                string sql = "select *  from " + permission_entity + " where [role]='" + role_obj.ToString() + "'";
+                var role = SRL.Database.SqlQuery<RoleClass>(db, sql);
+                if (role == null ? false : role.Any())
+                {
+                    return false;
+                }
+                else return true;
+            }
+            public static List<string> GetAllRoles(string permission_entity, DbContext db)
+            {
+                return SRL.Database.SqlQuery<string>(db, "select [role] from " + permission_entity);
+            }
         }
         public static Version GetAppVersion()
         {
@@ -3788,6 +3978,58 @@ namespace SRL
     }
     public class Convertor
     {
+        public static List<T> ConvertDataTableToList<T>(DataTable dt)
+        {
+            var columnNames = dt.Columns.Cast<DataColumn>()
+                    .Select(c => c.ColumnName)
+                    .ToList();
+            var properties = typeof(T).GetProperties();
+            return dt.AsEnumerable().Select(row =>
+            {
+                var objT = Activator.CreateInstance<T>();
+                foreach (var pro in properties)
+                {
+                    if (columnNames.Contains(pro.Name))
+                    {
+                        PropertyInfo pI = objT.GetType().GetProperty(pro.Name);
+                        pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
+                    }
+                }
+                return objT;
+            }).ToList();
+        }
+        public static void ConvertMenuToTreeView(MenuStrip menu, TreeView tree)
+        {
+            var list = SRL.ChildParent.GetAllMenuItems(menu);
+            Dictionary<ToolStripMenuItem, bool> menu_conversion = new Dictionary<ToolStripMenuItem, bool>();
+            while (menu_conversion.Keys.Count == 0 || menu_conversion.Values.Where(x => x.Equals(false)).Any())
+            {
+                foreach (var item in list)
+                {
+                    if (menu_conversion.ContainsKey(item))
+                        if (menu_conversion[item] == true) continue;
+                    var owner_item = item.OwnerItem;
+                    if (owner_item != null)
+                    {
+                        TreeNode[] node = tree.Nodes.Find(owner_item.Name, true);
+                        if (node.Any())
+                        {
+                            node.First().Nodes.Add(item.Name, item.Text);
+                            menu_conversion[item] = true;
+                        }
+                        else menu_conversion[item] = false;
+
+
+                    }
+                    else
+                    {
+                        tree.Nodes.Add(item.Name, item.Text);
+                        menu_conversion[item] = true;
+                    }
+                }
+            }
+        }
+
         public class IEnumerableToDatatable
         {
 
@@ -4636,10 +4878,11 @@ namespace SRL
 
         }
 
-        public static void TruncateTable(DbContext db, string table_name)
+        public static int TruncateTable(DbContext db, string table_name)
         {
-            db.Database.ExecuteSqlCommand("delete from " + table_name);
+            int res = db.Database.ExecuteSqlCommand("delete from " + table_name);
             db.SaveChanges();
+            return res;
         }
         public static string ExecuteQuery(DbContext db, string query)
         {
@@ -4747,6 +4990,96 @@ namespace SRL
 
 
     }
+    public class AccessManagement
+    {
+        /// <summary>
+        ///  
+        /// </summary>
+        /// <param name="ofDialog"></param>
+        /// <param name="lblFileName"></param>
+        /// <param name="main_headers"></param>
+        /// <param name="dataGridView1"></param>
+        /// <param name="lblCount"></param>
+        public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
+        {
+            if (ofDialog.FileName == null)
+            {
+                ofDialog.Filter = "Access files|*.accdb";
+                if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
+                lblFileName.Text = ofDialog.FileName;
+            }
+            DataTable table = GetDataTableFromAccess(ofDialog.FileName, table_name);
+            if (table == null) return null;
+            var x = table.AsEnumerable();
+
+            string check_header = CheckAccessHeaders(table, main_headers);
+            if (check_header == "true")
+            {
+                dgv.DataSource = table;
+
+                if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+            }
+
+            else MessageBox.Show(check_header);
+
+            return table;
+        }
+
+        public static DataTable GetDataTableFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
+        {
+            string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
+            string strSql = "Select * from " + table_name;
+            OleDbConnection con = new OleDbConnection(strProvider);
+            OleDbCommand cmd = new OleDbCommand(strSql, con);
+            con.Open();
+            cmd.CommandType = CommandType.Text;
+            OleDbDataAdapter da = new OleDbDataAdapter(cmd);
+            DataTable table = new DataTable();
+            try
+            {
+                da.Fill(table);
+                return table;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                return null;
+            }
+        }
+
+        public static string CheckAccessHeaders(DataTable dt, string[] main_headers)
+        {
+            List<string> access_columns = new List<string>();
+            foreach (DataColumn item in dt.Columns)
+            {
+                access_columns.Add(item.ColumnName);
+            }
+
+            foreach (var file_header in access_columns)
+            {
+                Application.DoEvents();
+                if (!main_headers.Contains(file_header))
+                {
+                    return file_header + " is not valid.";
+                }
+                else continue;
+            }
+
+            foreach (var main_header in main_headers)
+            {
+                Application.DoEvents();
+                if (!access_columns.Contains(main_header))
+                {
+                    return "file does not have column: " + main_header;
+                }
+                else continue;
+            }
+
+            return "true";
+
+        }
+
+    }
     public class ExcelManagement : SRL.ControlLoad
     {
         public ExcelManagement()
@@ -4799,21 +5132,25 @@ namespace SRL
 
         public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
-            ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
-            ofDialog.ShowDialog();
-            lblFileName.Text = ofDialog.FileName;
-
+            if (ofDialog.FileName == null)
+            {
+                ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
+                if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return;
+                lblFileName.Text = ofDialog.FileName;
+            }
             ExcelLibrary.Office.Excel.Workbook excel_file = ExcelLibrary.Office.Excel.Workbook.Open(ofDialog.FileName);
             var worksheet = excel_file.Worksheets[0]; // assuming only 1 worksheet
             var cells = worksheet.Cells;
+            
             string check_header = CheckExcelHeaders(cells, main_headers);
             if (check_header == "true")
-            {
+            {  
+                DataTable dt = new DataTable();
                 int file_last_column_index = cells.LastColIndex;
                 // add columns
                 foreach (var header in cells.GetRow(cells.FirstRowIndex))
                 {
-                    dgv.Columns.Add(header.Value.StringValue, header.Value.StringValue);
+                    dt.Columns.Add(header.Value.StringValue);
                 }
 
                 // add rows
@@ -4825,16 +5162,11 @@ namespace SRL
                     {
                         file_row_cells.Add(file_row.GetCell(i).Value);
                     }
-                    dgv.Rows.Add(file_row_cells.ToArray());
+                    dt.Rows.Add(file_row_cells.ToArray());
 
-                    //dgv.Rows.Add(file_row.GetCell(0).Value, file_row.GetCell(1).Value, file_row.GetCell(2).Value, file_row.GetCell(3).Value, file_row.GetCell(4).Value,
-                    //    file_row.GetCell(5).Value, file_row.GetCell(6).Value, file_row.GetCell(7).Value, file_row.GetCell(8).Value, file_row.GetCell(9).Value, file_row.GetCell(10).Value,
-                    //    file_row.GetCell(11).Value, file_row.GetCell(12).Value, file_row.GetCell(13).Value, file_row.GetCell(14).Value, file_row.GetCell(15).Value, file_row.GetCell(16).Value,
-                    //    file_row.GetCell(17).Value, file_row.GetCell(18).Value, file_row.GetCell(19).Value, file_row.GetCell(20).Value, file_row.GetCell(21).Value, file_row.GetCell(22).Value, file_row.GetCell(23).Value,
-                    //    file_row.GetCell(24).Value, file_row.GetCell(25).Value, file_row.GetCell(26).Value, file_row.GetCell(27).Value, file_row.GetCell(28).Value, file_row.GetCell(29).Value, file_row.GetCell(30).Value
-                    //    );
                 }
 
+                dgv.DataSource = dt;
                 if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
 
@@ -4869,6 +5201,8 @@ namespace SRL
             return "true";
 
         }
+
+
 
         public enum ExcelPathType
         {
@@ -4920,6 +5254,7 @@ namespace SRL
 
             ExcelLibrary.DataSetHelper.CreateWorkbook(@path, ds);
         }
+
     }
     public class ControlLoad : IDisposable
     {
@@ -5084,6 +5419,25 @@ namespace SRL
 
         }
 
+        public static void LoadDGVFromFile(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
+        {
+            ofDialog.Filter = "access or excel 2003|*.accdb; *.xls";
+
+
+            if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return;
+            lblFileName.Text = ofDialog.FileName;
+            switch (Path.GetExtension(ofDialog.FileName))
+            {
+                case ".xls":
+                    SRL.ExcelManagement.LoadDGVFromExcel(ofDialog, lblFileName, main_headers, dgv, lblCount);
+                    break;
+                case ".accdb":
+                    SRL.AccessManagement.LoadDGVFromAccess(ofDialog, lblFileName, main_headers, dgv, lblCount, table_name);
+                    break;
+            }
+
+
+        }
 
 
         public class FileCopyProgress
@@ -5113,11 +5467,8 @@ namespace SRL
                 using (FileStream source = new FileStream(SourceFilePath, FileMode.Open, FileAccess.Read))
                 {
                     long fileLength = source.Length;
-                    if (System.IO.File.Exists(DestFilePath))
-                    {
-                        System.IO.File.Delete(DestFilePath);
-                    }
-                    using (FileStream dest = new FileStream(DestFilePath, FileMode.CreateNew, FileAccess.Write))
+
+                    using (FileStream dest = new FileStream(DestFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
                     {
                         long totalBytes = 0;
                         int currentBlockSize = 0;

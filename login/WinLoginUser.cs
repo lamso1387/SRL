@@ -15,11 +15,14 @@ namespace SRL
     public partial class WinLoginUser : UserControl
     {
         DbContext db;
-        string entity_name;
+        string personnel_entity;
+        string permission_entity;
         WinSessionId session;
-        SRL.Database srl_db = new SRL.Database(); 
+        SRL.Database srl_db = new SRL.Database();
         Color btn_color;
         WinLoginProfile profile;
+        bool multi_admin;
+        MenuStrip menu;
 
         /// <summary>
         /// user table must have column: ID (long or bigint),username, password, name, family, role(master, user)
@@ -27,16 +30,19 @@ namespace SRL
         /// <param name="db_"></param>
         /// <param name="entity_name_"></param>
         /// <param name="session_"></param>
-        public WinLoginUser(DbContext db_, string entity_name_, WinSessionId session_, Color btn_color_)
+        public WinLoginUser(DbContext db_, string personnel_entity_, WinSessionId session_, Color btn_color_, string permission_entity_, MenuStrip menu_, bool multi_admin_)
         {
             InitializeComponent();
             db = db_;
-            entity_name = entity_name_;
+            personnel_entity = personnel_entity_;
+            permission_entity = permission_entity_;
             session = session_;
             btn_color = btn_color_;
+            multi_admin = multi_admin_;
+            menu = menu_;
             foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
             {
-                new SRL.WinUI.ButtonClass.StyleButton(item, btn_color_, Color.Black,Color.FromKnownColor(KnownColor.Control));
+                new SRL.WinUI.ButtonClass.StyleButton(item, btn_color_, Color.Black, Color.FromKnownColor(KnownColor.Control));
             }
 
         }
@@ -44,7 +50,7 @@ namespace SRL
         public void LoadUsersInDgv()
         {
             dgvUsers.Rows.Clear();
-            string sql = "select id,password, name, family, username,role  from " + entity_name;
+            string sql = "select id,password, name, family, username,role  from " + personnel_entity;
             var users = SRL.Database.SqlQuery<UserClass>(db, sql);
             foreach (var item in users)
             {
@@ -56,22 +62,20 @@ namespace SRL
 
         private void DeleteUser(long id_del)
         {
-            string err = SRL.Database .ExecuteQuery(db, "delete from " + entity_name + " where id=" + id_del.ToString() + "");
+            string err = SRL.Database.ExecuteQuery(db, "delete from " + personnel_entity + " where id=" + id_del.ToString() + "");
             if (err != "") MessageBox.Show(err);
         }
         private void WinLoginUser_Load(object sender, EventArgs e)
         {
-            profile = new WinLoginProfile(db, entity_name, session, btn_color, this, WinLoginProfile.ProfileMode.New, null);
+            profile = new WinLoginProfile(db, personnel_entity, session, btn_color, this, WinLoginProfile.ProfileMode.New, null,multi_admin,permission_entity);
 
-            LoadUsersInDgv(); 
-            
-           
+            LoadUsersInDgv();
 
             SRL.WinTools.AddChildToParentControls(pnlProfile, profile);
 
-        }
+            if (permission_entity != null) SRL.WinTools.AddChildToParentControls(pnlRoles, new WinRolePermissions(db, permission_entity, session, btn_color, menu));
 
-        
+        }
 
         private void btnDel_Click(object sender, EventArgs e)
         {
@@ -87,7 +91,7 @@ namespace SRL
         private void dgvUsers_SelectionChanged(object sender, EventArgs e)
         {
             profile.ClearFields();
-            int row_selected_count=dgvUsers.SelectedRows.Count;   
+            int row_selected_count = dgvUsers.SelectedRows.Count;
             btnDel.Enabled = true;
             long? edit_id = null;
             if (row_selected_count > 0)
@@ -95,12 +99,12 @@ namespace SRL
                 btnDel.Enabled = dgvUsers.SelectedRows[0].Cells["role"].Value.ToString() == UserRoles.admin.ToString() ? false : true;
                 edit_id = (long)dgvUsers.SelectedRows[0].Cells["id"].Value;
             }
-            
+
             profile.ChangeMode(dgvUsers.SelectedRows.Count < 1 ? WinLoginProfile.ProfileMode.New : WinLoginProfile.ProfileMode.EditUser, edit_id);
 
         }
 
-      
+
 
 
 

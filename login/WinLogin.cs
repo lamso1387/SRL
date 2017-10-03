@@ -185,6 +185,13 @@ namespace SRL
         public string role { get; set; }
 
     }
+    public class RoleClass
+    {
+        public long id { get; set; }
+        public string role { get; set; }
+        public string permission { get; set; } 
+
+    }
 
     public enum UserRoles
     {

@@ -222,6 +222,12 @@
     <Compile Include="login\WinLoginUser.Designer.cs">
       <DependentUpon>WinLoginUser.cs</DependentUpon>
     </Compile>
+    <Compile Include="login\WinRolePermissions.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="login\WinRolePermissions.Designer.cs">
+      <DependentUpon>WinRolePermissions.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="content\bootstrap-treeview.min.css" />
@@ -345,6 +351,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="tools\MessageBoxForm2.resx">
       <DependentUpon>MessageBoxForm2.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="login\WinRolePermissions.resx">
+      <DependentUpon>WinRolePermissions.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

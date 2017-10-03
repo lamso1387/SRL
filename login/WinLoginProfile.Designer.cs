@@ -29,7 +29,6 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this.tbRole = new System.Windows.Forms.TextBox();
             this.label6 = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
@@ -44,17 +43,9 @@
             this.btnEdit = new System.Windows.Forms.Button();
             this.btnAdd = new System.Windows.Forms.Button();
             this.errorProvider1 = new System.Windows.Forms.ErrorProvider(this.components);
+            this.cbRole = new System.Windows.Forms.ComboBox();
             ((System.ComponentModel.ISupportInitialize)(this.errorProvider1)).BeginInit();
             this.SuspendLayout();
-            // 
-            // tbRole
-            // 
-            this.tbRole.Location = new System.Drawing.Point(221, 52);
-            this.tbRole.Margin = new System.Windows.Forms.Padding(2);
-            this.tbRole.Name = "tbRole";
-            this.tbRole.ReadOnly = true;
-            this.tbRole.Size = new System.Drawing.Size(81, 27);
-            this.tbRole.TabIndex = 17;
             // 
             // label6
             // 
@@ -184,11 +175,19 @@
             // 
             this.errorProvider1.ContainerControl = this;
             // 
+            // cbRole
+            // 
+            this.cbRole.FormattingEnabled = true;
+            this.cbRole.Location = new System.Drawing.Point(221, 53);
+            this.cbRole.Name = "cbRole";
+            this.cbRole.Size = new System.Drawing.Size(81, 28);
+            this.cbRole.TabIndex = 16;
+            // 
             // WinLoginProfile
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Controls.Add(this.tbRole);
+            this.Controls.Add(this.cbRole);
             this.Controls.Add(this.btnAdd);
             this.Controls.Add(this.tbPass);
             this.Controls.Add(this.label6);
@@ -228,7 +227,6 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.TextBox tbPassRep;
         private System.Windows.Forms.ErrorProvider errorProvider1;
-        private System.Windows.Forms.TextBox tbRole;
-
+        private System.Windows.Forms.ComboBox cbRole;
     }
 }

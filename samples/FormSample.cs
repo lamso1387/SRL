@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 namespace FormSample
 {
     public partial class Form1 : Form
-    { 
+    {
         public Form1()
         {
             Publics.CheckFont();
@@ -26,8 +26,8 @@ namespace FormSample
             string user = Public.CheckLogin();
 
             InitializeComponent();
-
-            lblStaffName.Text = user; 
+            CheckAccess();
+            lblStaffName.Text = user;
 
         }
 
@@ -38,20 +38,23 @@ namespace FormSample
 
             // migration_version_query["2"] = "...";
             // migration_version_query["1"] = "ALTER TABLE WorksTB ADD progress_status nvarchar(50);"+migration_version_query["2"];
-             
+
 
             Publics.srlsetting.MigrateDatabase(migration_version_query);
         }
-
+        private void CheckAccess()
+        {
+            SRL.TreeMenuAccess.CheckAccess(Publics.srl_session.role, Publics.dbGlobal, typeof(PermissionTB).Name, menuStrip1);
+        }
         private void Form1_Load(object sender, EventArgs e)
-        { 
+        {
             this.AutoScroll = true;
             this.Text = "app_name v" + SRL.Security.GetAppVersion().ToString() + " By SRL";
-          
+
 
         }
 
-       
+
 
 
     }
@@ -73,7 +76,7 @@ namespace FormSample
         {
         }
 
- 
+
         public static string CheckLogin()
         {
 
@@ -92,7 +95,7 @@ namespace FormSample
             if (!Publics.srl_session.IsLogined) Environment.Exit(0);
             return Publics.srl_session.user_name + " " + Publics.srl_session.user_family;
         }
- 
+
         internal static void CheckSetting()
         {
 
@@ -105,9 +108,9 @@ namespace FormSample
                 kv["api_key"] = "2050130318";
                 srlsetting.InitiateSetting(kv);
             }
-             
-        } 
- 
+
+        }
+
         internal static void CheckLicense()
         {
             SRL.WinLicenseForm li_form = new SRL.WinLicenseForm(Assembly.GetExecutingAssembly(), true);
@@ -126,8 +129,8 @@ namespace FormSample
             string db_path = System.AppDomain.CurrentDomain.BaseDirectory + "MyDatabase.sqlite";
             string con_str = @"metadata=res://*/Model.Model1.csdl|res://*/Model.Model1.ssdl|res://*/Model.Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=" + db_path + "'";
 
-            SRL.Database.UpdateConnectionStringAndRestart(con_str, typeof(HesabdariEntities).Name, control); 
- 
+            SRL.Database.UpdateConnectionStringAndRestart(con_str, typeof(HesabdariEntities).Name, control);
+
         }
 
 
