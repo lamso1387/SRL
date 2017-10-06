@@ -29,12 +29,12 @@
         private void InitializeComponent()
         {
             this.dgvRoles = new System.Windows.Forms.DataGridView();
-            this.tvPermissions = new System.Windows.Forms.TreeView();
-            this.btnSave = new System.Windows.Forms.Button();
-            this.label1 = new System.Windows.Forms.Label();
             this.role = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.permission = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.id = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.tvPermissions = new System.Windows.Forms.TreeView();
+            this.btnSave = new System.Windows.Forms.Button();
+            this.label1 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.dgvRoles)).BeginInit();
             this.SuspendLayout();
             // 
@@ -50,6 +50,26 @@
             this.dgvRoles.Size = new System.Drawing.Size(145, 147);
             this.dgvRoles.TabIndex = 0;
             this.dgvRoles.SelectionChanged += new System.EventHandler(this.dgvRoles_SelectionChanged);
+            // 
+            // role
+            // 
+            this.role.DataPropertyName = "role";
+            this.role.HeaderText = "نقش";
+            this.role.Name = "role";
+            // 
+            // permission
+            // 
+            this.permission.DataPropertyName = "permission";
+            this.permission.HeaderText = "permission";
+            this.permission.Name = "permission";
+            this.permission.Visible = false;
+            // 
+            // id
+            // 
+            this.id.DataPropertyName = "id";
+            this.id.HeaderText = "id";
+            this.id.Name = "id";
+            this.id.Visible = false;
             // 
             // tvPermissions
             // 
@@ -78,30 +98,11 @@
             this.label1.TabIndex = 3;
             this.label1.Text = "دسترسی ها";
             // 
-            // role
-            // 
-            this.role.DataPropertyName = "role";
-            this.role.HeaderText = "نقش";
-            this.role.Name = "role";
-            // 
-            // permission
-            // 
-            this.permission.DataPropertyName = "permission";
-            this.permission.HeaderText = "permission";
-            this.permission.Name = "permission";
-            this.permission.Visible = false;
-            // 
-            // id
-            // 
-            this.id.DataPropertyName = "id";
-            this.id.HeaderText = "id";
-            this.id.Name = "id";
-            this.id.Visible = false;
-            // 
             // WinRolePermissions
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.Controls.Add(this.label1);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.tvPermissions);
@@ -109,7 +110,7 @@
             this.Font = new System.Drawing.Font("B Yekan", 9.75F);
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "WinRolePermissions";
-            this.Size = new System.Drawing.Size(160, 500);
+            this.Size = new System.Drawing.Size(158, 498);
             this.Load += new System.EventHandler(this.WinRolePermissions_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dgvRoles)).EndInit();
             this.ResumeLayout(false);

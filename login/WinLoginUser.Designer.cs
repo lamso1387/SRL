@@ -160,7 +160,6 @@
             // 
             // pnlRoles
             // 
-            this.pnlRoles.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlRoles.Location = new System.Drawing.Point(665, 13);
             this.pnlRoles.Margin = new System.Windows.Forms.Padding(2);
             this.pnlRoles.Name = "pnlRoles";

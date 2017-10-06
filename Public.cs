@@ -2584,8 +2584,18 @@ namespace SRL
             }
         }
 
-        public class DataGridViewTool
+        public  class DataGridViewTool
         {
+            public static List<T> GetColumnList<T>(DataGridViewSelectedRowCollection dgv_rows, string column_name)
+            {
+                List<T> list = new List<T>();
+                foreach (DataGridViewRow item in dgv_rows)
+                {
+                   list.Add((T)item.Cells[column_name].Value);
+
+                }
+                return list;
+            }
             public class DataGridViewWithPaging
             {
 
