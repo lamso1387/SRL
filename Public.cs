@@ -3037,16 +3037,18 @@ namespace SRL
 
         public class TextBoxTool
         {
-            public class Enable3DigitSeperation
+            public class DigitSeperation
             {
-                TextBox tb;
-                public Enable3DigitSeperation(TextBox tb_)
+                public static void Enable3DigitSeperation(params  TextBox[] tb_list)
                 {
-                    tb = tb_;
-                    tb_.TextChanged += new EventHandler(tb_TextChanged);
+                    foreach (var tb_ in tb_list)
+                    {
+                    tb_.TextChanged +=tb_TextChanged;   
+                    }
                 }
-                void tb_TextChanged(object sender, EventArgs e)
+                private static void  tb_TextChanged(object sender, EventArgs e)
                 {
+                    var tb = sender as TextBox;
                     string value = tb.Text.Replace(",", "");
                     ulong ul;
                     if (ulong.TryParse(value, out ul))
