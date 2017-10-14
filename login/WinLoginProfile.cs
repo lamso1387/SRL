@@ -79,7 +79,7 @@ namespace SRL
             if (profile_mode == ProfileMode.EditUser)
             {
                 btnEdit.Enabled = true;
-                cbRole.Enabled = true;
+                if (permission_entity != null) cbRole.Enabled = true;
                 ShowUserDataEdit();
             }
             else if (profile_mode == ProfileMode.EditProfile)
@@ -166,8 +166,17 @@ namespace SRL
         public void ClearFields()
         {
             SRL.ChildParent.RefreshFormControls(this, new List<Type> { typeof(TextBox), typeof(ComboBox) });
-            cbRole.DataSource = SRL.Security.RolePermissionManagement.GetAllRoles(permission_entity, db);
-            //tbRole.Text = UserRoles.user.ToString();
+            if (permission_entity != null)
+            {
+                cbRole.Enabled = true;
+                cbRole.DataSource = SRL.Security.RolePermissionManagement.GetAllRoles(permission_entity, db);
+
+            }
+            else
+            {
+                cbRole.Enabled = false;
+                cbRole.Text = UserRoles.user.ToString();
+            }
         }
 
 
