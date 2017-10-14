@@ -6,7 +6,7 @@ using System.Globalization;
 using System.ComponentModel;
 using System.Data;
 
-namespace DgvFilterPopup {
+namespace  DgvFilterPopup {
 
     /// <summary>
     /// Specifies how the <i>column filter</i> control is horizontally aligned inside the <i>filter host</i>.

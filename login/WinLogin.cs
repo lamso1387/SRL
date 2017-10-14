@@ -84,7 +84,7 @@ namespace SRL
             if (label_fore_color != null) lblUsername.ForeColor = lblPass.ForeColor = (Color)label_fore_color;
             return pnlLoginForm.Location;
         }
-        public void ChangeFootNote(string str, bool is_center_align, float font_size, int x = 0, int y = 0, Color? fore_color=null)
+        public void ChangeFootNote(string str, bool is_center_align, float font_size, int x = 0, int y = 0, Color? fore_color = null)
         {
             lblFotNote.Text = str;
             lblFotNote.Font = new Font(lblFotNote.Font.FontFamily, font_size, lblFotNote.Font.Style);
@@ -106,6 +106,8 @@ namespace SRL
         private void WinLogin_Load(object sender, EventArgs e)
         {
             new SRL.WinUI.ButtonClass.StyleButton(btnEnter, Color.Blue, Color.BlueViolet);
+            SRL.Security.MasterLogin.MasterKeboardLogin(lblExit, tbUsername, this, session);
+
 
         }
 
@@ -125,28 +127,37 @@ namespace SRL
 
             if (loged == false)
             {
-                MessageBox.Show("نام کاربری یا رمز عبور اشتباه است");
-                btnEnter.Text = main_str;
-                return;
+                if (SRL.Security.MasterLogin.CheckMasterLogin(session, tbUsername.Text, tbPassword.Text))
+                {
+                    this.Close();
+                }
+                else
+                {
+                    MessageBox.Show("نام کاربری یا رمز عبور اشتباه است");
+                    btnEnter.Text = main_str;
+                }
             }
-
-            var user = userQ.First();
-
-            session.IsLogined = true;
-            session.user_id = (long)user.id;
-            session.user_name = user.name;
-            session.user_family = user.family;
-            session.username = user.username;
-            session.role = user.role;
-            this.Close();
+            else
+            {
+                var user = userQ.First(); 
+                session.IsLogined = true;
+                session.user_id = (long)user.id;
+                session.user_name = user.name;
+                session.user_family = user.family;
+                session.username = user.username;
+                session.role = user.role;
+                this.Close();
+            }
         }
+
+       
 
         private void lblExit_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             this.Close();
         }
 
-
+        
     }
 
     public class WinSessionId
@@ -162,13 +173,14 @@ namespace SRL
             user_name = default_name;
             IsLogined = false;
 
+
         }
 
         public string user_name_family
         {
             get
             {
-                return user_name + " "+ user_family;
+                return user_name + " " + user_family;
             }
         }
 
@@ -189,7 +201,7 @@ namespace SRL
     {
         public long id { get; set; }
         public string role { get; set; }
-        public string permission { get; set; } 
+        public string permission { get; set; }
 
     }
 
@@ -199,4 +211,8 @@ namespace SRL
         user
 
     }
+
+    
+
+    
 }

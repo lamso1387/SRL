@@ -70,7 +70,7 @@ namespace SRL
 
         private void DgvRoles_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
-            SRL.ActionManagement.MethodDynamicInvoker(() => AddOrEditNewRole(e.ColumnIndex, e.RowIndex),this);
+            SRL.ActionManagement.MethodCall.MethodDynamicInvoker(() => AddOrEditNewRole(e.ColumnIndex, e.RowIndex),this);
         }
         public void AddOrEditNewRole(int col, int row)
         {

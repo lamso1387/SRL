@@ -50,6 +50,12 @@ namespace FormSample
         {
             this.AutoScroll = true;
             this.Text = "app_name v" + SRL.Security.GetAppVersion().ToString() + " By SRL";
+            SRL.ActionManagement.FormActions.ForceExitOnClose(this);
+            var progress = new SRL.ProgressControl();
+            pnlProgress.Controls.Add(progress);
+            Publics.form_progress_bar_label = progress.lbl_progress;
+            Publics.form_progress_bar = progress.progress_bar;
+            Publics.form_progress_bar_label.Parent.Visible = false;
 
 
         }
@@ -64,7 +70,8 @@ namespace FormSample
         public static SRL.WinSessionId srl_session = new SRL.WinSessionId(" عدم احراز", "هویت ");
         public static SRL.SettingClass<SettingTB> srl_setting_class = new SRL.SettingClass<SettingTB>(dbGlobal);
 
-
+        public static Label form_progress_bar_label;
+        public static ProgressBar form_progress_bar ;
         public static SRL.FontClass srl_font = new SRL.FontClass();
 
 

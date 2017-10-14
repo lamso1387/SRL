@@ -75,7 +75,7 @@
             this.tbUsername.Margin = new System.Windows.Forms.Padding(5);
             this.tbUsername.Name = "tbUsername";
             this.tbUsername.Size = new System.Drawing.Size(164, 34);
-            this.tbUsername.TabIndex = 0;
+            this.tbUsername.TabIndex = 0; 
             // 
             // tbPassword
             // 
@@ -111,7 +111,7 @@
             this.lblExit.TabIndex = 3;
             this.lblExit.TabStop = true;
             this.lblExit.Text = "خروج";
-            this.lblExit.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lblExit_LinkClicked);
+            this.lblExit.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lblExit_LinkClicked); 
             // 
             // pnlLoginForm
             // 
@@ -188,7 +188,7 @@
             this.Name = "WinLogin";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "ورود به نرم افزار";
-            this.Load += new System.EventHandler(this.WinLogin_Load);
+            this.Load += new System.EventHandler(this.WinLogin_Load); 
             this.pnlLoginForm.ResumeLayout(false);
             this.pnlLoginForm.PerformLayout();
             this.pnlFoot.ResumeLayout(false);

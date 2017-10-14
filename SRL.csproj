@@ -86,6 +86,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="tools\Button\GradientButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="tools\Button\GradientButton.designer.cs">
+      <DependentUpon>GradientButton.cs</DependentUpon>
+    </Compile>
     <Compile Include="LicenseClass.cs" />
     <Compile Include="license\WinLicenseActivation.cs">
       <SubType>Form</SubType>
@@ -228,6 +234,12 @@
     <Compile Include="login\WinRolePermissions.Designer.cs">
       <DependentUpon>WinRolePermissions.cs</DependentUpon>
     </Compile>
+    <Compile Include="tools\UserControls\ProgressControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\UserControls\ProgressControl.designer.cs">
+      <DependentUpon>ProgressControl.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="content\bootstrap-treeview.min.css" />
@@ -272,6 +284,7 @@
     <Content Include="script\jquery.min.js" />
     <Content Include="script\select2.min.js" />
     <Content Include="script\SRL.js" />
+    <None Include="ClassDiagram1.cd" />
     <None Include="tools\BPersianCalender\Resources\Calendar-1128083418.png" />
     <None Include="tools\BPersianCalender\Resources\Calendar.png" />
     <None Include="tools\BPersianCalender\Resources\1413037734_Last1.png" />
@@ -294,6 +307,9 @@
     <None Include="tools\DgvFilterPopup\Diagrams\Implementations.cd" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="tools\Button\GradientButton.resx">
+      <DependentUpon>GradientButton.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="license\WinLicenseActivation.resx">
       <DependentUpon>WinLicenseActivation.cs</DependentUpon>
     </EmbeddedResource>
@@ -354,6 +370,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="login\WinRolePermissions.resx">
       <DependentUpon>WinRolePermissions.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\UserControls\ProgressControl.resx">
+      <DependentUpon>ProgressControl.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

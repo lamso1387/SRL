@@ -6,7 +6,7 @@ using System.Drawing;
 using System.Data;
 using System.ComponentModel;
 
-namespace DgvFilterPopup {
+namespace  DgvFilterPopup {
 
      /// <summary>
      /// The main class involved in adding filtering capabilities to a DataGridView.  
