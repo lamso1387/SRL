@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+
+    <!-- The header contains information describing the snippet. -->
+    <Header>
+
+      <!-- The Title of the snippet, this will be shown in the snippets manager. -->
+      <Title>parallel actoon</Title>
+
+      <!-- The description of the snippet. -->
+      <Description> </Description>
+
+      <!-- The author of the snippet. -->
+      <Author>SRL</Author>
+
+      <!-- The set of characters that must be keyed in to insert the snippet. -->
+      <Shortcut>ParallelAction</Shortcut>
+
+      <!-- A URL for more help. -->
+      <HelpUrl>http://srl.ir</HelpUrl>
+
+      <!-- The set of snippet types we're dealing with - either Expansion or -->
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+
+    </Header>
+
+    <!-- Now we have the snippet itself. -->
+    <Snippet>
+
+      <!-- Sepecify the code language and the actual snippet content. -->
+      <Code Language="CSharp" Kind="any">
+        <![CDATA[
+public void ParallelAction(List<DbSet> DBitems,string parallel, params object[] parameters)
+        {
+            int all = DBitems.Count;
+            List<Task> task_list = new List<Task>();
+            int per_count = int.Parse(parallel);
+            int take = all / per_count;
+            int skip = 0;
+            var DBquery = DBitems.AsQueryable();
+
+            for (int j = 0; j < per_count; j++)
+            {
+                System.Windows.Forms.Application.DoEvents();
+                var query = DBquery.Skip(skip).Take(take);
+                skip += take;
+                Task task = new Task(() => method(query.ToList(), parameters));
+                task_list.Add(task);
+                task.Start();
+
+            }
+            Task.WaitAll(task_list.ToArray());
+        }
+
+        ParallelAction(query.ToList(), nudSms.Value.ToString(), tbBase.Text, tbContent.Text, tbkey.Text, tbApi.Text);
+
+                    
+                ]]>
+      </Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

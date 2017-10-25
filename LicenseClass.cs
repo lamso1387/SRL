@@ -33,10 +33,10 @@ namespace SRL
 
     /// <summary>
     /// Usage Guide:
-    /// Command for creating the certificate
+    /// Command for creating the certificate n developer command prompt for VS
     /// >> makecert -pe -ss My -sr CurrentUser -$ commercial -n "CN=YourCertName" -sky Signature
-    /// Then export the cert with private key from key store with a password
-    /// Also export another cert with only public key 
+    /// Go to certmgr.msc in win Run. cer file in under Personal/Certificates. Then export the cert with private key from key store with a password named LicenseSign.pfx
+    /// Also export another cert with only public key named LicenseVerify.cer
     /// </summary>
     public class LicenseClass
     {
@@ -761,8 +761,7 @@ namespace SRL
         public void LicenseSettingsControl<LicenseT>(PropertyGrid pgLicenseSettings_) where LicenseT : LicenseEntity
         {
             pgLicenseSettings = pgLicenseSettings_;
-            var class_mgnt = new SRL.ClassManagement<LicenseT>();
-            License = class_mgnt.CreateInstance();
+            License = SRL.ClassManagement.CreateInstance<LicenseT>();
             pgLicenseSettings.SelectedObject = License;
         }
 

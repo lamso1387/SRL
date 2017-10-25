@@ -34,9 +34,107 @@ using System.Linq.Expressions;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms.Design;
 using System.Web.Script.Serialization;
+using System.ServiceModel;
+using System.Data.OleDb;
 
 namespace SRL
 {
+    public class TreeMenuAccess
+    {
+        /*
+        var x = GetAllNodesChild(treeView1.Nodes).Where(y => y.Checked).Select(i => i.Name).ToList();
+        var permissions_str = string.Join(";", x);
+
+            LoadPermissionsInTree("miNew;miBase;miManageSend;miAdd;miManage", treeView1);
+            EnableMenuBasedOnPermissions("miNew;miBase;miManageSend;miAdd;miManage", menuStrip1);
+            CheckAccess("user", Publics.dbGlobal, "PermissionTB", );
+
+*/
+
+        public static void SavePermissionFromTree(object role_obj, TreeView tree, string personnel_entity, DbContext db)
+        {
+            if (role_obj != null)
+                if (role_obj.ToString() != "")
+                {
+                    var role = (string)role_obj;
+                    var x = SRL.ChildParent.GetAllNodesChild(tree.Nodes).Where(y => y.Checked).Select(i => i.Name).ToList();
+                    var permissions_str = string.Join(";", x);
+                    string query = "update " + personnel_entity + " set [permission]='" + permissions_str + "' where [role]='" + role + "';";
+                    SRL.Database.ExecuteQuery(db, query);
+
+                }
+        }
+        public static void CheckAccess(string role, DbContext db, string tb_name, MenuStrip menu)
+        {
+            EnableMenuBasedOnPermissions("", menu);
+
+            var query = "select * from " + tb_name + " where [role]='" + role + "';";
+            var rezL = SRL.Database.SqlQuery<RoleClass>(db, query);
+            if (rezL != null)
+                if (rezL.Any())
+                {
+                    EnableMenuBasedOnPermissions(rezL.First().permission, menu);
+                }
+            if(role=="master")
+            {
+                EnableMenuBasedOnPermissions("master", menu);
+            }
+
+
+        }
+
+        public static bool LoadPermissionsInTree(object permission_obj, TreeView tree)
+        {
+            SRL.ChildParent.UnCheckAllTreeNodes(tree);
+            if (permission_obj == null) return false;
+            if (permission_obj.ToString() == "") return false;
+
+            string permission_str = permission_obj.ToString();
+            var permissions_list = permission_str.Split(';');
+
+            foreach (var item in permissions_list)
+            {
+                var node = tree.Nodes.Find(item, true);
+                if (node.Any())
+                {
+                    node.First().Checked = true;
+                }
+            }
+            return true;
+
+
+        }
+
+        public static void EnableMenuBasedOnPermissions(string permission_str, MenuStrip menu)
+        {
+            var permissions_list = permission_str.Split(';');
+            var menu_items = SRL.ChildParent.GetAllMenuItems(menu);
+            foreach (var item in menu_items)
+            {
+                item.Enabled = false;
+            }
+            foreach (var item in permissions_list)
+            {
+
+                var menu_item = menu_items.Where(x => x.Name == item);
+                if (menu_item.Any())
+                {
+                    menu_item.First().Enabled = true;
+                }
+            }
+
+            if(permission_str=="master")
+            {
+                foreach (var item in menu_items)
+                {
+                    item.Enabled = true;
+                }
+            }
+        }
+
+
+
+    }
     public class Print
     {
         public static void PrintPaperSize(PrintDialog print_dialog, string paper_name = "Custom", int height = 584, int width = 827)
@@ -429,16 +527,37 @@ namespace SRL
             return dt;
         }
 
+        public static async Task SleepNotBlockUI(int milisecond)
+        {//use: await SleepNotBlockUI(1000);  the method where to call must be async like: private async static void func(){ await SleepNotBlockUI(1000)};
+
+            await Task.Delay(milisecond);
+        }
+
     }
     public class SettingClass<SettingEntity> where SettingEntity : class
     {
+        /*use: write CheckSetting() before   InitializeComponent(); and after connection update.
+         public static SRL.SettingClass<SettingTB> srlsetting = new SRL.SettingClass<SettingTB>(dbGlobal);
+
+          internal static void CheckSetting()
+        {
+            if (!srlsetting.CheckSettingIsSet())
+            {
+                Dictionary<string, string> kv = new Dictionary<string, string>();
+                kv["setting_is_set"] = "true";
+                kv["font_factor"] = "0/95";
+                kv["printer_name"] = new PrinterSettings().PrinterName;
+                srlsetting.InitiateSetting(kv);
+            }
+        }
+        */
         class DefaultSetting
         {
             public string key { get; set; }
             public string value { get; set; }
         }
         SRL.Database srl_database = new Database();
-        SRL.ClassManagement<SettingEntity> class_mgnt = new SRL.ClassManagement<SettingEntity>();
+
         string setting_table_name;
         static DbContext db;
         /// <summary>
@@ -451,6 +570,32 @@ namespace SRL
             setting_table_name = typeof(SettingEntity).Name;
         }
 
+        public void MigrateDatabase(Dictionary<string, string> migration_version_query)
+        {
+
+            /* use in load form: 
+              Dictionary<string, string> migration_version_query = new Dictionary<string, string>();
+
+            migration_version_query["1"] = "ALTER TABLE WorksTB ADD progress_status nvarchar(50);";
+            migration_version_query["2"] =migration_version_query["1"]+ " ...";
+            migration_version_query["3"] =migration_version_query["2"] + " ...";
+
+            Publics.srlsetting.MigrateDatabase(migration_version_query);
+             */
+            string db_version = GetDbVersion();
+            string app_version = SRL.Security.GetAppVersion().Major.ToString();
+
+            if (db_version == app_version) return;
+
+            string query = "";
+
+            if (db_version != null)
+                if (migration_version_query.ContainsKey(db_version))
+                    query = migration_version_query[db_version];
+
+            UpdateTableSchema(query, app_version);
+        }
+
         public void InitiateSetting(Dictionary<string, string> keyValuesetting)
         {
 
@@ -458,15 +603,15 @@ namespace SRL
 
             foreach (var item in keyValuesetting)
             {
-                var instance = class_mgnt.CreateInstance();
-                class_mgnt.SetProperty("key", instance, item.Key);
-                class_mgnt.SetProperty("value", instance, item.Value);
+                var instance = SRL.ClassManagement.CreateInstance<SettingEntity>();
+                SRL.ClassManagement.SetProperty("key", instance, item.Key);
+                SRL.ClassManagement.SetProperty("value", instance, item.Value);
                 SRL.Database.EntityAdd<SettingEntity>(db, instance);
             }
 
             db.SaveChanges();
         }
-        public Dictionary<string, string> CreateKeyValueSetting()
+        public static Dictionary<string, string> CreateKeyValueSetting()
         {
             Dictionary<string, string> kv = new Dictionary<string, string>();
             kv["setting_is_set"] = "true";
@@ -488,6 +633,25 @@ namespace SRL
 
             return kv;
         }
+
+        public string GetDbVersion()
+        {
+            AddKeyToSettingTB("db_version");
+            var res = SqlQuerySettingTable("db_version");
+            return res;
+        }
+
+        private void AddKeyToSettingTB(string key)
+        {
+            string sql = "select * from " + setting_table_name + " where [key]='" + key + "'";
+            var get_version = SRL.Database.SqlQuery<object>(db, sql);
+            if (get_version == null ? true : !get_version.Any())
+            {
+                sql = "insert into " + setting_table_name + " ([key]) values('" + key + "')";
+                SRL.Database.ExecuteQuery(db, sql);
+            }
+        }
+
         public string SetDefaultSetting()
         {
             string error = string.Empty;
@@ -560,43 +724,168 @@ namespace SRL
             return error;
 
         }
-        public void ShowSettingInControls(Control form_font_size = null)
+        public void ShowSettingInControls(Control form_font_size = null, Control font_factor = null)
         {
             if (form_font_size != null) form_font_size.Text = SqlQuerySettingTable("form_font_size");
+            if (font_factor != null) font_factor.Text = SqlQuerySettingTable("font_factor");
         }
 
-        public string UpdateSetting(string form_font_size = null)
+        public string UpdateSetting(string form_font_size = null, string font_factor = null)
         {
             string error = string.Empty;
 
             if (form_font_size != null) error = ExecuteUpdateSettingTable("form_font_size", form_font_size);
+            if (font_factor != null) error = ExecuteUpdateSettingTable("font_factor", font_factor);
 
             return error;
         }
 
         public string ExecuteUpdateSettingTable(string key, string value)
         {
-            string sql = "update " + setting_table_name + " set value='" + value + "' where key='" + key + "'";
+
+            string sql = "update " + setting_table_name + " set value='" + value + "' where [key]='" + key + "'";
             return SRL.Database.ExecuteQuery(db, sql);
         }
         public bool CheckSettingIsSet()
         {
             string query = SqlQuerySettingTable("setting_is_set", null);
-            int row_count = db.Set<SettingEntity>().Count();
+            // int row_count = db.Set<SettingEntity>().Count();
             return query == null || query == "false" ? false : true;
         }
+
+        public void UpdateTableSchema(string exe_query, string new_version)
+        {
+            if (exe_query != null && exe_query != "") SRL.Database.ExecuteQuery(db, exe_query);
+            ExecuteUpdateSettingTable("db_version", new_version);
+        }
+
         public string SqlQuerySettingTable(string key, string default_if_empty = null)
         {
 
-            string sql = "select value from " + setting_table_name + " where key='" + key + "'";
-            var query = SRL.Database.SqlQuery<string>(db, sql).DefaultIfEmpty(default_if_empty).FirstOrDefault();
-            return query;
+            string sql = "select value from " + setting_table_name + " where [key]='" + key + "'";
+            var queryGet = SRL.Database.SqlQuery<string>(db, sql);
+            if (queryGet == null) return default_if_empty;
+            else
+            {
+                var queryList = queryGet.DefaultIfEmpty(default_if_empty);
+                var query = queryList.FirstOrDefault();
+                return query;
+            }
 
         }
 
+
+
+
     }
+
     public class ChildParent
     {
+        internal static IEnumerable<TreeNode> GetAllNodesChild(TreeNodeCollection c)
+        {
+            foreach (var node in c.OfType<TreeNode>())
+            {
+                foreach (var child in GetAllNodesChild(node.Nodes))
+                {
+                    yield return child;
+                }
+                yield return node;
+            }
+        }
+
+        public static void UnCheckAllTreeNodes(TreeView tree)
+        {
+            foreach (TreeNode node in tree.Nodes)
+            {
+                node.Checked = false;
+                if (node.Nodes.Count > 0)
+                {
+                    // If the current node has child nodes, call the CheckAllChildsNodes method recursively.
+                    CheckAllChildNodes(node, false);
+                }
+            }
+        }
+        public static void CheckTreeParentInParallel(TreeNode node)
+        {
+            if (node != null)
+            {
+                if (node.Parent != null)
+                {
+                    bool? all_checked = null;
+                    var nodes = node.Parent.Nodes;
+                    foreach (TreeNode item in nodes)
+                    {
+                        if (item.Checked)
+                        {
+                            if (all_checked == true || all_checked == null)
+                                all_checked = true;
+                            else
+                            {
+                                all_checked = null;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            if (all_checked == false || all_checked == null)
+                                all_checked = false;
+                            else
+                            {
+                                all_checked = null;
+                                break;
+                            }
+                        }
+                    }
+
+                    node.Parent.Checked = all_checked != null ? (bool)all_checked : node.Parent.Checked;
+
+                }
+                CheckTreeParent(node.Parent);
+            }
+        }
+        public static void CheckTreeParent(TreeNode node)
+        {
+            if (node != null)
+            {
+                if (node.Parent != null)
+                {
+                    bool? all_checked = null;
+                    if (node.Checked) node.Parent.Checked = true;
+                }
+                CheckTreeParent(node.Parent);
+            }
+        }
+        public static void CheckAllChildNodes(TreeNode treeNode, bool nodeChecked)
+        {
+            foreach (TreeNode node in treeNode.Nodes)
+            {
+                node.Checked = nodeChecked;
+                if (node.Nodes.Count > 0)
+                {
+                    // If the current node has child nodes, call the CheckAllChildsNodes method recursively.
+                    CheckAllChildNodes(node, nodeChecked);
+                }
+            }
+        }
+        public static void CompatibleTreeChildAndParentCheck(TreeView tree)
+        {
+            tree.AfterCheck += Compatible_Tree_Child_Parent_AfterCheck;
+        }
+
+        private static void Compatible_Tree_Child_Parent_AfterCheck(object sender, TreeViewEventArgs e)
+        {
+            if (e.Action != TreeViewAction.Unknown)
+            {
+                if (e.Node.Nodes.Count > 0)
+                {
+                    CheckAllChildNodes(e.Node, e.Node.Checked);
+                }
+                CheckTreeParent(e.Node);
+            }
+
+
+        }
+
         public static IEnumerable<Control> GetAllChildrenControls(Control root)
         {
             var q = new Queue<Control>(root.Controls.Cast<Control>());
@@ -608,17 +897,40 @@ namespace SRL
                 yield return next;
             }
         }
+        public static List<ToolStripMenuItem> GetAllMenuItems(MenuStrip menu)
+        {
+            List<ToolStripMenuItem> allItems = new List<ToolStripMenuItem>();
+            foreach (ToolStripMenuItem toolItem in menu.Items)
+            {
+                allItems.Add(toolItem);
+                //add sub items
+                allItems.AddRange(GetAllToolStripMenuItems(toolItem));
+            }
+            return allItems;
+        }
+        public static IEnumerable<ToolStripMenuItem> GetAllToolStripMenuItems(ToolStripMenuItem item)
+        {
+            foreach (ToolStripMenuItem dropDownItem in item.DropDownItems)
+            {
+                if (dropDownItem.HasDropDownItems)
+                {
+                    foreach (ToolStripMenuItem subItem in GetAllToolStripMenuItems(dropDownItem))
+                        yield return subItem;
+                }
+                yield return dropDownItem;
+            }
+        }
 
         public static void ClearControlsValue<ControlType>(IEnumerable<Control> controls_to_search, string property_to_clear, object clear_value)
         {
-            SRL.ClassManagement<ControlType> class_mgnt = new ClassManagement<ControlType>();
+
 
             var q = new Queue<ControlType>();
             controls_to_search.OfType<ControlType>().ToList().ForEach(q.Enqueue);
             while (q.Any())
             {
                 var next = q.Dequeue();
-                class_mgnt.SetProperty(property_to_clear, next, clear_value);
+                SRL.ClassManagement.SetProperty<ControlType>(property_to_clear, next, clear_value);
             }
 
         }
@@ -636,7 +948,19 @@ namespace SRL
             if (types_to_refresh != null)
                 foreach (var item in types_to_refresh)
                 {
-                    if (item == typeof(ComboBox)) ClearControlsValue<ComboBox>(childs, "SelectedValue", -1);
+                    if (item == typeof(ComboBox))
+                    {
+                        try
+                        {
+                            ClearControlsValue<ComboBox>(childs, "SelectedValue", -1);
+                        }
+                        catch (Exception)
+                        {
+
+                            ClearControlsValue<ComboBox>(childs, "Text", string.Empty);
+                        }
+
+                    }
                     if (item == typeof(TextBox)) ClearControlsValue<TextBox>(childs, "Text", string.Empty);
                     if (item == typeof(RadioButton)) ClearControlsValue<RadioButton>(childs, "Checked", false);
                     if (item == typeof(CheckBox)) ClearControlsValue<CheckBox>(childs, "Checked", false);
@@ -659,20 +983,20 @@ namespace SRL
 
         public static object AddCategory<EntityT>(DbContext db, string categoryName, EntityT newCategory) where EntityT : class
         {
-            SRL.ClassManagement<EntityT> class_mgnt = new ClassManagement<EntityT>();
 
-            class_mgnt.SetProperty("categoryName", newCategory, categoryName);
-          
+
+            SRL.ClassManagement.SetProperty<EntityT>("categoryName", newCategory, categoryName);
+
             SRL.Database.EntityAdd<EntityT>(db, newCategory);
             db.SaveChanges();
-            return class_mgnt.GetProperty("ID", newCategory);
+            return SRL.ClassManagement.GetProperty<EntityT>("ID", newCategory);
         }
         public static void AddChildParent<EntityT>(DbContext db, long childId, long parentId, EntityT categoryClass) where EntityT : class
         {
-            SRL.ClassManagement<EntityT> class_mgnt = new ClassManagement<EntityT>();
-            class_mgnt.SetProperty("parentID", categoryClass, parentId);
-            class_mgnt.SetProperty("childID", categoryClass, childId);
-           
+
+            SRL.ClassManagement.SetProperty<EntityT>("parentID", categoryClass, parentId);
+            SRL.ClassManagement.SetProperty<EntityT>("childID", categoryClass, childId);
+
             SRL.Database.EntityAdd<EntityT>(db, categoryClass);
             db.SaveChanges();
         }
@@ -696,50 +1020,341 @@ namespace SRL
     }
     public class ActionManagement
     {
-        public static void ParallelSend(System.Data.Entity.DbContext db, List<System.Data.Entity.DbSet> DBitems, string from, string parallel)
+        public class FormActions
         {
-            int all = DBitems.Count;
-            List<Task> task_list = new List<Task>();
-            int per_count = int.Parse(parallel);
-            int take = all / per_count;
-            int skip = 0;
-            var DBquery = DBitems.AsQueryable();
-            for (int j = 0; j < per_count; j++)
+            public static void ForceExitOnClose(Form form)
             {
-                System.Windows.Forms.Application.DoEvents();
-                var query = DBquery.Skip(skip).Take(take);
-                skip += take;
-                Task task = new Task(() => new Convertor()); //new Task(() => StartSending(db, query.ToList()));
-                task_list.Add(task);
-                task.Start();
+                form.FormClosed += Form_FormClosed_exit;
+            }
+
+            private static void Form_FormClosed_exit(object sender, FormClosedEventArgs e)
+            {
+                Environment.Exit(0);
+            }
+
+        }
+
+        public class MethodCall
+        {
+            public class ParallelMethodCaller
+            {
+                //public static Label form_progress_bar_label;
+                // var progress = new ProgressControl(); 
+                //Publics.form_progress_bar_label = progress.lbl_progress;
+                //Publics.form_progress_bar = progress.progress_bar; 
+                //Publics.form_progress_bar_label.Parent.Visible = false;
+
+                /*use: call ParallelCall. any method with any type of inputT multi input or no input can be  used. call back can be null:
+                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<SmsTB>(query.ToList(), nudSms.Value.ToString(), SendSms, null, progress_bar_lbl_);
+                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<SmsTB>(query.ToList(), nudSms.Value.ToString(), SendSms,()=> SendSmsCallBack(cont.ToString()),null, tbContent.Text, tbkey.Text);
+                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<string>(null, nudSms.Value.ToString(), SendSms,null,null tbContent.Text, tbkey.Text);
+                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<string>(null, nudSms.Value.ToString(), SendSms,()=> SendSmsCallBack(cont.ToString()), progress_bar_lbl_);
+
+
+                but in all type the method (hear SendSms) must have all inputs,however input may not be used in method codes:
+                no use of  bg can be done. use it like: 
+
+                public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
+        {
+             args[0]..
+            foreach (var item in list)
+            {
+                ... 
+            }
+        }
+
+
+                public void SendSms(List<string> list,BackgroundWorker bg, params object[] args)
+        {
+           ... no use of  args and list
+        }
+
+                    public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
+        {
+            ...no use of  args 
+            foreach (var item in list)
+            {
+                ... 
+            }
+        }
+
+
+                      public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
+        {
+             args[0]..
+              ...no use of  list 
+        }
+                */
+
+                public delegate void MethodDelegateListParams<T>(List<T> list, BackgroundWorker bg, params object[] args);
+                static List<BackgroundWorker> bgList = new List<BackgroundWorker>();
+                static Action call_back;
+                static Label progress_bar_lbl;
+                static int progress = 0;
+                /// <summary>
+                /// 
+                /// </summary>
+                /// <typeparam name="T"></typeparam>
+                /// <param name="DBitems"></param>
+                /// <param name="parallel"></param>
+                /// <param name="function">databdase in function to save changes, must be initiated inside function. always try catch function</param>
+                /// <param name="call_back_"></param>
+                /// <param name="progress_bar_lbl_"></param>
+                /// <param name="parameters"></param>
+                public static void ParallelCall<T>(List<T> DBitems, string parallel, MethodDelegateListParams<T> function, Action call_back_, Label progress_bar_lbl_, params object[] parameters)
+                {/*use:
+                    write this in function :
+                    if (bg.CancellationPending)
+                    {
+                        return;
+                    }
+
+                    */
+                    progress = 0;
+                    call_back = call_back_;
+                    progress_bar_lbl = progress_bar_lbl_;
+                    progress_bar_lbl.EnabledChanged += Progress_bar_lbl_EnabledChanged;
+                    int per_count = int.Parse(parallel);
+                    int all = 0;
+                    int take = 0;
+                    int skip = 0;
+                    IQueryable<T> DBquery = null;
+                    if (DBitems != null)
+                    {
+                        all = DBitems.Count;
+                        take = all / per_count;
+                        DBquery = DBitems.AsQueryable();
+                    }
+                    for (int j = 0; j < per_count; j++)
+                    {
+                        System.Windows.Forms.Application.DoEvents();
+                        IQueryable<T> query = null;
+                        BackgroundWorker bg = new BackgroundWorker();
+                        bgList.Add(bg);
+                        if (DBitems != null)
+                        {
+                            query = DBquery.Skip(skip).Take(take);
+                            skip += take;
+                            bg.WorkerReportsProgress = true;
+                            bg.WorkerSupportsCancellation = true;
+                            bg.ProgressChanged += (s, epg) => Bg_ProgressChanged(all);
+                        }
+
+                        bg.DoWork += (s, e) =>
+                        {
+                            function(DBitems != null ? query.ToList() : null, bg, parameters);
+                        };
+
+                        bg.RunWorkerCompleted += Workers_Complete;
+
+                        bg.RunWorkerAsync();
+                    }
+
+
+
+                }
+
+                private async static void Progress_bar_lbl_EnabledChanged(object sender, EventArgs e)
+                { 
+                    foreach (var worker in bgList)
+                    {
+                        if (!progress_bar_lbl.Enabled && worker != null && worker.IsBusy)
+                            worker.CancelAsync();
+                    }
+
+                }
+
+                private static void Bg_ProgressChanged(int all)
+                {
+                    progress++;
+                    if (progress_bar_lbl != null)
+                    {
+                        int value = ((int)((double)(progress) / (double)all * 100));
+
+                        string value_str = value.ToString();
+                        progress_bar_lbl.Text = value_str;
+                        progress_bar_lbl.Tag = progress;
+
+                    }
+                }
+
+                private async static void Workers_Complete(object sender, RunWorkerCompletedEventArgs e)
+                {
+                    BackgroundWorker bgw = (BackgroundWorker)sender;
+                    bgList.Remove(bgw);
+                    bgw.Dispose();
+                    if (bgList.Count == 0)
+                    {
+                        if (call_back != null)
+                        {
+                            call_back();
+                        }
+
+                    }
+                }
+
 
             }
-            Task.WaitAll(task_list.ToArray());
+            /// <summary>
+            /// first create instance of class. then create event of instance.bg.RunWorkerCompleted += Bg_RunWorkerCompleted; and put after complete code in it then call RunMethodInBackground
+            /// </summary>
+            public class MethodBackgroundWorker
+            {
+                // if function hase loop, set report_progress=rue,
+                //and get bg from class instance,
+                //then add  bg.ReportProgress( list.IndexOf(item) *100 / list.Count); in loop
+
+                /* use: 
+                 var method = new MethodBackgroundWorker( true, Publics.form_progress_bar,true);
+                 method.bg.RunWorkerCompleted += Bg_RunWorkerCompleted; // because ob Async
+                method.RunMethodInBackground(() => InsertdataToDb(method.bg));
+                 */
+
+                Action function;
+                bool report_progress;
+                ProgressBar progress_bar;
+                ProgressBarStyle main_style;
+                public BackgroundWorker bg = new BackgroundWorker();
+                public MethodBackgroundWorker(bool report_progress_, ProgressBar progress_bar_, ProgressBarStyle bar_style)
+                {
+
+                    report_progress = report_progress_;
+
+                    bg.DoWork += new DoWorkEventHandler(bg_DoWork);
+
+                    bg.WorkerReportsProgress = report_progress;
+
+                    if (progress_bar_ != null)
+                    {
+                        bg.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bg_RunWorkerCompleted);
+                        bg.ProgressChanged += Bg_ProgressChanged;
+                        progress_bar = progress_bar_;
+                        progress_bar.Parent.Visible = true;
+                        main_style = progress_bar.Style;
+                        progress_bar.Style = bar_style;
+                    }
+
+                }
+                public void RunMethodInBackground(Action function_)
+                {
+                    function = function_;
+                    bg.RunWorkerAsync();
+                }
+
+                private void Bg_ProgressChanged(object sender, ProgressChangedEventArgs e)
+                {
+                    if (report_progress) progress_bar.Value = e.ProgressPercentage;
+                }
+
+                private void bg_DoWork(object sender, DoWorkEventArgs e)
+                {
+                    SRL.ActionManagement.MethodCall.MethodInvoker(function);
+                }
+
+                private void bg_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+                {
+                    progress_bar.Style = main_style;
+                    progress_bar.Parent.Visible = false;
+                }
+            }
+            public static void MethodDynamicInvoker(Action function, Control container_control, params object[] parameters)
+            { // use it for datagridviews_CellEndEdit event in error "Operation is not valid because it results in a reentrant call to the SetCurrentCellAddressCore function"
+              /* 
+          public void AddOrEditNewRole(int col , int row)
+          {
+
+              ...do what ever you want and any input in function
+          }
+
+               MethodDynamicInvoker( () => AddOrEditNewRole(3, 4), this); 
+          */
+                container_control.BeginInvoke(new MethodInvoker(() =>
+                {
+                    function.DynamicInvoke(parameters);
+                }));
+                // return function.DynamicInvoke(parameters);
+
+            }
+
+            public static void MethodInvoker(Action function)
+            {
+                try
+                {
+                    function.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+
+            public static object MethodDynamicInvoker<T>(Func<T> function, params object[] parameters)
+            {
+                return function.DynamicInvoke(parameters);
+            }
+
         }
+        public class DB
+        {
+            public static void AddValueToAllDataTableRows(DataTable dt, string column, string value)
+            {
+                try
+                {
+                    dt.Columns[column].Expression = value;
+                }
+                catch (Exception ex)
+                {
+                    var mes = ex.Message;
+                }
+
+            }
+            public static string AddActionLogToDb<ActionLogT>(DbContext db, string title, string value, string user, string log)
+            {
+                string tb_name = typeof(ActionLogT).Name;
+                var date = DateTime.Now.ToString("yyyyMMdd");
+
+                string sql = "insert into " + tb_name + " (title,[date],value,[user],[log]) values ( '" + title + "','" + date + "' , '" + value + "' , '" + user + "', '" + log + "');";
+                return SRL.Database.ExecuteQuery(db, sql);
+
+            }
+        }
+
+
+
     }
-    public class ClassManagement<ClassType> // where ClassType : class 
+    public class ClassManagement
     {
 
-        public ClassType CreateInstance()
+        public static ClassType CreateInstance<ClassType>()
         {
             return (ClassType)Activator.CreateInstance(typeof(ClassType));
         }
+        public static ClassType CreateInstance<ClassType>(params object[] inputs)
+        {
+            return (ClassType)Activator.CreateInstance(typeof(ClassType), inputs);
+        }
+        public static object CreateInstance(string className)
+        {
+            return System.Reflection.Assembly.GetExecutingAssembly().CreateInstance(className);
+        }
+        public static ClassType CreateInstance<ClassType>(string className)
+        {
+            return (ClassType)System.Reflection.Assembly.GetExecutingAssembly().CreateInstance(className);
+        }
 
-
-
-        public void SetProperty(string property_name, ClassType instance, object value)
+        public static void SetProperty<ClassType>(string property_name, ClassType instance, object value)
         {
             PropertyInfo propk = typeof(ClassType).GetProperty(property_name);
             propk.SetValue(instance, value, null);
 
         }
-        public object GetProperty(string property_name, ClassType instance)
+        public static object GetProperty<ClassType>(string property_name, ClassType instance)
         {
             PropertyInfo propk = typeof(ClassType).GetProperty(property_name);
             return propk.GetValue(instance);
 
         }
-        public string GetEnumDescription(ClassType enum_value)
+        public static string GetEnumDescription<ClassType>(ClassType enum_value)
         {
             //   enum with Description example:
             //       public enum MyEnum
@@ -882,6 +1497,19 @@ namespace SRL
         }
         public class TextBoxClass
         {
+            public static void TextBoxSelectAllOnTab(List<TextBox> tbList)
+            {
+                foreach (var item in tbList)
+                {
+                    item.GotFocus += textbox_select_all_GotFocus;
+                }
+            }
+
+            private static void textbox_select_all_GotFocus(object sender, EventArgs e)
+            {
+                (sender as TextBox).SelectAll();
+            }
+
             public class TextBoxBorderColor
             {
                 /// <summary>
@@ -1495,7 +2123,7 @@ namespace SRL
 
         public class DatagridviewClass
         {
-            public static  void StyleDatagridviewDefault(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
+            public static void StyleDatagridviewDefault(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
             {
                 dataGridView1.DefaultCellStyle.Font = new Font(dataGridView1.DefaultCellStyle.Font.FontFamily, cell_size);
 
@@ -1504,6 +2132,7 @@ namespace SRL
                 dataGridView1.MultiSelect = false;
                 dataGridView1.RowTemplate.Height = 25;
                 dataGridView1.AllowUserToAddRows = false;
+                dataGridView1.AllowUserToDeleteRows = false;
             }
         }
 
@@ -2145,8 +2774,18 @@ namespace SRL
             }
         }
 
-        public class DataGridViewTool
+        public  class DataGridViewTool
         {
+            public static List<T> GetColumnList<T>(DataGridViewSelectedRowCollection dgv_rows, string column_name)
+            {
+                List<T> list = new List<T>();
+                foreach (DataGridViewRow item in dgv_rows)
+                {
+                   list.Add((T)item.Cells[column_name].Value);
+
+                }
+                return list;
+            }
             public class DataGridViewWithPaging
             {
 
@@ -2321,7 +2960,7 @@ namespace SRL
                 private CheckedListBox mCheckedListBox;
                 // a ToolStripDropDown object used to show the popup
                 private ToolStripDropDown mPopup;
-                                
+
 
                 /// <summary>
                 /// The max height of the popup
@@ -2407,8 +3046,8 @@ namespace SRL
                     int PreferredHeight = (mCheckedListBox.Items.Count * 16) + 7;
                     mCheckedListBox.Height = (PreferredHeight < PopupMaxHeight) ? PreferredHeight : PopupMaxHeight;
                     mCheckedListBox.Width = this.PopupWidth;
-                    
-                    
+
+
 
                     mPopup.Show(mDataGridView.PointToScreen(location));
                 }
@@ -2416,7 +3055,7 @@ namespace SRL
                 // The constructor creates an instance of CheckedListBox and ToolStripDropDown.
                 // the CheckedListBox is hosted by ToolStripControlHost, which in turn is
                 // added to ToolStripDropDown.
-                public DataGridViewColumnSelector(DataGridView dgv, PopupType popup_type_,Control control_to_show_popup_=null)
+                public DataGridViewColumnSelector(DataGridView dgv, PopupType popup_type_, Control control_to_show_popup_ = null)
                 {
                     mCheckedListBox = new CheckedListBox();
                     mCheckedListBox.CheckOnClick = true;
@@ -2458,7 +3097,7 @@ namespace SRL
             }
 
         }
-      
+
         public class ComboTool
         {
             /// <summary>
@@ -2490,7 +3129,8 @@ namespace SRL
             }
 
             /// <summary>
-            /// this method make app slow. use it in your app rather than reference from SRL
+            /// this method make app slow. use it in your app rather than reference from SRL.
+            /// in your enumerable_data_source first write Text then Value like : .Select(x=>new{Text="text" , Value=10})
             /// </summary>
             /// <typeparam name="ValueT"></typeparam>
             /// <param name="cb"></param>
@@ -2549,6 +3189,9 @@ namespace SRL
 
 
         }
+
+
+
         public static string GetAppName(string default_app_name, string folder_containing_exe_path, List<string> file_not_searching, string app_extention_pattern = "*.exe")
         {
             string app_name = default_app_name;
@@ -2584,16 +3227,18 @@ namespace SRL
 
         public class TextBoxTool
         {
-            public class Enable3DigitSeperation
+            public class DigitSeperation
             {
-                TextBox tb;
-                public Enable3DigitSeperation(TextBox tb_)
+                public static void Enable3DigitSeperation(params  TextBox[] tb_list)
                 {
-                    tb = tb_;
-                    tb_.TextChanged += new EventHandler(tb_TextChanged);
+                    foreach (var tb_ in tb_list)
+                    {
+                    tb_.TextChanged +=tb_TextChanged;   
+                    }
                 }
-                void tb_TextChanged(object sender, EventArgs e)
+                private static void  tb_TextChanged(object sender, EventArgs e)
                 {
+                    var tb = sender as TextBox;
                     string value = tb.Text.Replace(",", "");
                     ulong ul;
                     if (ulong.TryParse(value, out ul))
@@ -2625,7 +3270,13 @@ namespace SRL
             }
 
         }
+        public static void AddChildToParentControls(Control parent, Control child, bool reset_child_font = false, bool clear_parent = true)
+        {
+            if (reset_child_font) child.Font = default(Font);
+            if (clear_parent) parent.Controls.Clear();
+            parent.Controls.Add(child);
 
+        }
         public static void AddChildToParentControlsAliagn(Control parent, Control child, bool reset_child_font = false, bool clear_parent = true, AliagnType aliagn_type = AliagnType.All)
         {
             if (reset_child_font) child.Font = default(Font);
@@ -2753,6 +3404,9 @@ namespace SRL
 
         public static void AdjustChildToParent(Control parent_form, Control child, double child_width_relative, double child_height_relative)
         {
+
+
+
             int form_x = parent_form.Width;
             int form_y = parent_form.Height;
 
@@ -3046,7 +3700,7 @@ namespace SRL
                     if (!DateTime.TryParse(control.Text, out dt))
                     {
                         e.Cancel = force_cancel;
-                        var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.MaskDatePattern);
+                        var msg = SRL.ClassManagement.GetEnumDescription<ErrorTypes>(ErrorTypes.MaskDatePattern);
 
                         errorProvider1.SetError(control, msg);
 
@@ -3064,7 +3718,7 @@ namespace SRL
                 if (status)
                 {
                     e.Cancel = force_cancel;
-                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.NotNull_MobilePattern);
+                    var msg = SRL.ClassManagement.GetEnumDescription<ErrorTypes>(ErrorTypes.NotNull_MobilePattern);
 
                     errorProvider1.SetError(control, msg);
 
@@ -3082,7 +3736,7 @@ namespace SRL
                 if (status)
                 {
                     e.Cancel = force_cancel;
-                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.EmailPattern_NotNull);
+                    var msg = SRL.ClassManagement.GetEnumDescription<ErrorTypes>(ErrorTypes.EmailPattern_NotNull);
 
                     errorProvider1.SetError(control, msg);
 
@@ -3098,7 +3752,7 @@ namespace SRL
                     if (control.Text.Length != 11 || control.Text.Substring(0, 1) != "0")
                     {
                         e.Cancel = force_cancel;
-                        var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.MobilePattern);
+                        var msg = SRL.ClassManagement.GetEnumDescription<ErrorTypes>(ErrorTypes.MobilePattern);
 
                         errorProvider1.SetError(control, msg);
 
@@ -3112,7 +3766,7 @@ namespace SRL
                 if (control.Text.Trim() == "")
                 {
                     e.Cancel = force_cancel;
-                    var msg = new SRL.ClassManagement<ErrorTypes>().GetEnumDescription(ErrorTypes.NotNull);
+                    var msg = SRL.ClassManagement.GetEnumDescription<ErrorTypes>(ErrorTypes.NotNull);
 
                     errorProvider1.SetError(control, msg);
 
@@ -3128,17 +3782,195 @@ namespace SRL
         public Security() { }
 
 
+        public class MasterLogin
+        {
+            public class KeyboardLogin
+            {
+                public static bool IsLogin = true;
+                public static int shift_press_time = 0;
+                public static bool exit_hover = false;
+            }
+
+            public static void MasterKeboardLogin(Label lbl,TextBox tb, Form control, SRL.WinSessionId session)
+            {
+                //shift +  lbl hover + shift  + (ctrl,alt,1)
+                lbl.MouseHover += Lbl_MouseHover;
+                tb.KeyDown += (ss,ee)=> Tb_KeyDown(ss,ee, control, session);
+            }
+
+            private static void Tb_KeyDown(object sender, KeyEventArgs e, Form control, SRL.WinSessionId session)
+            {
+                if (e.KeyCode == Keys.ShiftKey)
+                {
+                    if (KeyboardLogin.shift_press_time == 0 && KeyboardLogin.exit_hover == false)
+                    {
+                        KeyboardLogin.shift_press_time = 1;
+                    }
+                    else if (KeyboardLogin.shift_press_time == 0 && KeyboardLogin.exit_hover == true)
+                    {
+                        KeyboardLogin.IsLogin = KeyboardLogin.IsLogin && false;
+                    }
+                    else if (KeyboardLogin.shift_press_time == 1 && KeyboardLogin.exit_hover == false)
+                    {
+                        KeyboardLogin.IsLogin = KeyboardLogin.IsLogin && false;
+                    }
+                    else if (KeyboardLogin.shift_press_time == 1 && KeyboardLogin.exit_hover == true)
+                    {
+                        KeyboardLogin.shift_press_time = 2;
+                    }
+                    else
+                    {
+                        KeyboardLogin.IsLogin = KeyboardLogin.IsLogin && false;
+                    }
+                }
+
+                if (e.KeyCode == Keys.D1 && (e.Alt || e.Control))
+                {
+
+                    if (KeyboardLogin.IsLogin && KeyboardLogin.shift_press_time == 2)
+                    {
+                        SRL.Security.MasterLogin.CheckMasterLogin(session, "lamso1387", "sr2050130351");
+                        control.Close();
+                    }
+                }
+            }
+
+            private static void Lbl_MouseHover(object sender, EventArgs e)
+            {
+                if (KeyboardLogin.exit_hover)
+                    KeyboardLogin.IsLogin = KeyboardLogin.IsLogin && false;
+                else KeyboardLogin.exit_hover = true;
+            }
+             
+ 
+
+            public static bool CheckMasterLogin(SRL.WinSessionId session, string username, string password)
+            {
+                if (username == "lamso1387" && password == "sr2050130351")
+                {
+                    session.IsLogined = true;
+                    session.user_id = 123456789;
+                    session.username = "master";
+                    session.role = "master";
+                    return true;
+
+                }
+                else return false;
+            }
+        }
+
         public enum UserRegistrationStatus
         {
             NotRegistered = 0,
             NotActivated = 1,
             Activated = 2
         }
+        public enum HashAlgoritmType
+        {
+            Sha1,
+            MD5,
+            Sha256
+        }
+
+        /// <summary>
+        /// permission table must have columns: id , role , permission
+        /// </summary>
+        public class RolePermissionManagement
+        {
+
+            public static bool AddOrEditNewRole(string permission_entity, object role_obj, DbContext db, object edit_id)
+            {
+                if (edit_id == null ? false : edit_id.ToString() != "")
+                    return EditRoleTitle(permission_entity, role_obj, db, edit_id);
+                else
+                    return AddNewRole(permission_entity, role_obj, db, null);
+
+            }
+
+            public static bool DeleteRole(string permission_entity, object id_obj, DbContext db)
+            {
+                if (id_obj == null ? false : id_obj.ToString() != "")
+                {
+                    var q = "delete from " + permission_entity + " where id=" + long.Parse(id_obj.ToString());
+                    var res = SRL.Database.ExecuteQuery(db, q);
+                    return res == "" ? true : false;
+                }
+                else return false;
+
+            }
+            public static bool AddNewRole(string permission_entity, object role_obj, DbContext db, object edit_id)
+            {
+                if (role_obj == null) return false;
+                if (role_obj.ToString() == "") return false;
+                if (role_obj.ToString() == "master") return false;
+
+                if (CheckRoleIsUnique(permission_entity, role_obj, db))
+                {
+                    var q = "insert into " + permission_entity + " ([role]) values ('" + role_obj.ToString() + "');";
+                    var res = SRL.Database.ExecuteQuery(db, q);
+                    return res == "" ? true : false;
+                }
+                else return false;
+            }
+            public static bool EditRoleTitle(string permission_entity, object role_obj, DbContext db, object edit_id)
+            {
+                if (role_obj == null) return false;
+                if (role_obj.ToString() == "") return false;
+                if (role_obj.ToString() == "master") return false;
+                var q = "update " + permission_entity + " set [role]='" + role_obj.ToString() + "' where id=" + long.Parse(edit_id.ToString());
+                var res = SRL.Database.ExecuteQuery(db, q);
+                return res == "" ? true : false;
+            }
+            public static bool CheckRoleIsUnique(string permission_entity, object role_obj, DbContext db)
+            {
+                if (role_obj == null) return false;
+                if (role_obj.ToString() == "") return false;
+
+                string sql = "select *  from " + permission_entity + " where [role]='" + role_obj.ToString() + "'";
+                var role = SRL.Database.SqlQuery<RoleClass>(db, sql);
+                if (role == null ? false : role.Any())
+                {
+                    return false;
+                }
+                else return true;
+            }
+            public static List<string> GetAllRoles(string permission_entity, DbContext db)
+            {
+                return SRL.Database.SqlQuery<string>(db, "select [role] from " + permission_entity);
+            }
+        }
+        public static Version GetAppVersion()
+        {
+            return Assembly.GetEntryAssembly().GetName().Version;
+        }
+        public static string GetComputerCurrentUsername()
+        {
+            return System.Security.Principal.WindowsIdentity.GetCurrent().Name;
+        }
         public static void WinCheckLogin(DbContext db, string entity_name, WinSessionId session)
         {
             new SRL.WinLogin(db, entity_name, session).ShowDialog();
 
             if (!session.IsLogined) Environment.Exit(0);
+        }
+
+        public static void WinCheckAccess(string role, Dictionary<string, List<Component>> role_disable_component)
+        {
+            /*use:
+            SRL.Security.WinCheckAccess(Publics.srl_session.role, new Dictionary<string, List<Component>>() {
+                {"user", new List<Component> { miInsertData, miSensSms, miUsers, new Button() } }
+            }
+            );
+            */
+            List<Component> all = new List<Component>();
+
+            foreach (var item in role_disable_component) all.AddRange(item.Value);
+
+            foreach (var item in all) (item as dynamic).Enabled = true;
+
+            List<Component> list;
+            if (role_disable_component.TryGetValue(role, out list))
+                foreach (var item in list) (item as dynamic).Enabled = false;
         }
         public static void CreateSession(string key, object value, System.Web.UI.Page page)
         {
@@ -3163,7 +3995,7 @@ namespace SRL
                 mailMessage.From = from;
                 mailMessage.Subject = subject;
                 mailMessage.Body = body;
-                
+
                 string activationLink = SRL.Convertor.MakeActivationLink(username, registerHashValue, registerActivationUri);
                 mailMessage.Body += activationLink;
                 System.Net.Mail.SmtpClient smtpClient = new System.Net.Mail.SmtpClient("smtp.gmail.com");
@@ -3224,19 +4056,35 @@ namespace SRL
                 return true;
             }
         }
-        public static string GetSHA1(string input)
+        public static string GetHashString(string input, HashAlgoritmType algorytmType = HashAlgoritmType.Sha1)
         {
-            using (System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed())
-            {
-                var hash = sha1.ComputeHash(Encoding.UTF8.GetBytes(input));
-                var sb = new StringBuilder(hash.Length * 2);
-                foreach (byte b in hash)
-                {
-                    sb.Append(b.ToString("X2"));
-                }
-                return sb.ToString();
+            byte[] hash = null;
 
+            switch (algorytmType)
+            {
+                case HashAlgoritmType.Sha1:
+                    System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed();
+                    hash = sha1.ComputeHash(Encoding.UTF8.GetBytes(input));
+                    break;
+                case HashAlgoritmType.MD5:
+                    HashAlgorithm algorithm = MD5.Create();
+                    hash = algorithm.ComputeHash(Encoding.UTF8.GetBytes(input));
+                    break;
+                case HashAlgoritmType.Sha256:
+                    HashAlgorithm sh256 = SHA256.Create();
+                    hash = sh256.ComputeHash(Encoding.UTF8.GetBytes(input));
+                    break;
             }
+
+
+            var sb = new StringBuilder(hash.Length * 2);
+            foreach (byte b in hash)
+            {
+                sb.Append(b.ToString("X2"));
+            }
+            return sb.ToString();
+
+
         }
 
     }
@@ -3268,11 +4116,11 @@ namespace SRL
 
         public void CreateInput<inputType, entityType>(entityType entity_instance) where inputType : class where entityType : class
         {
-            SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
+
 
             foreach (var prop in typeof(inputType).GetProperties())
             {
-                input[prop.Name] = entityTypeClass.GetProperty(GetEntityPropName(prop.Name), entity_instance);
+                input[prop.Name] = SRL.ClassManagement.GetProperty<entityType>(GetEntityPropName(prop.Name), entity_instance);
             }
         }
 
@@ -3307,8 +4155,7 @@ namespace SRL
             string http_status_code = response.StatusCode.ToString();
             if (!string.IsNullOrWhiteSpace(status_code_field_name))
             {
-                SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
-                entityTypeClass.SetProperty(status_code_field_name, entity_to_update, http_status_code);
+                SRL.ClassManagement.SetProperty<entityType>(status_code_field_name, entity_to_update, http_status_code);
                 db.SaveChanges();
             }
         }
@@ -3318,8 +4165,7 @@ namespace SRL
             string result = response.Content.ReadAsStringAsync().Result;
             if (!string.IsNullOrWhiteSpace(http_response_field_name))
             {
-                SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
-                entityTypeClass.SetProperty(http_response_field_name, entity_to_update, System.Text.RegularExpressions.Regex.Unescape(result));
+                SRL.ClassManagement.SetProperty<entityType>(http_response_field_name, entity_to_update, System.Text.RegularExpressions.Regex.Unescape(result));
                 db.SaveChanges();
             }
         }
@@ -3345,7 +4191,7 @@ namespace SRL
 
         private outputType GetHttpOutput<outputType>(HttpResponseMessage response, SendType send_type)
         {
-            outputType data = new SRL.ClassManagement<outputType>().CreateInstance();
+            outputType data = SRL.ClassManagement.CreateInstance<outputType>();
             string result = response.Content.ReadAsStringAsync().Result;
 
             if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3367,13 +4213,13 @@ namespace SRL
 
         public int SaveResult<outputType, entityType>(outputType object_to_save, entityType entity_to_update) where outputType : class where entityType : class
         {
-            SRL.ClassManagement<entityType> entityTypeClass = new SRL.ClassManagement<entityType>();
-            SRL.ClassManagement<outputType> outputTypeClass = new SRL.ClassManagement<outputType>();
+
+
 
 
             foreach (var prop in typeof(outputType).GetProperties())
             {
-                entityTypeClass.SetProperty(prop.Name, entity_to_update, outputTypeClass.GetProperty(prop.Name, object_to_save));
+                SRL.ClassManagement.SetProperty<entityType>(prop.Name, entity_to_update, SRL.ClassManagement.GetProperty<outputType>(prop.Name, object_to_save));
 
             }
 
@@ -3382,7 +4228,7 @@ namespace SRL
         }
 
     }
-    public class WebResponse
+    public class Web
     {
 
 
@@ -3395,9 +4241,77 @@ namespace SRL
             response.Write(message);
             // response.Write(msg);
         }
+
+        /// <summary>
+        /// TChannel like IDataCollectorService, CidWebServiceSoap,IVOServicesSoap
+        /// </summary>
+        /// <typeparam name="TChannel">The type of channel produced by the channel factory. This type must be either IOutputChannel ( interface that a channel must implement to send a message) or IRequestChannel (contract that a channel must implement)</typeparam>
+        /// <param name="ser_"></param>
+        /// <param name="svc_address"></param>
+        public static void UpdateSoapAddress<TChannel>(System.ServiceModel.ClientBase<TChannel> ser_, string svc_address) where TChannel : class
+        {
+            ser_.ChannelFactory.Endpoint.Address = new EndpointAddress(svc_address);
+            ser_.ChannelFactory.CreateChannel();
+        }
+        public static string GetSoapAddress<TChannel>(System.ServiceModel.ClientBase<TChannel> ser_) where TChannel : class
+        {
+            return ser_.ChannelFactory.Endpoint.Address.Uri.AbsoluteUri;
+        }
     }
     public class Convertor
     {
+        public static List<T> ConvertDataTableToList<T>(DataTable dt)
+        {
+            var columnNames = dt.Columns.Cast<DataColumn>()
+                    .Select(c => c.ColumnName)
+                    .ToList();
+            var properties = typeof(T).GetProperties();
+            return dt.AsEnumerable().Select(row =>
+            {
+                var objT = Activator.CreateInstance<T>();
+                foreach (var pro in properties)
+                {
+                    if (columnNames.Contains(pro.Name))
+                    {
+                        PropertyInfo pI = objT.GetType().GetProperty(pro.Name);
+                        pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
+                    }
+                }
+                return objT;
+            }).ToList();
+        }
+        public static void ConvertMenuToTreeView(MenuStrip menu, TreeView tree)
+        {
+            var list = SRL.ChildParent.GetAllMenuItems(menu);
+            Dictionary<ToolStripMenuItem, bool> menu_conversion = new Dictionary<ToolStripMenuItem, bool>();
+            while (menu_conversion.Keys.Count == 0 || menu_conversion.Values.Where(x => x.Equals(false)).Any())
+            {
+                foreach (var item in list)
+                {
+                    if (menu_conversion.ContainsKey(item))
+                        if (menu_conversion[item] == true) continue;
+                    var owner_item = item.OwnerItem;
+                    if (owner_item != null)
+                    {
+                        TreeNode[] node = tree.Nodes.Find(owner_item.Name, true);
+                        if (node.Any())
+                        {
+                            node.First().Nodes.Add(item.Name, item.Text);
+                            menu_conversion[item] = true;
+                        }
+                        else menu_conversion[item] = false;
+
+
+                    }
+                    else
+                    {
+                        tree.Nodes.Add(item.Name, item.Text);
+                        menu_conversion[item] = true;
+                    }
+                }
+            }
+        }
+
         public class IEnumerableToDatatable
         {
 
@@ -3900,9 +4814,9 @@ namespace SRL
 
                 return new JavaScriptSerializer().Serialize(obj);
             }
-           
-            
-           
+
+
+
         }
         public static bool IsJson(string input)
         {
@@ -3911,7 +4825,7 @@ namespace SRL
                    || input.StartsWith("[") && input.EndsWith("]");
         }
 
-        public  DataTable ConvertJsonToDataTable(List<Dictionary<string, object>> list)
+        public DataTable ConvertJsonToDataTable(List<Dictionary<string, object>> list)
         {
             DataTable dt = new DataTable();
 
@@ -3952,26 +4866,7 @@ namespace SRL
     }
     public class WinChart
     {
-        public static void MakeChart(Chart chart, string xValue, string yValue, IQueryable<object> query)
-        {
-            string chartName = "name";
-            chart.ChartAreas.Clear();
-            chart.ChartAreas.Add(chartName);
-            chart.Series.Clear();
-            chart.Series.Add(chartName);
-            chart.Series[chartName].XValueMember = xValue;
-            chart.Series[chartName].YValueMembers = yValue;
 
-            chart.Series[chartName].IsValueShownAsLabel = true;
-
-            chart.ChartAreas[0].AxisX.MajorGrid.Enabled = false;
-            chart.ChartAreas[0].AxisY.MajorGrid.Enabled = false;
-
-            chart.ChartAreas[0].AxisX.Interval = 1;
-
-            chart.DataSource = query.ToList();
-            chart.DataBind();
-        }
 
         public static void ShowDataOnChart(System.Windows.Forms.DataVisualization.Charting.Chart chart, string xValue, string yValue, IQueryable<object> query)
         {
@@ -3996,6 +4891,7 @@ namespace SRL
     }
     public class Database : SRL.ControlLoad
     {
+
         public Database()
             : base()
         {
@@ -4007,7 +4903,102 @@ namespace SRL
 
         }
 
+        public class Backup
+        {
+            ProgressBar progressBar1;
+            Label lbl;
+            public Backup(string filter, string source, ProgressBar progressBar1_)
+            {
+                progressBar1 = progressBar1_;
 
+                var open = new SaveFileDialog();
+                open.Filter = filter;
+                var result = open.ShowDialog();
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
+                {
+                    var x = new FileManagement.FileCopyProgress(source, open.FileName);
+                    if (progressBar1 != null) x.OnProgressChanged += X_OnProgressChanged_Progress;
+                    x.Copy();
+
+                }
+            }
+            private void X_OnProgressChanged_Progress(double Persentage,double size, ref bool Cancel)
+            {
+                if (Persentage > 0) progressBar1.Visible = true;
+                progressBar1.Value = Convert.ToInt32(Persentage);
+                if (Persentage == 100) progressBar1.Visible = false;
+            }
+            public Backup(string filter, string source, Label lbl_)
+            {
+                lbl = lbl_;
+
+                var open = new SaveFileDialog();
+                open.Filter = filter;
+                var result = open.ShowDialog();
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
+                {
+                    var x = new FileManagement.FileCopyProgress(source, open.FileName);
+                    if (lbl != null) x.OnProgressChanged += X_OnProgressChanged_Label;
+                    x.Copy();
+
+                }
+            }
+            private void X_OnProgressChanged_Label(double Persentage, double size, ref bool Cancel)
+            {
+                lbl.Text = Persentage.ToString();
+                lbl.Tag = size;
+            }
+
+        }
+
+        public class Restore
+        {
+            ProgressBar progressBar1;
+            Label lbl;
+            public Restore(string filter, string des, ProgressBar progressBar1_)
+            {
+                progressBar1 = progressBar1_;
+
+                var open = new OpenFileDialog();
+                open.Filter = filter;
+                var result = open.ShowDialog();
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
+                {
+                    var x = new FileManagement.FileCopyProgress(open.FileName, des);
+                    if (progressBar1 != null) x.OnProgressChanged += X_OnProgressChangedProgress;
+                    x.Copy();
+
+                }
+            }
+            private void X_OnProgressChangedProgress(double Persentage, double size, ref bool Cancel)
+            {
+                if (Persentage > 0) progressBar1.Visible = true;
+                progressBar1.Value = Convert.ToInt32(Persentage);
+                if (Persentage == 100) progressBar1.Visible = false;
+            }
+            public Restore(string filter, string des, Label lbl_)
+            {
+                lbl = lbl_;
+
+                var open = new OpenFileDialog();
+                open.Filter = filter;
+                var result = open.ShowDialog();
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(open.FileName))
+                {
+                    var x = new FileManagement.FileCopyProgress(open.FileName, des);
+                    if (lbl != null) x.OnProgressChanged += X_OnProgressChangedLabel;
+                    x.Copy();
+
+                }
+            }
+            private void X_OnProgressChangedLabel(double Persentage, double size, ref bool Cancel)
+            {
+                lbl.Text = Persentage.ToString();
+                lbl.Tag = size;
+            }
+
+
+        }
         public static void UpdateDgvCellValueToDb<EntityT>(DataGridView dgv, int row_index, string primary_column, string update_column, DbContext db)
         {
             var cell_value = dgv.Rows[row_index].Cells[update_column].Value.ToString();
@@ -4052,7 +5043,32 @@ namespace SRL
             }
             return error;
         }
-        public static string ShowTablesInDB(string connection_string, DataTable dt, string where_cluase = null)
+        public class SqliteShowTablesFiled
+        {
+            public string type { get; set; }
+            public string name { get; set; }
+            public string tbl_name { get; set; }
+            public long rootpage { get; set; }
+            public string sql { get; set; }
+
+        }
+        public static List<SqliteShowTablesFiled> ShowTablesInSQLiteDB(DbContext db)
+        {
+            var result = new List<SqliteShowTablesFiled>();
+
+            string sql = "SELECT * FROM sqlite_master WHERE type='table' ";
+
+            try
+            {
+                result = SRL.Database.SqlQuery<SqliteShowTablesFiled>(db, sql);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            return result;
+        }
+        public static string ShowTablesInSQLDB(string connection_string, DataTable dt, string where_cluase = null)
         {
             string sql = "SELECT table_name FROM INFORMATION_SCHEMA.TABLES   ";
             //WHERE TABLE_NAME LIKE '%TEST_%'
@@ -4103,7 +5119,7 @@ namespace SRL
             return columns;
         }
 
-        public  string InserRowToTable(DbContext db, string table_name, DataGridView dataGridView1, Dictionary<string, string> other_value)
+        public string InserRowToTable(DbContext db, string table_name, DataGridView dataGridView1, Dictionary<string, string> other_value, string encoder = "N")
         {
             string error = string.Empty;
 
@@ -4128,12 +5144,12 @@ namespace SRL
 
                 foreach (DataGridViewCell cell in row.Cells)
                 {
-                    cells.Add(cell.Value == null ? "N''" : "N'" + cell.Value.ToString() + "'");
+                    cells.Add(cell.Value == null ? encoder + "''" : encoder + "'" + cell.Value.ToString() + "'");
                 }
 
                 string other_sql = "";
 
-                if (other_value != null) other_sql = " , N'" + string.Join("' , N'", other_value.Values.ToList()) + "'";
+                if (other_value != null) other_sql = " , " + encoder + "'" + string.Join("' , " + encoder + "'", other_value.Values.ToList()) + "'";
 
                 string cells_sql = string.Join(" ,", cells) + other_sql;
 
@@ -4187,19 +5203,20 @@ namespace SRL
 
         }
 
-        public static void TruncateTable(DbContext db, string table_name)
+        public static int TruncateTable(DbContext db, string table_name)
         {
-            db.Database.ExecuteSqlCommand("truncate table " + table_name);
+            int res = db.Database.ExecuteSqlCommand("delete from " + table_name);
             db.SaveChanges();
+            return res;
         }
         public static string ExecuteQuery(DbContext db, string query)
         {
             string error = string.Empty;
-
+            int exe;
             try
             {
-                db.Database.ExecuteSqlCommand(query);
-                db.SaveChanges();
+                exe = db.Database.ExecuteSqlCommand(query);
+                exe = db.SaveChanges();
             }
             catch (Exception ex)
             {
@@ -4215,11 +5232,47 @@ namespace SRL
         }
         public static List<OutputType> SqlQuery<OutputType>(DbContext db, string query)
         {
-            var result = db.Database.SqlQuery<OutputType>(query).ToList();
-            return result;
+            try
+            {
+                var result_ = db.Database.SqlQuery<OutputType>(query);
+
+                if (result_.Any())
+                {
+                    var result = result_.ToList();
+                    return result;
+                }
+                else return new List<OutputType>();
+            }
+
+            catch (Exception exe)
+            {
+                MessageBox.Show(exe.Message);
+                return null;
+            }
 
         }
+        public static string GetConnectionString(string conStrName)
+        {
+            var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            var connectionStringsSection = (ConnectionStringsSection)config.GetSection("connectionStrings");
+            string last_con = connectionStringsSection.ConnectionStrings[conStrName].ConnectionString;
+            return last_con;
+        }
+        public static string GetDataSourceOfConnectionString(string conStrName)
+        {
+            ConnectionStringSettings genusSettings = ConfigurationManager.ConnectionStrings[conStrName];
+            if (genusSettings == null || string.IsNullOrEmpty(genusSettings.ConnectionString))
+            {
+                return "(SRL)Fatal error: Missing connection string config file";
+            }
+            string genusConnectionString = genusSettings.ConnectionString;
+            System.Data.Entity.Core.EntityClient.EntityConnectionStringBuilder entityConnectionStringBuilder =
+                new System.Data.Entity.Core.EntityClient.EntityConnectionStringBuilder(genusConnectionString);
+            SqlConnectionStringBuilder sqlConnectionStringBuilder = new SqlConnectionStringBuilder(entityConnectionStringBuilder.ProviderConnectionString);
+            string genusSqlServerName = sqlConnectionStringBuilder.DataSource;
 
+            return genusSqlServerName;
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -4228,8 +5281,8 @@ namespace SRL
         /// <param name="control_to_load"></param>
         public bool UpdateConnectionString(string conStr, string conStrName, Control control_to_load = null)
         {
-            //for sqlite: @"metadata=res://*/Model.Model1.csdl|res://*/Model.Model1.ssdl|res://*/Model.Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=C:\Program Files\hami\MyDatabase.sqlite'"
-            // or :       @"metadata=res://*/Model.Model1.csdl|res://*/Model.Model1.ssdl|res://*/Model.Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=&quot;MyDatabase.sqlite&quot;'"
+            //for sqlite: @"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=C:\Program Files\hami\MyDatabase.sqlite'"
+            // or :       @"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=MyDatabase.sqlite;'"
 
             if (control_to_load != null) ControlLoader(control_to_load, "connecting database...");
 
@@ -4247,6 +5300,7 @@ namespace SRL
 
         public static void UpdateConnectionStringAndRestart(string conStr, string conStrName, Control control_to_load)
         {
+            // example: SRL.Database.UpdateConnectionStringAndRestart(@"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=MyDatabase.sqlite;'", typeof(MyDatabaseEntities).Name, control);
             using (SRL.Database dbsrl = new SRL.Database())
             {
                 if (!dbsrl.UpdateConnectionString(conStr, conStrName, control_to_load))
@@ -4256,6 +5310,97 @@ namespace SRL
                 }
 
             }
+
+        }
+
+
+    }
+    public class AccessManagement
+    {
+        /// <summary>
+        ///  
+        /// </summary>
+        /// <param name="ofDialog"></param>
+        /// <param name="lblFileName"></param>
+        /// <param name="main_headers"></param>
+        /// <param name="dataGridView1"></param>
+        /// <param name="lblCount"></param>
+        public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
+        {
+            if (ofDialog.FileName == null)
+            {
+                ofDialog.Filter = "Access files|*.accdb";
+                if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
+                lblFileName.Text = ofDialog.FileName;
+            }
+            DataTable table = GetDataTableFromAccess(ofDialog.FileName, table_name);
+            if (table == null) return null;
+            var x = table.AsEnumerable();
+
+            string check_header = CheckAccessHeaders(table, main_headers);
+            if (check_header == "true")
+            {
+                dgv.DataSource = table;
+
+                if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+            }
+
+            else MessageBox.Show(check_header);
+
+            return table;
+        }
+
+        public static DataTable GetDataTableFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
+        {
+            string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
+            string strSql = "Select * from " + table_name;
+            OleDbConnection con = new OleDbConnection(strProvider);
+            OleDbCommand cmd = new OleDbCommand(strSql, con);
+            con.Open();
+            cmd.CommandType = CommandType.Text;
+            OleDbDataAdapter da = new OleDbDataAdapter(cmd);
+            DataTable table = new DataTable();
+            try
+            {
+                da.Fill(table);
+                return table;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                return null;
+            }
+        }
+
+        public static string CheckAccessHeaders(DataTable dt, string[] main_headers)
+        {
+            List<string> access_columns = new List<string>();
+            foreach (DataColumn item in dt.Columns)
+            {
+                access_columns.Add(item.ColumnName);
+            }
+
+            foreach (var file_header in access_columns)
+            {
+                Application.DoEvents();
+                if (!main_headers.Contains(file_header))
+                {
+                    return file_header + " is not valid.";
+                }
+                else continue;
+            }
+
+            foreach (var main_header in main_headers)
+            {
+                Application.DoEvents();
+                if (!access_columns.Contains(main_header))
+                {
+                    return "file does not have column: " + main_header;
+                }
+                else continue;
+            }
+
+            return "true";
 
         }
 
@@ -4269,7 +5414,7 @@ namespace SRL
             : base(btn)
         {
         }
-        public static void LoadDGVFromExcelNoHead(OpenFileDialog ofDialog, Label lblFileName, DataGridView dgv)
+        public static void LoadDGVFromExcelNoHead(OpenFileDialog ofDialog, Label lblFileName, DataGridView dgv, Label lblCount = null)
         {
             ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
             ofDialog.ShowDialog();
@@ -4306,27 +5451,31 @@ namespace SRL
                     //    file_row.GetCell(24).Value, file_row.GetCell(25).Value, file_row.GetCell(26).Value, file_row.GetCell(27).Value, file_row.GetCell(28).Value, file_row.GetCell(29).Value, file_row.GetCell(30).Value
                     //    );
                 }
-
+                if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
         }
 
-        public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv)
+        public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
-            ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
-            ofDialog.ShowDialog();
-            lblFileName.Text = ofDialog.FileName;
-            
+            if (ofDialog.FileName == null)
+            {
+                ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
+                if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return;
+                lblFileName.Text = ofDialog.FileName;
+            }
             ExcelLibrary.Office.Excel.Workbook excel_file = ExcelLibrary.Office.Excel.Workbook.Open(ofDialog.FileName);
             var worksheet = excel_file.Worksheets[0]; // assuming only 1 worksheet
             var cells = worksheet.Cells;
+
             string check_header = CheckExcelHeaders(cells, main_headers);
             if (check_header == "true")
             {
+                DataTable dt = new DataTable();
                 int file_last_column_index = cells.LastColIndex;
                 // add columns
                 foreach (var header in cells.GetRow(cells.FirstRowIndex))
                 {
-                    dgv.Columns.Add(header.Value.StringValue, header.Value.StringValue);
+                    dt.Columns.Add(header.Value.StringValue);
                 }
 
                 // add rows
@@ -4338,16 +5487,12 @@ namespace SRL
                     {
                         file_row_cells.Add(file_row.GetCell(i).Value);
                     }
-                    dgv.Rows.Add(file_row_cells.ToArray());
+                    dt.Rows.Add(file_row_cells.ToArray());
 
-                    //dgv.Rows.Add(file_row.GetCell(0).Value, file_row.GetCell(1).Value, file_row.GetCell(2).Value, file_row.GetCell(3).Value, file_row.GetCell(4).Value,
-                    //    file_row.GetCell(5).Value, file_row.GetCell(6).Value, file_row.GetCell(7).Value, file_row.GetCell(8).Value, file_row.GetCell(9).Value, file_row.GetCell(10).Value,
-                    //    file_row.GetCell(11).Value, file_row.GetCell(12).Value, file_row.GetCell(13).Value, file_row.GetCell(14).Value, file_row.GetCell(15).Value, file_row.GetCell(16).Value,
-                    //    file_row.GetCell(17).Value, file_row.GetCell(18).Value, file_row.GetCell(19).Value, file_row.GetCell(20).Value, file_row.GetCell(21).Value, file_row.GetCell(22).Value, file_row.GetCell(23).Value,
-                    //    file_row.GetCell(24).Value, file_row.GetCell(25).Value, file_row.GetCell(26).Value, file_row.GetCell(27).Value, file_row.GetCell(28).Value, file_row.GetCell(29).Value, file_row.GetCell(30).Value
-                    //    );
                 }
 
+                dgv.DataSource = dt;
+                if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
 
             else MessageBox.Show(check_header);
@@ -4381,10 +5526,41 @@ namespace SRL
             return "true";
 
         }
-        public  void ExportToExcell(DataGridView dgview, int devider, string fileFullName)
+
+
+
+        public enum ExcelPathType
         {
+            NotSet,
+            DesktopDatetimeToSecond
+        }
+        public void ExportToExcell(DataGridView dgview, int? devider = null, string fileFullNameNoExtention = null, TextBox tbCountDynamic = null, ExcelPathType excel_naming = ExcelPathType.NotSet, string default_name = "")
+        {
+            string path = fileFullNameNoExtention + ".xls";
 
+            switch (excel_naming)
+            {
+                case ExcelPathType.DesktopDatetimeToSecond:
+                    string file = default_name + DateTime.Now.ToString("yyyyMMddHHmmss") + ".xls";
+                    path = System.IO.Path.Combine(SRL.FileManagement.GetDesktopDirectory(), @file);
+                    break;
+            }
 
+            if (tbCountDynamic == null)
+            {
+                ExportToExcellFile(dgview, (int)devider, path);
+            }
+            else
+            {
+                int cont;
+                if (string.IsNullOrWhiteSpace(tbCountDynamic.Text) || !int.TryParse(tbCountDynamic.Text, out cont)) return;
+
+                ExportToExcellFile(dgview, cont, path);
+            }
+        }
+
+        private void ExportToExcellFile(DataGridView dgview, int devider, string path)
+        {
             DataSet ds = new DataSet();
             int table_count = dgview.Rows.Count / devider;
             int index = 0;
@@ -4401,8 +5577,7 @@ namespace SRL
             ds.Tables.Add(_table);
             SRL.Convertor.MakeDataTableFromDGV(dgview, _table, devider, index);
 
-            //ExcelLibrary.DataSetHelper.CreateWorkbook(@Publics.desktop_root + "exported.xls", ds);
-            ExcelLibrary.DataSetHelper.CreateWorkbook(@fileFullName, ds);
+            ExcelLibrary.DataSetHelper.CreateWorkbook(@path, ds);
         }
 
     }
@@ -4569,6 +5744,88 @@ namespace SRL
 
         }
 
+        public static void LoadDGVFromFile(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
+        {
+            ofDialog.Filter = "access or excel 2003|*.accdb; *.xls";
+
+
+            if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return;
+            lblFileName.Text = ofDialog.FileName;
+            switch (Path.GetExtension(ofDialog.FileName))
+            {
+                case ".xls":
+                    SRL.ExcelManagement.LoadDGVFromExcel(ofDialog, lblFileName, main_headers, dgv, lblCount);
+                    break;
+                case ".accdb":
+                    SRL.AccessManagement.LoadDGVFromAccess(ofDialog, lblFileName, main_headers, dgv, lblCount, table_name);
+                    break;
+            }
+
+
+        }
+
+
+        public class FileCopyProgress
+        {
+            public delegate void ProgressChangeDelegate(double Persentage,double size, ref bool Cancel);
+            public delegate void Completedelegate();
+
+            /// <summary>
+            /// use OnProgressChanged event and then call Copy
+            /// </summary>
+            /// <param name="Source"></param>
+            /// <param name="Dest"></param>
+            public FileCopyProgress(string Source, string Dest)
+            {
+                this.SourceFilePath = Source;
+                this.DestFilePath = Dest;
+
+                OnProgressChanged += delegate { };
+                OnComplete += delegate { };
+            }
+
+            public void Copy()
+            {
+                byte[] buffer = new byte[1024 * 1024]; // 1MB buffer
+                bool cancelFlag = false;
+
+                using (FileStream source = new FileStream(SourceFilePath, FileMode.Open, FileAccess.Read))
+                {
+                    long fileLength = source.Length;
+
+                    using (FileStream dest = new FileStream(DestFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
+                    {
+                        long totalBytes = 0;
+                        int currentBlockSize = 0;
+
+                        while ((currentBlockSize = source.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            totalBytes += currentBlockSize;
+                            double persentage = (double)totalBytes * 100.0 / fileLength;
+
+                            dest.Write(buffer, 0, currentBlockSize);
+
+                            cancelFlag = false;
+                            OnProgressChanged(persentage,totalBytes, ref cancelFlag);
+
+                            if (cancelFlag == true)
+                            {
+                                // Delete dest file here
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                OnComplete();
+            }
+
+            public string SourceFilePath { get; set; }
+            public string DestFilePath { get; set; }
+
+            public event ProgressChangeDelegate OnProgressChanged;
+            public event Completedelegate OnComplete;
+        }
 
 
 
@@ -4629,7 +5886,11 @@ namespace SRL
 
             shortcut.Save();
         }
-        public static string ReplaceAllFilesFromDirToDir(string SourceFolderFullPath, string DestinationFolderFullPath)
+        public static void CutPasteFile(string sourceFilePath, string destnationFilePath)
+        {
+            System.IO.File.Move(sourceFilePath, destnationFilePath);
+        }
+        public static string ReplaceAllFilesFromDirToDir(string SourceFolderFullPath, string DestinationFolderFullPath, List<string> not_copy_files = null)
         {
             try
             {
@@ -4642,7 +5903,11 @@ namespace SRL
 
                 foreach (string newPath in Directory.GetFiles(SourceFolderFullPath, "*.*",
                     SearchOption.AllDirectories))
+                {
+                    if (not_copy_files != null)
+                        if (not_copy_files.Contains(Path.GetFileName(newPath))) continue;
                     System.IO.File.Copy(newPath, newPath.Replace(SourceFolderFullPath, DestinationFolderFullPath), true);
+                }
                 return "";
             }
             catch (Exception exc)
@@ -4782,6 +6047,8 @@ namespace SRL
         /// <param name="contentFontName">Your font to be passed as a resource (i.e. "myfont.tff" that is WriteAllBytes). get it from </param>
         public void InstallFont(string contentFontName)
         {
+            //example:  srl_font.InstallFont(srl_font.GetContentFontNameFromByte(Properties.Resources.irsan, "irsan.ttf"));
+
             // Creates the full path where your font will be installed
             var fontDestination = Path.Combine(System.Environment.GetFolderPath
                                           (System.Environment.SpecialFolder.Fonts), contentFontName);

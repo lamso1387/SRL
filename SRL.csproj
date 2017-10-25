@@ -27,13 +27,13 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>false</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>0</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x86</PlatformTarget>
     <DocumentationFile>bin\Release\SRL.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
@@ -43,7 +43,7 @@
     <Reference Include="ExcelLibrary, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>my_reference\ExcelLibrary.dll</HintPath>
-      <Private>False</Private>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.ReportViewer.WinForms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -75,6 +75,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System.Security" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows.Forms" />
@@ -85,6 +86,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Projects.cs" />
+    <Compile Include="tools\Button\GradientButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="tools\Button\GradientButton.designer.cs">
+      <DependentUpon>GradientButton.cs</DependentUpon>
+    </Compile>
     <Compile Include="LicenseClass.cs" />
     <Compile Include="license\WinLicenseActivation.cs">
       <SubType>Form</SubType>
@@ -104,6 +112,12 @@
     <Compile Include="license\WinLicenseForm.designer.cs">
       <DependentUpon>WinLicenseForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="login\WinLoginProfile.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="login\WinLoginProfile.designer.cs">
+      <DependentUpon>WinLoginProfile.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -117,6 +131,26 @@
     </Compile>
     <Compile Include="setup\Setup.designer.cs">
       <DependentUpon>Setup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\BPersianTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\BPersianTextBox.designer.cs">
+      <DependentUpon>BPersianTextBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\ConvertDate.cs" />
+    <Compile Include="tools\BPersianCalender\DateValidation.cs" />
+    <Compile Include="tools\BPersianCalender\PCalander.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\PCalander.designer.cs">
+      <DependentUpon>PCalander.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\SMIO_DataGridView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="tools\BPersianCalender\SMIO_DataGridView.designer.cs">
+      <DependentUpon>SMIO_DataGridView.cs</DependentUpon>
     </Compile>
     <Compile Include="tools\DgvFilterPopup\FilterPopup\ColumnFilterEvent.cs" />
     <Compile Include="tools\DgvFilterPopup\FilterPopup\DgvBaseColumnFilter.cs">
@@ -195,6 +229,18 @@
     <Compile Include="login\WinLoginUser.Designer.cs">
       <DependentUpon>WinLoginUser.cs</DependentUpon>
     </Compile>
+    <Compile Include="login\WinRolePermissions.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="login\WinRolePermissions.Designer.cs">
+      <DependentUpon>WinRolePermissions.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\UserControls\ProgressControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="tools\UserControls\ProgressControl.designer.cs">
+      <DependentUpon>ProgressControl.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="content\bootstrap-treeview.min.css" />
@@ -239,6 +285,11 @@
     <Content Include="script\jquery.min.js" />
     <Content Include="script\select2.min.js" />
     <Content Include="script\SRL.js" />
+    <None Include="ClassDiagram1.cd" />
+    <None Include="tools\BPersianCalender\Resources\Calendar-1128083418.png" />
+    <None Include="tools\BPersianCalender\Resources\Calendar.png" />
+    <None Include="tools\BPersianCalender\Resources\1413037734_Last1.png" />
+    <None Include="tools\BPersianCalender\Resources\1413037734_Last.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="content\font\glyphicons-halflings-regular.eot" />
@@ -250,12 +301,16 @@
     <None Include="doc\select2.rtf" />
     <None Include="doc\sqlite.docx" />
     <None Include="setup\app.manifest" />
+    <None Include="snippet\AcceptButtonInUserControl.snippet" />
     <None Include="tools\DgvFilterPopup\Diagrams\BasicDiagram.cd" />
     <None Include="tools\DgvFilterPopup\Diagrams\DetailDiagram.cd" />
     <None Include="tools\DgvFilterPopup\Diagrams\Extensions.cd" />
     <None Include="tools\DgvFilterPopup\Diagrams\Implementations.cd" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="tools\Button\GradientButton.resx">
+      <DependentUpon>GradientButton.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="license\WinLicenseActivation.resx">
       <DependentUpon>WinLicenseActivation.cs</DependentUpon>
     </EmbeddedResource>
@@ -264,6 +319,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="license\WinLicenseForm.resx">
       <DependentUpon>WinLicenseForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="login\WinLoginProfile.resx">
+      <DependentUpon>WinLoginProfile.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -277,6 +335,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="setup\Setup.resx">
       <DependentUpon>Setup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\BPersianCalender\PCalander.resx">
+      <DependentUpon>PCalander.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="tools\DgvFilterPopup\FilterPopup\Extensions\DgvDateRangeColumnFilter.resx">
       <DependentUpon>DgvDateRangeColumnFilter.cs</DependentUpon>
@@ -307,6 +368,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="tools\MessageBoxForm2.resx">
       <DependentUpon>MessageBoxForm2.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="login\WinRolePermissions.resx">
+      <DependentUpon>WinRolePermissions.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\UserControls\ProgressControl.resx">
+      <DependentUpon>ProgressControl.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

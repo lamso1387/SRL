@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+
+    <!-- The header contains information describing the snippet. -->
+    <Header>
+
+      <!-- The Title of the snippet, this will be shown in the snippets manager. -->
+      <Title>to start and end loading circle</Title>
+
+      <!-- The description of the snippet. -->
+      <Description>use before and after function</Description>
+
+      <!-- The author of the snippet. -->
+      <Author>SRL</Author>
+
+      <!-- The set of characters that must be keyed in to insert the snippet. -->
+      <Shortcut>LoadingCircleStartEnd</Shortcut>
+
+      <!-- A URL for more help. -->
+      <HelpUrl>http://srl.ir</HelpUrl>
+
+      <!-- The set of snippet types we're dealing with - either Expansion or -->
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+
+    </Header>
+
+    <!-- Now we have the snippet itself. -->
+    <Snippet>
+
+      <!-- Sepecify the code language and the actual snippet content. -->
+      <Code Language="CSharp" Kind="any">
+        <![CDATA[
+private void StartLoading()
+        {
+
+            loadingCircle1.Visible = loadingCircle1.Active = true; 
+            Cursor.Current = Cursors.WaitCursor;
+            loadingCircle1.OuterCircleRadius = 20;
+            loadingCircle1.InnerCircleRadius = 10;
+            loadingCircle1.NumberSpoke = 20;
+            loadingCircle1.RotationSpeed = 120;
+            for (int i = 0; i < 500; i++)
+            {
+                System.Threading.Thread.Sleep(1);
+                Application.DoEvents();
+            }       
+            
+        }
+
+        private void EndLoading()
+        {
+            loadingCircle1.Visible = loadingCircle1.Active = false;
+        }
+
+                    
+                ]]>
+      </Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

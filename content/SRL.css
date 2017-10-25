@@ -1,4 +1,4 @@
-﻿.project-menu1 { /*give it to div.navbar bootstrap class */
+.project-menu1 { /*give it to div.navbar bootstrap class */
     margin: auto;
     background-color: #32abbc;
     border: 2px solid #2b93a2;
@@ -63,6 +63,7 @@
     direction: rtl;
 }
 
+
 .ltr {
     direction: ltr;
 }
@@ -126,4 +127,9 @@
 
 .visible {
 	visibility: visible;
+}
+
+.letter-space
+{
+     letter-spacing: 10px;
 }
