@@ -4315,7 +4315,7 @@ namespace SRL
             ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
             ofDialog.ShowDialog();
             lblFileName.Text = ofDialog.FileName;
-
+            
             ExcelLibrary.Office.Excel.Workbook excel_file = ExcelLibrary.Office.Excel.Workbook.Open(ofDialog.FileName);
             var worksheet = excel_file.Worksheets[0]; // assuming only 1 worksheet
             var cells = worksheet.Cells;
