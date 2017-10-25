@@ -1214,11 +1214,11 @@ namespace SRL
                 ProgressBar progress_bar;
                 ProgressBarStyle main_style;
                 public BackgroundWorker bg = new BackgroundWorker();
-                public MethodBackgroundWorker( ProgressBar progress_bar_, ProgressBarStyle bar_style)
-                { 
+                public MethodBackgroundWorker(ProgressBar progress_bar_, ProgressBarStyle bar_style)
+                {
 
                     bg.DoWork += new DoWorkEventHandler(bg_DoWork);
-                    
+
                     if (progress_bar_ != null)
                     {
                         bg.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bg_RunWorkerCompleted);
@@ -1229,19 +1229,19 @@ namespace SRL
                         main_style = progress_bar.Style;
                         progress_bar.Style = bar_style;
                     }
-                    
+
 
                 }
                 public void RunMethodInBackground(Action function_)
                 {
                     function = function_;
                     bg.RunWorkerAsync();
-                   
+
                 }
-                
+
                 private void Bg_ProgressChanged(object sender, ProgressChangedEventArgs e)
                 {
-                   
+
                     progress_bar.Style = ProgressBarStyle.Blocks;
                     progress_bar.Value = e.ProgressPercentage;
                 }
@@ -1278,7 +1278,7 @@ namespace SRL
 
             public static void MethodInvoker(Action function)
             {
-                function.Invoke(); 
+                function.Invoke();
             }
 
             public static object MethodDynamicInvoker<T>(Func<T> function, params object[] parameters)
@@ -5320,7 +5320,7 @@ namespace SRL
         /// <param name="lblCount"></param>
         public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
         {
-            if (!Directory.Exists(ofDialog.FileName))
+            if (!System.IO.File.Exists(ofDialog.FileName))
             {
                 ofDialog.Filter = "Access files|*.accdb";
                 if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
@@ -5364,29 +5364,40 @@ namespace SRL
                 return null;
             }
         }
-        public static int ExecuteToAccess(string query, string file_full_path, string provider = "Microsoft.ACE.OLEDB.12.0")
+        public static int ExecuteToAccess(string query, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
 
-            OleDbConnection con = new OleDbConnection(strProvider);
-            OleDbCommand cmd = new OleDbCommand(query, con);
-            con.Open();
-            cmd.CommandType = CommandType.Text;
-            try
+            using (OleDbConnection con = new OleDbConnection(strProvider))
             {
-                return cmd.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-                return -1;
+
+
+                OleDbCommand cmd = new OleDbCommand(query, con);
+
+                try
+                {
+                    con.Open();
+                    cmd.CommandType = CommandType.Text;
+                    return cmd.ExecuteNonQuery();
+                }
+                catch (Exception ex)
+                {
+                    if (show_error) MessageBox.Show(ex.Message);
+
+                    return -1;
+                }
             }
         }
 
         public static DataTable SqlQueryFromAccess(string file_full_path, string query, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
+            if (!System.IO.File.Exists(file_full_path))
+            {
+                MessageBox.Show("error ! " + file_full_path);
+                return null;
+            }
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
-            
+
             OleDbConnection con = new OleDbConnection(strProvider);
             OleDbCommand cmd = new OleDbCommand(query, con);
             con.Open();
