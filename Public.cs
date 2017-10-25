@@ -5320,7 +5320,7 @@ namespace SRL
         /// <param name="lblCount"></param>
         public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
         {
-            if (ofDialog.FileName == null)
+            if (!Directory.Exists(ofDialog.FileName))
             {
                 ofDialog.Filter = "Access files|*.accdb";
                 if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
@@ -5364,7 +5364,46 @@ namespace SRL
                 return null;
             }
         }
+        public static int ExecuteToAccess(string query, string file_full_path, string provider = "Microsoft.ACE.OLEDB.12.0")
+        {
+            string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
 
+            OleDbConnection con = new OleDbConnection(strProvider);
+            OleDbCommand cmd = new OleDbCommand(query, con);
+            con.Open();
+            cmd.CommandType = CommandType.Text;
+            try
+            {
+                return cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                return -1;
+            }
+        }
+
+        public static DataTable SqlQueryFromAccess(string file_full_path, string query, string provider = "Microsoft.ACE.OLEDB.12.0")
+        {
+            string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
+            
+            OleDbConnection con = new OleDbConnection(strProvider);
+            OleDbCommand cmd = new OleDbCommand(query, con);
+            con.Open();
+            cmd.CommandType = CommandType.Text;
+            OleDbDataAdapter da = new OleDbDataAdapter(cmd);
+            DataTable table = new DataTable();
+            try
+            {
+                da.Fill(table);
+                return table;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                return null;
+            }
+        }
         public static string CheckAccessHeaders(DataTable dt, string[] main_headers)
         {
             List<string> access_columns = new List<string>();
