@@ -4,7 +4,10 @@ SET @intFlag = 1
 WHILE (@intFlag >0)
 BEGIN
    
-	delete from Anbar
+	--delete 
+	--select * 
+	from Anbar
+	
 where Anbar.ID in
 
 (SELECT s.ID

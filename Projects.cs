@@ -108,7 +108,7 @@ namespace SRL
                 public string State { get; set; }
                 public object SideFloor { get; set; }
                 public string PostCode { get; set; }
-                public int HouseNo { get; set; }
+                public double HouseNo { get; set; }
                 public object Village { get; set; }
                 public string PreAvenue { get; set; }
                 public string Avenue { get; set; }
@@ -134,19 +134,19 @@ namespace SRL
 
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
+                    person = new PersonClass();
                     string result = response.Content.ReadAsStringAsync().Result;
-                    string data1 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
-                    Dictionary<string, object> data3 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(data1);
-                    if (data3["FirstName"] != null)
+                    var data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                    if (data["FirstName"] != null)
                     {
-                        person.FirstName = data3["FirstName"].ToString();
-                        person.LastName = data3["LastName"].ToString();
+                        person.FirstName = data["FirstName"].ToString();
+                        person.LastName = data["LastName"].ToString();
                         person.last_sent = DateTime.Now.ToString();
                         person.national_id = national_id;
                     }
                     else
                     {
-                        person.ErrorDescription = data3["ErrorDescription"].ToString();
+                        person.ErrorDescription = data["ErrorDescription"].ToString();
                         person.national_id = national_id;
                     }
 
