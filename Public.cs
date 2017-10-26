@@ -5339,7 +5339,7 @@ namespace SRL
             }
 
             else MessageBox.Show(check_header);
-
+            ofDialog = new OpenFileDialog();
             return table;
         }
 
@@ -5486,14 +5486,7 @@ namespace SRL
                         file_row_cells.Add(file_row.GetCell(i).Value);
                     }
                     dgv.Rows.Add(file_row_cells.ToArray());
-
-                    //dgv.Rows.Add(file_row.GetCell(0).Value, file_row.GetCell(1).Value, file_row.GetCell(2).Value, file_row.GetCell(3).Value, file_row.GetCell(4).Value,
-                    //    file_row.GetCell(5).Value, file_row.GetCell(6).Value, file_row.GetCell(7).Value, file_row.GetCell(8).Value, file_row.GetCell(9).Value, file_row.GetCell(10).Value,
-                    //    file_row.GetCell(11).Value, file_row.GetCell(12).Value, file_row.GetCell(13).Value, file_row.GetCell(14).Value, file_row.GetCell(15).Value, file_row.GetCell(16).Value,
-                    //    file_row.GetCell(17).Value, file_row.GetCell(18).Value, file_row.GetCell(19).Value, file_row.GetCell(20).Value, file_row.GetCell(21).Value, file_row.GetCell(22).Value, file_row.GetCell(23).Value,
-                    //    file_row.GetCell(24).Value, file_row.GetCell(25).Value, file_row.GetCell(26).Value, file_row.GetCell(27).Value, file_row.GetCell(28).Value, file_row.GetCell(29).Value, file_row.GetCell(30).Value
-                    //    );
-                }
+ }
                 if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
         }
