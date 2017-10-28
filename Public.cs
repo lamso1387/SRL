@@ -75,7 +75,7 @@ namespace SRL
                 {
                     EnableMenuBasedOnPermissions(rezL.First().permission, menu);
                 }
-            if(role=="master")
+            if (role == "master")
             {
                 EnableMenuBasedOnPermissions("master", menu);
             }
@@ -123,7 +123,7 @@ namespace SRL
                 }
             }
 
-            if(permission_str=="master")
+            if (permission_str == "master")
             {
                 foreach (var item in menu_items)
                 {
@@ -1116,7 +1116,7 @@ namespace SRL
                     progress = 0;
                     call_back = call_back_;
                     progress_bar_lbl = progress_bar_lbl_;
-                    progress_bar_lbl.EnabledChanged += Progress_bar_lbl_EnabledChanged;
+                    if (progress_bar_lbl != null) progress_bar_lbl.EnabledChanged += Progress_bar_lbl_EnabledChanged;
                     int per_count = int.Parse(parallel);
                     int all = 0;
                     int take = 0;
@@ -1158,7 +1158,7 @@ namespace SRL
                 }
 
                 private async static void Progress_bar_lbl_EnabledChanged(object sender, EventArgs e)
-                { 
+                {
                     foreach (var worker in bgList)
                     {
                         if (!progress_bar_lbl.Enabled && worker != null && worker.IsBusy)
@@ -1214,39 +1214,39 @@ namespace SRL
                  */
 
                 Action function;
-                bool report_progress;
                 ProgressBar progress_bar;
                 ProgressBarStyle main_style;
                 public BackgroundWorker bg = new BackgroundWorker();
-                public MethodBackgroundWorker(bool report_progress_, ProgressBar progress_bar_, ProgressBarStyle bar_style)
+                public MethodBackgroundWorker(ProgressBar progress_bar_, ProgressBarStyle bar_style)
                 {
 
-                    report_progress = report_progress_;
-
                     bg.DoWork += new DoWorkEventHandler(bg_DoWork);
-
-                    bg.WorkerReportsProgress = report_progress;
 
                     if (progress_bar_ != null)
                     {
                         bg.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bg_RunWorkerCompleted);
                         bg.ProgressChanged += Bg_ProgressChanged;
+                        bg.WorkerReportsProgress = true;
                         progress_bar = progress_bar_;
                         progress_bar.Parent.Visible = true;
                         main_style = progress_bar.Style;
                         progress_bar.Style = bar_style;
                     }
 
+
                 }
                 public void RunMethodInBackground(Action function_)
                 {
                     function = function_;
                     bg.RunWorkerAsync();
+
                 }
 
                 private void Bg_ProgressChanged(object sender, ProgressChangedEventArgs e)
                 {
-                    if (report_progress) progress_bar.Value = e.ProgressPercentage;
+
+                    progress_bar.Style = ProgressBarStyle.Blocks;
+                    progress_bar.Value = e.ProgressPercentage;
                 }
 
                 private void bg_DoWork(object sender, DoWorkEventArgs e)
@@ -1281,14 +1281,7 @@ namespace SRL
 
             public static void MethodInvoker(Action function)
             {
-                try
-                {
-                    function.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message);
-                }
+                function.Invoke();
             }
 
             public static object MethodDynamicInvoker<T>(Func<T> function, params object[] parameters)
@@ -2777,14 +2770,14 @@ namespace SRL
             }
         }
 
-        public  class DataGridViewTool
+        public class DataGridViewTool
         {
             public static List<T> GetColumnList<T>(DataGridViewSelectedRowCollection dgv_rows, string column_name)
             {
                 List<T> list = new List<T>();
                 foreach (DataGridViewRow item in dgv_rows)
                 {
-                   list.Add((T)item.Cells[column_name].Value);
+                    list.Add((T)item.Cells[column_name].Value);
 
                 }
                 return list;
@@ -3232,14 +3225,14 @@ namespace SRL
         {
             public class DigitSeperation
             {
-                public static void Enable3DigitSeperation(params  TextBox[] tb_list)
+                public static void Enable3DigitSeperation(params TextBox[] tb_list)
                 {
                     foreach (var tb_ in tb_list)
                     {
-                    tb_.TextChanged +=tb_TextChanged;   
+                        tb_.TextChanged += tb_TextChanged;
                     }
                 }
-                private static void  tb_TextChanged(object sender, EventArgs e)
+                private static void tb_TextChanged(object sender, EventArgs e)
                 {
                     var tb = sender as TextBox;
                     string value = tb.Text.Replace(",", "");
@@ -3794,11 +3787,11 @@ namespace SRL
                 public static bool exit_hover = false;
             }
 
-            public static void MasterKeboardLogin(Label lbl,TextBox tb, Form control, SRL.WinSessionId session)
+            public static void MasterKeboardLogin(Label lbl, TextBox tb, Form control, SRL.WinSessionId session)
             {
                 //shift +  lbl hover + shift  + (ctrl,alt,1)
                 lbl.MouseHover += Lbl_MouseHover;
-                tb.KeyDown += (ss,ee)=> Tb_KeyDown(ss,ee, control, session);
+                tb.KeyDown += (ss, ee) => Tb_KeyDown(ss, ee, control, session);
             }
 
             private static void Tb_KeyDown(object sender, KeyEventArgs e, Form control, SRL.WinSessionId session)
@@ -3844,8 +3837,8 @@ namespace SRL
                     KeyboardLogin.IsLogin = KeyboardLogin.IsLogin && false;
                 else KeyboardLogin.exit_hover = true;
             }
-             
- 
+
+
 
             public static bool CheckMasterLogin(SRL.WinSessionId session, string username, string password)
             {
@@ -4925,7 +4918,7 @@ namespace SRL
 
                 }
             }
-            private void X_OnProgressChanged_Progress(double Persentage,double size, ref bool Cancel)
+            private void X_OnProgressChanged_Progress(double Persentage, double size, ref bool Cancel)
             {
                 if (Persentage > 0) progressBar1.Visible = true;
                 progressBar1.Value = Convert.ToInt32(Persentage);
@@ -5330,7 +5323,7 @@ namespace SRL
         /// <param name="lblCount"></param>
         public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
         {
-            if (ofDialog.FileName == null)
+            if (!System.IO.File.Exists(ofDialog.FileName))
             {
                 ofDialog.Filter = "Access files|*.accdb";
                 if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
@@ -5349,7 +5342,7 @@ namespace SRL
             }
 
             else MessageBox.Show(check_header);
-
+            ofDialog = new OpenFileDialog();
             return table;
         }
 
@@ -5374,7 +5367,57 @@ namespace SRL
                 return null;
             }
         }
+        public static int ExecuteToAccess(string query, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
+        {
+            string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
 
+            using (OleDbConnection con = new OleDbConnection(strProvider))
+            {
+
+
+                OleDbCommand cmd = new OleDbCommand(query, con);
+
+                try
+                {
+                    con.Open();
+                    cmd.CommandType = CommandType.Text;
+                    return cmd.ExecuteNonQuery();
+                }
+                catch (Exception ex)
+                {
+                    if (show_error) MessageBox.Show(ex.Message);
+
+                    return -1;
+                }
+            }
+        }
+
+        public static DataTable SqlQueryFromAccess(string file_full_path, string query, string provider = "Microsoft.ACE.OLEDB.12.0")
+        {
+            if (!System.IO.File.Exists(file_full_path))
+            {
+                MessageBox.Show("error ! " + file_full_path);
+                return null;
+            }
+            string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
+
+            OleDbConnection con = new OleDbConnection(strProvider);
+            OleDbCommand cmd = new OleDbCommand(query, con);
+            con.Open();
+            cmd.CommandType = CommandType.Text;
+            OleDbDataAdapter da = new OleDbDataAdapter(cmd);
+            DataTable table = new DataTable();
+            try
+            {
+                da.Fill(table);
+                return table;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                return null;
+            }
+        }
         public static string CheckAccessHeaders(DataTable dt, string[] main_headers)
         {
             List<string> access_columns = new List<string>();
@@ -5446,21 +5489,14 @@ namespace SRL
                         file_row_cells.Add(file_row.GetCell(i).Value);
                     }
                     dgv.Rows.Add(file_row_cells.ToArray());
-
-                    //dgv.Rows.Add(file_row.GetCell(0).Value, file_row.GetCell(1).Value, file_row.GetCell(2).Value, file_row.GetCell(3).Value, file_row.GetCell(4).Value,
-                    //    file_row.GetCell(5).Value, file_row.GetCell(6).Value, file_row.GetCell(7).Value, file_row.GetCell(8).Value, file_row.GetCell(9).Value, file_row.GetCell(10).Value,
-                    //    file_row.GetCell(11).Value, file_row.GetCell(12).Value, file_row.GetCell(13).Value, file_row.GetCell(14).Value, file_row.GetCell(15).Value, file_row.GetCell(16).Value,
-                    //    file_row.GetCell(17).Value, file_row.GetCell(18).Value, file_row.GetCell(19).Value, file_row.GetCell(20).Value, file_row.GetCell(21).Value, file_row.GetCell(22).Value, file_row.GetCell(23).Value,
-                    //    file_row.GetCell(24).Value, file_row.GetCell(25).Value, file_row.GetCell(26).Value, file_row.GetCell(27).Value, file_row.GetCell(28).Value, file_row.GetCell(29).Value, file_row.GetCell(30).Value
-                    //    );
-                }
+ }
                 if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
         }
 
         public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
-            if (ofDialog.FileName == null)
+            if ( !Directory.Exists(ofDialog.FileName))
             {
                 ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
                 if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return;
@@ -5770,7 +5806,7 @@ namespace SRL
 
         public class FileCopyProgress
         {
-            public delegate void ProgressChangeDelegate(double Persentage,double size, ref bool Cancel);
+            public delegate void ProgressChangeDelegate(double Persentage, double size, ref bool Cancel);
             public delegate void Completedelegate();
 
             /// <summary>
@@ -5809,7 +5845,7 @@ namespace SRL
                             dest.Write(buffer, 0, currentBlockSize);
 
                             cancelFlag = false;
-                            OnProgressChanged(persentage,totalBytes, ref cancelFlag);
+                            OnProgressChanged(persentage, totalBytes, ref cancelFlag);
 
                             if (cancelFlag == true)
                             {
