@@ -637,11 +637,11 @@ namespace SRL
         public string GetDbVersion()
         {
             AddKeyToSettingTB("db_version");
-            var res = SqlQuerySettingTable("db_version");
+            var res = SqlQuerySettingTable("db_version","1");
             return res;
         }
 
-        private void AddKeyToSettingTB(string key)
+        private bool AddKeyToSettingTB(string key)
         {
             string sql = "select * from " + setting_table_name + " where [key]='" + key + "'";
             var get_version = SRL.Database.SqlQuery<object>(db, sql);
@@ -649,7 +649,9 @@ namespace SRL
             {
                 sql = "insert into " + setting_table_name + " ([key]) values('" + key + "')";
                 SRL.Database.ExecuteQuery(db, sql);
+                return true;
             }
+            else return false;
         }
 
         public string SetDefaultSetting()
@@ -769,6 +771,7 @@ namespace SRL
             {
                 var queryList = queryGet.DefaultIfEmpty(default_if_empty);
                 var query = queryList.FirstOrDefault();
+                query = query == null ? default_if_empty : query;
                 return query;
             }
 
@@ -5221,6 +5224,7 @@ namespace SRL
             catch (Exception ex)
             {
                 error = ex.Message;
+                MessageBox.Show(error);
             }
             return error;
         }
@@ -5308,7 +5312,6 @@ namespace SRL
                     Application.Restart();
                     Environment.Exit(0);
                 }
-
             }
 
         }
