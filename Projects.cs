@@ -190,9 +190,10 @@ namespace SRL
                 response = client_.PostAsJsonAsync("co_inq", input).Result;
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
+                    company = new CompanyClass();
                     string result = response.Content.ReadAsStringAsync().Result;
                     Dictionary<string, object> data1 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                    if (data1["result"].ToString() == "OK")
+                    if (data1["Successful"].ToString() == "true")
                     {
                         string data3 = data1["data"].ToString();
                         Dictionary<string, object> data4 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(data3);
@@ -202,7 +203,7 @@ namespace SRL
                     }
                     else
                     {
-                        company.error_name = data1["data"].ToString();
+                        company.error_name = data1["Message"].ToString();
                         company.co_national_id = co_national_id;
                     }
                 }

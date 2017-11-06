@@ -637,7 +637,7 @@ namespace SRL
         public string GetDbVersion()
         {
             AddKeyToSettingTB("db_version");
-            var res = SqlQuerySettingTable("db_version","1");
+            var res = SqlQuerySettingTable("db_version", "1");
             return res;
         }
 
@@ -1271,6 +1271,8 @@ namespace SRL
 
                MethodDynamicInvoker( () => AddOrEditNewRole(3, 4), this); 
           */
+                Application.DoEvents();
+
                 container_control.BeginInvoke(new MethodInvoker(() =>
                 {
                     function.DynamicInvoke(parameters);
@@ -4313,13 +4315,32 @@ namespace SRL
 
             public static DataTable CopyToDataTable<T>(IEnumerable<T> source)
             {
-                return new ObjectShredder<T>().Shred(source, null, null);
+                try
+                {
+
+                    return new ObjectShredder<T>().Shred(source, null, null);
+
+                }
+                catch (Exception es)
+                {
+                    MessageBox.Show(es.Message);
+                    return null;
+                }
             }
 
             public static DataTable CopyToDataTable<T>(IEnumerable<T> source,
                                                         DataTable table, LoadOption? options)
             {
-                return new ObjectShredder<T>().Shred(source, table, options);
+                try
+                { 
+                    return new ObjectShredder<T>().Shred(source, table, options);
+                }
+                catch (Exception ex)
+                {
+
+                    MessageBox.Show(ex.Message);
+                    return null;
+                }
             }
 
             public class ObjectShredder<T>
@@ -5321,7 +5342,7 @@ namespace SRL
         /// <param name="main_headers"></param>
         /// <param name="dataGridView1"></param>
         /// <param name="lblCount"></param>
-        public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
+        public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName,bool check_headers, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
         {
             if (!System.IO.File.Exists(ofDialog.FileName))
             {
@@ -5333,15 +5354,16 @@ namespace SRL
             if (table == null) return null;
             var x = table.AsEnumerable();
 
-            string check_header = CheckAccessHeaders(table, main_headers);
-            if (check_header == "true")
+            string header_checked = "true";
+            if(check_headers) header_checked= CheckAccessHeaders(table, main_headers);
+            if (header_checked == "true")
             {
                 dgv.DataSource = table;
 
                 if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
 
-            else MessageBox.Show(check_header);
+            else MessageBox.Show(header_checked);
             ofDialog = new OpenFileDialog();
             return table;
         }
@@ -5489,14 +5511,14 @@ namespace SRL
                         file_row_cells.Add(file_row.GetCell(i).Value);
                     }
                     dgv.Rows.Add(file_row_cells.ToArray());
- }
+                }
                 if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
         }
 
         public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
-            if ( !Directory.Exists(ofDialog.FileName))
+            if (!System.IO.File.Exists(ofDialog.FileName))
             {
                 ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
                 if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return;
@@ -5783,7 +5805,7 @@ namespace SRL
 
         }
 
-        public static void LoadDGVFromFile(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
+        public static void LoadDGVFromFile(OpenFileDialog ofDialog, Label lblFileName,bool check_headers, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
         {
             ofDialog.Filter = "access or excel 2003|*.accdb; *.xls";
 
@@ -5796,7 +5818,7 @@ namespace SRL
                     SRL.ExcelManagement.LoadDGVFromExcel(ofDialog, lblFileName, main_headers, dgv, lblCount);
                     break;
                 case ".accdb":
-                    SRL.AccessManagement.LoadDGVFromAccess(ofDialog, lblFileName, main_headers, dgv, lblCount, table_name);
+                    SRL.AccessManagement.LoadDGVFromAccess(ofDialog, lblFileName,check_headers, main_headers, dgv, lblCount, table_name);
                     break;
             }
 
