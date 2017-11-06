@@ -5339,7 +5339,7 @@ namespace SRL
             }
 
             else MessageBox.Show(check_header);
-            ofDialog = new OpenFileDialog();
+            ofDialog.FileName = "";
             return table;
         }
 
@@ -5489,11 +5489,12 @@ namespace SRL
  }
                 if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
+            ofDialog.FileName = "";
         }
 
         public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
-            if ( !Directory.Exists(ofDialog.FileName))
+            if ( !System.IO.File.Exists(ofDialog.FileName))
             {
                 ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
                 if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return;
@@ -5532,6 +5533,7 @@ namespace SRL
             }
 
             else MessageBox.Show(check_header);
+            ofDialog.FileName = "";
         }
 
         public static string CheckExcelHeaders(ExcelLibrary.Office.Excel.CellCollection cells, string[] main_headers)
