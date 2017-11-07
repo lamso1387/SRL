@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -11,6 +12,65 @@ namespace SRL
     {
         public class Nwms
         {
+            public class EstelamAccessFile
+            {
+                public class PostCodeEstelamResult
+                {
+                    public long ID { get; set; }
+                    public string postal_code { get; set; }
+                    public string status { get; set; }
+                    public string exist_anbar { get; set; }
+                    public string correct { get; set; }
+                    public string province { get; set; }
+                    public string township { get; set; }
+                    public string city { get; set; }
+                    public string address { get; set; }
+                    public string error { get; set; }
+                }
+
+
+                public static void Estelam(string file_full_path, string table_name, string api_key)
+                {
+                    DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
+
+                    List<PostCodeEstelamResult> list = SRL.Convertor.ConvertDataTableToList<PostCodeEstelamResult>(table);
+
+                    foreach (var item in list)
+                    {
+                        if (item.status == "OK") continue;
+
+                        HttpResponseMessage response = new HttpResponseMessage();
+                        string message = "";
+                        SRL.Projects.Nwms.ComplexByPostCodeResult war =
+                        SRL.Projects.Nwms.GetComplexByPostalCode(item.postal_code, api_key, out response, out message);
+                        if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                        {
+                            try
+                            {
+                                string query = "update " + table_name + " set status='OK' , exist_anbar='" + war.warehouse_server + "' , correct='" + war.postal_code_server + "' "
+                                    + " , province='" + war.province + "'  , township='" + war.township + "'  , city='" + war.city + "'"
+                                    + "  , address='" + war.full_address + "'"
+                                    + " where postal_code='" + item.postal_code + "' ;";
+                                SRL.AccessManagement.ExecuteToAccess(query, file_full_path, true);
+
+
+                            }
+                            catch (Exception ex)
+                            {
+                                string query = "update " + table_name + " set  error='" + ex.Message + "' where ID=" + item.ID + " ;";
+                                SRL.AccessManagement.ExecuteToAccess(query, file_full_path, true);
+                            }
+                        }
+                        else
+                        {
+                            string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + message + "' where ID=" + item.ID + " ;";
+                            SRL.AccessManagement.ExecuteToAccess(query, file_full_path, true);
+                        }
+
+                    }
+                }
+            }
+
             public class ComplexByPostCodeResult
             {
 
@@ -220,7 +280,8 @@ namespace SRL
                 System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
                 client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
 
-                response = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code).Result;
+                var call = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code);
+                response =call .Result;
                 string result_ = response.Content.ReadAsStringAsync().Result;
                 result = System.Text.RegularExpressions.Regex.Unescape(result_);
 
