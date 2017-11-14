@@ -5405,8 +5405,23 @@ namespace SRL
 
         public enum AccessDataType
         {
-            [Description("nvarchar(max)")]
-            nvarcharmax = 1
+            [Description("Text")]
+            nvarcharmax = 1,
+
+            [Description("Integer")]
+            integer = 2,
+
+            [Description("Long")]
+            longinteger = 3,
+
+            [Description("Double")]
+            doublenumber = 4,
+
+            [Description("Integer PRIMARY KEY AUTOINCREMENT")]
+            autonumberlong = 5,
+
+            [Description("Date/Time")]
+            datetime = 6
         }
 
         /// <summary>
@@ -5443,6 +5458,11 @@ namespace SRL
 
         public static DataTable GetDataTableFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
+            if (!System.IO.File.Exists(file_full_path))
+            {
+                MessageBox.Show("choose file!");
+                return null;
+            }
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
             string strSql = "Select * from " + table_name;
             OleDbConnection con = new OleDbConnection(strProvider);
@@ -5488,7 +5508,7 @@ namespace SRL
         public static int AddColumnToAccess(string column_name, string table_name, AccessDataType type_enum, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
             DataColumnCollection columns = SRL.AccessManagement.GetTableHeadersFromAccess(file_full_path, "table1");
-            if (!columns.Contains("status"))
+            if (!columns.Contains(column_name))
             {
                 string type = SRL.ClassManagement.GetEnumDescription<AccessDataType>(type_enum);
                 string query = "alter table " + table_name + " add " + column_name + " " + type;
@@ -5512,7 +5532,8 @@ namespace SRL
                 {
                     con.Open();
                     cmd.CommandType = CommandType.Text;
-                    return cmd.ExecuteNonQuery();
+                    int res= cmd.ExecuteNonQuery();
+                    return res;
                 }
                 catch (Exception ex)
                 {
@@ -5634,7 +5655,7 @@ namespace SRL
             ExcelLibrary.Office.Excel.Workbook excel_file = ExcelLibrary.Office.Excel.Workbook.Open(ofDialog.FileName);
             var worksheet = excel_file.Worksheets[0]; // assuming only 1 worksheet
             var cells = worksheet.Cells;
-            
+
 
             DataTable dt = new DataTable();
             int file_last_column_index = cells.LastColIndex;

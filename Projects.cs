@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using System.Net.Http;
@@ -96,6 +97,22 @@ namespace SRL
                     public string error { get; set; }
                 }
 
+                public class GetAddressByPostServerResult
+                {
+                    public long ID { get; set; }
+                    public string status { get; set; }
+                    public string correct { get; set; }
+                    public int ErrorCode { get; set; }
+                    public string ErrorMessage { get; set; }
+                    public string Location { get; set; }
+                    public int LocationCode { get; set; }
+                    public string LocationType { get; set; }
+                    public string PostCode { get; set; }
+                    public string State { get; set; }
+                    public string TownShip { get; set; }
+                    public string Village { get; set; }
+
+                }
 
                 public static void Estelam(string file_full_path, string table_name, string api_key)
                 {
@@ -136,6 +153,47 @@ namespace SRL
                         }
 
                     }
+                }
+
+                public static void ParallelAddressByPostServer(List<GetAddressByPostServerResult> list, BackgroundWorker bg, params object[] args)
+                {
+                    //args0: password, args1: client, args2: username, args3: file_full_path, args4: table_name
+                    foreach (var item in list)
+                    {
+                        if (item.status == "OK") continue;
+                        var time = new System.Diagnostics.Stopwatch();
+                        time.Start();
+                        var result = EstelamFromPostServer((PostCodeServiceReference.PostCodeClient)args[1], args[2].ToString(), item.PostCode, args[0].ToString());
+                        time.Stop();
+                        var sec = time.Elapsed.TotalSeconds;
+                        time = new System.Diagnostics.Stopwatch();
+
+                        try
+                        {
+                            string query = "update " + args[4] + " set status='OK', correct='" + (result.ErrorCode == 0 ?
+                       "true" : "false") + "', ErrorCode=" + result.ErrorCode + " , ErrorMessage='" + result.ErrorMessage + "', "
+                       + " Location='" + result.Location + "' , LocationCode=" + result.LocationCode + " "
+                                + " , LocationType='" + result.LocationType + "'  , State='" + result.State + "'  , TownShip='" + result.TownShip + "'"
+                                + "  , Village='" + result.Village + "'   where PostCode='" + item.PostCode + "' ;";
+
+                            SRL.AccessManagement.ExecuteToAccess(query, args[3].ToString(), false);
+
+
+                        }
+                        catch (Exception ex)
+                        {
+                            string query = "update " + args[4] + " set  status='" + ex.Message + "' where ID=" + item.ID + " ;";
+                            SRL.AccessManagement.ExecuteToAccess(query, args[3].ToString(), true);
+                        }
+                    }
+                }
+                 
+                public static void EstelamFromPost(string file_full_path, string table_name, string api_key, string parallel, string password, string username)
+                {
+                    DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
+                    List<GetAddressByPostServerResult> list = SRL.Convertor.ConvertDataTableToList<GetAddressByPostServerResult>(table).Where(x=>x.status !="OK" || x.status==null || x.status=="").ToList();
+                    PostCodeServiceReference.PostCodeClient client = new PostCodeServiceReference.PostCodeClient();
+                    SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<GetAddressByPostServerResult>(list, parallel, ParallelAddressByPostServer, null, null, password, client, username, file_full_path, table_name);
                 }
             }
 
@@ -282,23 +340,44 @@ namespace SRL
 
                 return person;
             }
+            public static string ComputePostCodeHash(string password, string param1 = null, string param2 = null, string param3 = null)
+            {
+                StringBuilder sb = new StringBuilder(password + "#");
+                if (!string.IsNullOrEmpty(param1))
+                    sb.Append(param1 + "#");
+                if (!string.IsNullOrEmpty(param2))
+                    sb.Append(param2 + "#");
+                if (!string.IsNullOrEmpty(param3))
+                    sb.Append(param3 + "#");
+                sb.Append(DateTime.Now.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture));
+
+                return SRL.Security.GetHashString(sb.ToString(), SRL.Security.HashAlgoritmType.Sha1);
+            }
+
+
+            public static PostCodeServiceReference.AddressResult EstelamFromPostServer
+                   (PostCodeServiceReference.PostCodeClient client, string username, string post_code, string password)
+            {
+                string hash = ComputePostCodeHash(password, post_code);
+                return client.GetAddressByPostcode(username, hash, post_code, "", "", "");
+            }
             public static PostalCodeFromPostClass EstelamPostalCodeFromPost(string postal_code, out HttpResponseMessage response)
             {
                 PostalCodeFromPostClass post = new PostalCodeFromPostClass();
                 post = null;
                 response = null;
                 HttpClient client_ = new HttpClient();
-                client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/2050130318/admin/ext-service/"); 
+                client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/2050130318/admin/ext-service/");
                 if (string.IsNullOrWhiteSpace(postal_code)) return null;
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["postal_code"] = postal_code;
                 response = client_.PostAsJsonAsync("postal_code", input).Result;
-                string result = response.Content.ReadAsStringAsync().Result; 
+                string result = response.Content.ReadAsStringAsync().Result;
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                { 
-                    post = Newtonsoft.Json.JsonConvert.DeserializeObject<PostalCodeFromPostClass>(result); 
-                      
-                } 
+                {
+                    post = Newtonsoft.Json.JsonConvert.DeserializeObject<PostalCodeFromPostClass>(result);
+
+                }
                 return post;
             }
             public static CompanyClass GetCompanyByCoNationalId(string co_national_id, out HttpResponseMessage response)
@@ -349,7 +428,7 @@ namespace SRL
                 client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
 
                 var call = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code);
-                response =call .Result;
+                response = call.Result;
                 string result_ = response.Content.ReadAsStringAsync().Result;
                 result = System.Text.RegularExpressions.Regex.Unescape(result_);
 
