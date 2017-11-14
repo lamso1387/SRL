@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:wsap="http://schemas.xmlsoap.org/ws/2004/08/addressing/policy" xmlns:wsa10="http://www.w3.org/2005/08/addressing" xmlns:tns="http://tempuri.org/" xmlns:msc="http://schemas.microsoft.com/ws/2005/12/wsdl/contract" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsx="http://schemas.xmlsoap.org/ws/2004/09/mex" xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:wsam="http://www.w3.org/2007/05/addressing/metadata" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" name="PostCode" targetNamespace="http://tempuri.org/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <xsd:schema targetNamespace="http://tempuri.org/Imports">
+      <xsd:import schemaLocation="http://172.30.106.20:8080/api2/v1/PostCode.svc?xsd=xsd0" namespace="http://tempuri.org/" />
+      <xsd:import schemaLocation="http://172.30.106.20:8080/api2/v1/PostCode.svc?xsd=xsd1" namespace="http://schemas.microsoft.com/2003/10/Serialization/" />
+      <xsd:import schemaLocation="http://172.30.106.20:8080/api2/v1/PostCode.svc?xsd=xsd2" namespace="http://schemas.datacontract.org/2004/07/PostCode.WebServices" />
+    </xsd:schema>
+  </wsdl:types>
+  <wsdl:message name="IPostCode_GetAddressByPostcode_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetAddressByPostcode" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetAddressByPostcode_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetAddressByPostcodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetAddressStringByPostCode_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetAddressStringByPostCode" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetAddressStringByPostCode_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetAddressStringByPostCodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPhoneByPostcode_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetPhoneByPostcode" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPhoneByPostcode_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetPhoneByPostcodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPositionByPostcode_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetPositionByPostcode" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPositionByPostcode_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetPositionByPostcodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetAddressAndPhoneByPostcode_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetAddressAndPhoneByPostcode" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetAddressAndPhoneByPostcode_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetAddressAndPhoneByPostcodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetDataByPostcode_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetDataByPostcode" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetDataByPostcode_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetDataByPostcodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPostcodeByPhone_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetPostcodeByPhone" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPostcodeByPhone_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetPostcodeByPhoneResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetAddressByPhone_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetAddressByPhone" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetAddressByPhone_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetAddressByPhoneResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPostcodeAndAddressByPhone_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetPostcodeAndAddressByPhone" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPostcodeAndAddressByPhone_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetPostcodeAndAddressByPhoneResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPositionByPhone_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetPositionByPhone" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPositionByPhone_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetPositionByPhoneResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_ValidatePostCode_InputMessage">
+    <wsdl:part name="parameters" element="tns:ValidatePostCode" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_ValidatePostCode_OutputMessage">
+    <wsdl:part name="parameters" element="tns:ValidatePostCodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetDataByCertificateNo_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetDataByCertificateNo" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetDataByCertificateNo_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetDataByCertificateNoResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetActivityCodeByPostCode_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetActivityCodeByPostCode" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetActivityCodeByPostCode_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetActivityCodeByPostCodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetActivityCodeByPhone_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetActivityCodeByPhone" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetActivityCodeByPhone_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetActivityCodeByPhoneResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GenerateCertificate_InputMessage">
+    <wsdl:part name="parameters" element="tns:GenerateCertificate" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GenerateCertificate_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GenerateCertificateResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPostCodeByAddress_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetPostCodeByAddress" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetPostCodeByAddress_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetPostCodeByAddressResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetWorkshopDataByPostcode_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetWorkshopDataByPostcode" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetWorkshopDataByPostcode_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetWorkshopDataByPostcodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetWorkshopDataByPhone_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetWorkshopDataByPhone" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetWorkshopDataByPhone_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetWorkshopDataByPhoneResponse" />
+  </wsdl:message>
+  <wsdl:portType name="IPostCode">
+    <wsdl:operation name="GetAddressByPostcode">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetAddressByPostcode" message="tns:IPostCode_GetAddressByPostcode_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetAddressByPostcodeResponse" message="tns:IPostCode_GetAddressByPostcode_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetAddressStringByPostCode">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetAddressStringByPostCode" message="tns:IPostCode_GetAddressStringByPostCode_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetAddressStringByPostCodeResponse" message="tns:IPostCode_GetAddressStringByPostCode_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPhoneByPostcode">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetPhoneByPostcode" message="tns:IPostCode_GetPhoneByPostcode_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetPhoneByPostcodeResponse" message="tns:IPostCode_GetPhoneByPostcode_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPositionByPostcode">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetPositionByPostcode" message="tns:IPostCode_GetPositionByPostcode_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetPositionByPostcodeResponse" message="tns:IPostCode_GetPositionByPostcode_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetAddressAndPhoneByPostcode">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetAddressAndPhoneByPostcode" message="tns:IPostCode_GetAddressAndPhoneByPostcode_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetAddressAndPhoneByPostcodeResponse" message="tns:IPostCode_GetAddressAndPhoneByPostcode_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetDataByPostcode">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetDataByPostcode" message="tns:IPostCode_GetDataByPostcode_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetDataByPostcodeResponse" message="tns:IPostCode_GetDataByPostcode_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPostcodeByPhone">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetPostcodeByPhone" message="tns:IPostCode_GetPostcodeByPhone_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetPostcodeByPhoneResponse" message="tns:IPostCode_GetPostcodeByPhone_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetAddressByPhone">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetAddressByPhone" message="tns:IPostCode_GetAddressByPhone_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetAddressByPhoneResponse" message="tns:IPostCode_GetAddressByPhone_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPostcodeAndAddressByPhone">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetPostcodeAndAddressByPhone" message="tns:IPostCode_GetPostcodeAndAddressByPhone_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetPostcodeAndAddressByPhoneResponse" message="tns:IPostCode_GetPostcodeAndAddressByPhone_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPositionByPhone">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetPositionByPhone" message="tns:IPostCode_GetPositionByPhone_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetPositionByPhoneResponse" message="tns:IPostCode_GetPositionByPhone_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="ValidatePostCode">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/ValidatePostCode" message="tns:IPostCode_ValidatePostCode_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/ValidatePostCodeResponse" message="tns:IPostCode_ValidatePostCode_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetDataByCertificateNo">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetDataByCertificateNo" message="tns:IPostCode_GetDataByCertificateNo_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetDataByCertificateNoResponse" message="tns:IPostCode_GetDataByCertificateNo_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetActivityCodeByPostCode">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetActivityCodeByPostCode" message="tns:IPostCode_GetActivityCodeByPostCode_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetActivityCodeByPostCodeResponse" message="tns:IPostCode_GetActivityCodeByPostCode_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetActivityCodeByPhone">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetActivityCodeByPhone" message="tns:IPostCode_GetActivityCodeByPhone_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetActivityCodeByPhoneResponse" message="tns:IPostCode_GetActivityCodeByPhone_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GenerateCertificate">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GenerateCertificate" message="tns:IPostCode_GenerateCertificate_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GenerateCertificateResponse" message="tns:IPostCode_GenerateCertificate_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPostCodeByAddress">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetPostCodeByAddress" message="tns:IPostCode_GetPostCodeByAddress_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetPostCodeByAddressResponse" message="tns:IPostCode_GetPostCodeByAddress_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetWorkshopDataByPostcode">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetWorkshopDataByPostcode" message="tns:IPostCode_GetWorkshopDataByPostcode_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetWorkshopDataByPostcodeResponse" message="tns:IPostCode_GetWorkshopDataByPostcode_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetWorkshopDataByPhone">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetWorkshopDataByPhone" message="tns:IPostCode_GetWorkshopDataByPhone_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPostCode/GetWorkshopDataByPhoneResponse" message="tns:IPostCode_GetWorkshopDataByPhone_OutputMessage" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="BasicHttpBinding_IPostCode" type="tns:IPostCode">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="GetAddressByPostcode">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetAddressByPostcode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetAddressStringByPostCode">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetAddressStringByPostCode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPhoneByPostcode">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetPhoneByPostcode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPositionByPostcode">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetPositionByPostcode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetAddressAndPhoneByPostcode">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetAddressAndPhoneByPostcode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetDataByPostcode">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetDataByPostcode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPostcodeByPhone">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetPostcodeByPhone" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetAddressByPhone">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetAddressByPhone" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPostcodeAndAddressByPhone">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetPostcodeAndAddressByPhone" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPositionByPhone">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetPositionByPhone" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ValidatePostCode">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/ValidatePostCode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetDataByCertificateNo">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetDataByCertificateNo" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetActivityCodeByPostCode">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetActivityCodeByPostCode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetActivityCodeByPhone">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetActivityCodeByPhone" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GenerateCertificate">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GenerateCertificate" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPostCodeByAddress">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetPostCodeByAddress" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetWorkshopDataByPostcode">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetWorkshopDataByPostcode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetWorkshopDataByPhone">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetWorkshopDataByPhone" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="PostCode">
+    <wsdl:port name="BasicHttpBinding_IPostCode" binding="tns:BasicHttpBinding_IPostCode">
+      <soap:address location="http://172.30.106.20:8080/api2/v1/PostCode.svc" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
