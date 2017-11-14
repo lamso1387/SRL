@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace SRL
 {
@@ -14,6 +15,73 @@ namespace SRL
         {
             public class EstelamAccessFile
             {
+                public class CoOrPersonClass
+                {
+                    public class CoOrPerson
+                    {
+                        public string code { get; set; }
+                        public string name { get; set; }
+                        public string family { get; set; }
+                        public string error { get; set; }
+                        public string status { get; set; }
+                    }
+
+                    public static void CheckCoOrPersonIsCorrect(string access_file_name, string table_name)
+                    {
+                        SRL.AccessManagement.AddColumnToAccess("name", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
+                        SRL.AccessManagement.AddColumnToAccess("family", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
+                        SRL.AccessManagement.AddColumnToAccess("error", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
+                        SRL.AccessManagement.AddColumnToAccess("status", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
+
+                        DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
+                        var list_ = SRL.Convertor.ConvertDataTableToList<CoOrPerson>(dt);
+                        var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
+
+                        int count = list.Count();
+                        foreach (var item in list)
+                        { 
+
+                            try
+                            {
+                                HttpResponseMessage response = new HttpResponseMessage();
+
+                                if (item.code.Length > 10)
+                                {
+                                    var get = SRL.Projects.Nwms.GetCompanyByCoNationalId(item.code, out response);
+
+                                    if (string.IsNullOrWhiteSpace(get.error_name))
+                                    {
+                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.name + "' where code='" + item.code + "'";
+                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                    }
+                                    else
+                                    {
+                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.error_name + "' where code='" + item.code + "'";
+                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                    }
+                                }
+                                else
+                                {
+                                    var get = SRL.Projects.Nwms.GetPersonByNationalId(item.code, out response);
+                                    if (string.IsNullOrWhiteSpace(get.ErrorDescription))
+                                    {
+                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.FirstName + "', family='" + get.LastName + "' where code='" + item.code + "'";
+                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                    }
+                                    else
+                                    {
+                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.ErrorDescription + "' where code='" + item.code + "'";
+                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show(ex.Message);
+                            }
+                        }
+                    }
+                }
                 public class PostCodeEstelamResult
                 {
                     public long ID { get; set; }

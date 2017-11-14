@@ -4693,11 +4693,11 @@ namespace SRL
             parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
-            value_to_parse = value_to_parse.Replace(app_decimal_symbol, ".");
+            value_to_parse = value_to_parse.Replace(current_decimal_symbol, ".");
             parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
-            value_to_parse = value_to_parse.Replace(app_decimal_symbol, ",");
+            value_to_parse = value_to_parse.Replace(".", ",");
             parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
