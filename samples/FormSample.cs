@@ -56,8 +56,6 @@ namespace FormSample
             Publics.form_progress_bar_label = progress.lbl_progress;
             Publics.form_progress_bar = progress.progress_bar;
             Publics.form_progress_bar_label.Parent.Visible = false;
-
-
         }
 
 

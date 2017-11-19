@@ -285,7 +285,6 @@
     <Content Include="script\jquery.min.js" />
     <Content Include="script\select2.min.js" />
     <Content Include="script\SRL.js" />
-    <None Include="ClassDiagram1.cd" />
     <None Include="tools\BPersianCalender\Resources\Calendar-1128083418.png" />
     <None Include="tools\BPersianCalender\Resources\Calendar.png" />
     <None Include="tools\BPersianCalender\Resources\1413037734_Last1.png" />

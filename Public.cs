@@ -637,7 +637,7 @@ namespace SRL
         public string GetDbVersion()
         {
             AddKeyToSettingTB("db_version");
-            var res = SqlQuerySettingTable("db_version","1");
+            var res = SqlQuerySettingTable("db_version", "1");
             return res;
         }
 
@@ -1025,6 +1025,23 @@ namespace SRL
     {
         public class FormActions
         {
+
+            public static void LoadEmbededAssembly(Form f)
+            {
+                AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+                {
+                    string resourceName = new System.Reflection.AssemblyName(args.Name).Name + ".dll";
+                    string resource = Array.Find(f.GetType().Assembly.GetManifestResourceNames(), element => element.EndsWith(resourceName));
+
+                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))
+                    {
+                        Byte[] assemblyData = new Byte[stream.Length];
+                        stream.Read(assemblyData, 0, assemblyData.Length);
+                        return System.Reflection.Assembly.Load(assemblyData);
+                    }
+                };
+            }
+
             public static void ForceExitOnClose(Form form)
             {
                 form.FormClosed += Form_FormClosed_exit;
@@ -3225,6 +3242,7 @@ namespace SRL
         {
             public class DigitSeperation
             {
+                static string sep = NumberFormatInfo.CurrentInfo.NumberGroupSeparator;
                 public static void Enable3DigitSeperation(params TextBox[] tb_list)
                 {
                     foreach (var tb_ in tb_list)
@@ -3233,14 +3251,16 @@ namespace SRL
                     }
                 }
                 private static void tb_TextChanged(object sender, EventArgs e)
-                {
+               {
                     var tb = sender as TextBox;
-                    string value = tb.Text.Replace(",", "");
-                    ulong ul;
-                    if (ulong.TryParse(value, out ul))
+                    string value = tb.Text.Replace(sep, "");
+                    double ul;
+                    if (double.TryParse(value, out ul))
                     {
                         tb.TextChanged -= tb_TextChanged;
-                        tb.Text = string.Format("{0:#,#}", ul);
+                        string format ="{0:#,##0.########}";
+                        string number = string.Format(format, ul);
+                        tb.Text = number;
                         tb.SelectionStart = tb.Text.Length;
                         tb.TextChanged += tb_TextChanged;
                     }
@@ -5489,14 +5509,14 @@ namespace SRL
                         file_row_cells.Add(file_row.GetCell(i).Value);
                     }
                     dgv.Rows.Add(file_row_cells.ToArray());
- }
+                }
                 if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
         }
 
         public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
-            if ( !Directory.Exists(ofDialog.FileName))
+            if (!Directory.Exists(ofDialog.FileName))
             {
                 ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
                 if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return;

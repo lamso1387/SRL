@@ -112,7 +112,7 @@ namespace SRL
         }
 
         private void btnEnter_Click(object sender, EventArgs e)
-        {
+        { 
             string main_str = btnEnter.Text;
             btnEnter.Text = "درحال بررسی...";
             Application.DoEvents();
