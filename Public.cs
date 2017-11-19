@@ -5654,21 +5654,9 @@ namespace SRL
                 List<object> file_row_cells = new List<object>();
                 for (int i = 0; i < file_last_column_index + 1; i++)
                 {
-<<<<<<< HEAD
-                    ExcelLibrary.Office.Excel.Row file_row = cells.GetRow(rowIndex);
-                    List<object> file_row_cells = new List<object>();
-                    for (int i = 0; i < file_last_column_index + 1; i++)
-                    {
-                        file_row_cells.Add(file_row.GetCell(i).Value);
-                    }
-                    dgv.Rows.Add(file_row_cells.ToArray());
-                }
-                if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
-=======
                     file_row_cells.Add(file_row.GetCell(i).Value);
                 }
                 dt.Rows.Add(file_row_cells.ToArray());
->>>>>>> 4d76a0a97c246af8654a3fed474bfd59b0ea3f67
             }
 
             return dt;
@@ -5677,12 +5665,9 @@ namespace SRL
         }
         public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
-<<<<<<< HEAD
-            if (!Directory.Exists(ofDialog.FileName))
-=======
+
 
             if (!System.IO.File.Exists(ofDialog.FileName))
->>>>>>> 4d76a0a97c246af8654a3fed474bfd59b0ea3f67
             {
                 ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
                 if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return;
