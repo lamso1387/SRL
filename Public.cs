@@ -1288,6 +1288,8 @@ namespace SRL
 
                MethodDynamicInvoker( () => AddOrEditNewRole(3, 4), this); 
           */
+                Application.DoEvents();
+
                 container_control.BeginInvoke(new MethodInvoker(() =>
                 {
                     function.DynamicInvoke(parameters);
@@ -4106,9 +4108,76 @@ namespace SRL
     }
     public class KeyValue
     {
+        public enum DataTableHeaderCheckType
+        {
+            Match,
+            AllInDataTable,
+            NotMoreInDataTable,
+            None
+
+        }
         public void AddItem(Dictionary<string, object> result, string key, object value)
         {
             result[key] = value;
+        }
+
+        public static string CheckDataTableHeaders(DataTable dt, string[] main_headers, DataTableHeaderCheckType check_type)
+        {
+            List<string> access_columns = new List<string>();
+            foreach (DataColumn item in dt.Columns)
+            {
+                access_columns.Add(item.ColumnName);
+            }
+
+            switch (check_type)
+            {
+                case DataTableHeaderCheckType.Match:
+                    foreach (var main_header in main_headers)
+                    {
+                        Application.DoEvents();
+                        if (!access_columns.Contains(main_header))
+                        {
+                            return "file does not have column: " + main_header;
+                        }
+                        else continue;
+                    }
+
+                    foreach (var file_header in access_columns)
+                    {
+                        Application.DoEvents();
+                        if (!main_headers.Contains(file_header))
+                        {
+                            return file_header + " is not valid.";
+                        }
+                        else continue;
+                    }
+                    break;
+                case DataTableHeaderCheckType.AllInDataTable:
+                    foreach (var main_header in main_headers)
+                    {
+                        Application.DoEvents();
+                        if (!access_columns.Contains(main_header))
+                        {
+                            return "file does not have column: " + main_header;
+                        }
+                        else continue;
+                    }
+                    break;
+                case DataTableHeaderCheckType.NotMoreInDataTable:
+                    foreach (var file_header in access_columns)
+                    {
+                        Application.DoEvents();
+                        if (!main_headers.Contains(file_header))
+                        {
+                            return file_header + " is not valid.";
+                        }
+                        else continue;
+                    }
+                    break;
+            }
+
+            return "true";
+
         }
     }
     public class HttpSend
@@ -4333,13 +4402,32 @@ namespace SRL
 
             public static DataTable CopyToDataTable<T>(IEnumerable<T> source)
             {
-                return new ObjectShredder<T>().Shred(source, null, null);
+                try
+                {
+
+                    return new ObjectShredder<T>().Shred(source, null, null);
+
+                }
+                catch (Exception es)
+                {
+                    MessageBox.Show(es.Message);
+                    return null;
+                }
             }
 
             public static DataTable CopyToDataTable<T>(IEnumerable<T> source,
                                                         DataTable table, LoadOption? options)
             {
-                return new ObjectShredder<T>().Shred(source, table, options);
+                try
+                {
+                    return new ObjectShredder<T>().Shred(source, table, options);
+                }
+                catch (Exception ex)
+                {
+
+                    MessageBox.Show(ex.Message);
+                    return null;
+                }
             }
 
             public class ObjectShredder<T>
@@ -4625,11 +4713,11 @@ namespace SRL
             parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
-            value_to_parse = value_to_parse.Replace(app_decimal_symbol, ".");
+            value_to_parse = value_to_parse.Replace(current_decimal_symbol, ".");
             parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
-            value_to_parse = value_to_parse.Replace(app_decimal_symbol, ",");
+            value_to_parse = value_to_parse.Replace(".", ",");
             parse_try = StringToDecimalTry(value_to_parse, out value_parsed);
             if (parse_try) return value_parsed;
 
@@ -5333,6 +5421,29 @@ namespace SRL
     }
     public class AccessManagement
     {
+
+
+        public enum AccessDataType
+        {
+            [Description("Text")]
+            nvarcharmax = 1,
+
+            [Description("Integer")]
+            integer = 2,
+
+            [Description("Long")]
+            longinteger = 3,
+
+            [Description("Double")]
+            doublenumber = 4,
+
+            [Description("Integer PRIMARY KEY AUTOINCREMENT")]
+            autonumberlong = 5,
+
+            [Description("Date/Time")]
+            datetime = 6
+        }
+
         /// <summary>
         ///  
         /// </summary>
@@ -5341,7 +5452,7 @@ namespace SRL
         /// <param name="main_headers"></param>
         /// <param name="dataGridView1"></param>
         /// <param name="lblCount"></param>
-        public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
+        public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
         {
             if (!System.IO.File.Exists(ofDialog.FileName))
             {
@@ -5351,23 +5462,27 @@ namespace SRL
             }
             DataTable table = GetDataTableFromAccess(ofDialog.FileName, table_name);
             if (table == null) return null;
-            var x = table.AsEnumerable();
 
-            string check_header = CheckAccessHeaders(table, main_headers);
-            if (check_header == "true")
+            string header_checked = SRL.KeyValue.CheckDataTableHeaders(table, main_headers, check_type);
+            if (header_checked == "true")
             {
                 dgv.DataSource = table;
 
                 if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
 
-            else MessageBox.Show(check_header);
-            ofDialog = new OpenFileDialog();
+            else MessageBox.Show(header_checked);
+            ofDialog.FileName = "";
             return table;
         }
 
         public static DataTable GetDataTableFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
+            if (!System.IO.File.Exists(file_full_path))
+            {
+                MessageBox.Show("choose file!");
+                return null;
+            }
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
             string strSql = "Select * from " + table_name;
             OleDbConnection con = new OleDbConnection(strProvider);
@@ -5387,6 +5502,42 @@ namespace SRL
                 return null;
             }
         }
+
+        public static DataColumnCollection GetTableHeadersFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
+        {
+            string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
+            string strSql = "Select top 1 * from " + table_name;
+            OleDbConnection con = new OleDbConnection(strProvider);
+            OleDbCommand cmd = new OleDbCommand(strSql, con);
+            con.Open();
+            cmd.CommandType = CommandType.Text;
+            OleDbDataAdapter da = new OleDbDataAdapter(cmd);
+            DataTable table = new DataTable();
+            try
+            {
+                da.Fill(table);
+                DataColumnCollection dtc = table.Columns;
+                return dtc;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                return null;
+            }
+        }
+        public static int AddColumnToAccess(string column_name, string table_name, AccessDataType type_enum, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
+        {
+            DataColumnCollection columns = SRL.AccessManagement.GetTableHeadersFromAccess(file_full_path, "table1");
+            if (!columns.Contains(column_name))
+            {
+                string type = SRL.ClassManagement.GetEnumDescription<AccessDataType>(type_enum);
+                string query = "alter table " + table_name + " add " + column_name + " " + type;
+                return ExecuteToAccess(query, file_full_path, show_error, provider);
+            }
+            else return -1;
+
+        }
+
         public static int ExecuteToAccess(string query, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
@@ -5401,7 +5552,8 @@ namespace SRL
                 {
                     con.Open();
                     cmd.CommandType = CommandType.Text;
-                    return cmd.ExecuteNonQuery();
+                    int res= cmd.ExecuteNonQuery();
+                    return res;
                 }
                 catch (Exception ex)
                 {
@@ -5480,28 +5632,29 @@ namespace SRL
             : base(btn)
         {
         }
-        public static void LoadDGVFromExcelNoHead(OpenFileDialog ofDialog, Label lblFileName, DataGridView dgv, Label lblCount = null)
-        {
-            ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
-            ofDialog.ShowDialog();
-            lblFileName.Text = ofDialog.FileName;
 
-            ExcelLibrary.Office.Excel.Workbook excel_file = ExcelLibrary.Office.Excel.Workbook.Open(ofDialog.FileName);
+        public static DataTable GetDataTableFromExcel(string file_full_path)
+        {
+            ExcelLibrary.Office.Excel.Workbook excel_file = ExcelLibrary.Office.Excel.Workbook.Open(file_full_path);
             var worksheet = excel_file.Worksheets[0]; // assuming only 1 worksheet
             var cells = worksheet.Cells;
 
-            if (true)
+            DataTable dt = new DataTable();
+            int file_last_column_index = cells.LastColIndex;
+            // add columns
+            foreach (var header in cells.GetRow(cells.FirstRowIndex))
             {
-                int file_last_column_index = cells.LastColIndex;
-                // add columns
-                foreach (var header in cells.GetRow(cells.FirstRowIndex))
-                {
-                    dgv.Columns.Add(header.Value.StringValue, header.Value.StringValue);
-                }
+                dt.Columns.Add(header.Value.StringValue);
+            }
 
-                // add rows
-                for (int rowIndex = cells.FirstRowIndex + 1; rowIndex <= cells.LastRowIndex; rowIndex++)
+            // add rows
+            for (int rowIndex = cells.FirstRowIndex + 1; rowIndex <= cells.LastRowIndex; rowIndex++)
+            {
+                ExcelLibrary.Office.Excel.Row file_row = cells.GetRow(rowIndex);
+                List<object> file_row_cells = new List<object>();
+                for (int i = 0; i < file_last_column_index + 1; i++)
                 {
+<<<<<<< HEAD
                     ExcelLibrary.Office.Excel.Row file_row = cells.GetRow(rowIndex);
                     List<object> file_row_cells = new List<object>();
                     for (int i = 0; i < file_last_column_index + 1; i++)
@@ -5511,12 +5664,25 @@ namespace SRL
                     dgv.Rows.Add(file_row_cells.ToArray());
                 }
                 if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+=======
+                    file_row_cells.Add(file_row.GetCell(i).Value);
+                }
+                dt.Rows.Add(file_row_cells.ToArray());
+>>>>>>> 4d76a0a97c246af8654a3fed474bfd59b0ea3f67
             }
-        }
 
-        public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount = null)
+            return dt;
+
+
+        }
+        public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
+<<<<<<< HEAD
             if (!Directory.Exists(ofDialog.FileName))
+=======
+
+            if (!System.IO.File.Exists(ofDialog.FileName))
+>>>>>>> 4d76a0a97c246af8654a3fed474bfd59b0ea3f67
             {
                 ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
                 if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return;
@@ -5526,17 +5692,19 @@ namespace SRL
             var worksheet = excel_file.Worksheets[0]; // assuming only 1 worksheet
             var cells = worksheet.Cells;
 
-            string check_header = CheckExcelHeaders(cells, main_headers);
-            if (check_header == "true")
-            {
-                DataTable dt = new DataTable();
-                int file_last_column_index = cells.LastColIndex;
-                // add columns
-                foreach (var header in cells.GetRow(cells.FirstRowIndex))
-                {
-                    dt.Columns.Add(header.Value.StringValue);
-                }
 
+            DataTable dt = new DataTable();
+            int file_last_column_index = cells.LastColIndex;
+            // add columns
+            foreach (var header in cells.GetRow(cells.FirstRowIndex))
+            {
+                dt.Columns.Add(header.Value.StringValue);
+            }
+
+            string header_checked = SRL.KeyValue.CheckDataTableHeaders(dt, main_headers, check_type);
+
+            if (header_checked == "true")
+            {
                 // add rows
                 for (int rowIndex = cells.FirstRowIndex + 1; rowIndex <= cells.LastRowIndex; rowIndex++)
                 {
@@ -5547,46 +5715,14 @@ namespace SRL
                         file_row_cells.Add(file_row.GetCell(i).Value);
                     }
                     dt.Rows.Add(file_row_cells.ToArray());
-
                 }
 
                 dgv.DataSource = dt;
                 if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
             }
-
-            else MessageBox.Show(check_header);
+            else MessageBox.Show(header_checked);
+            ofDialog.FileName = "";
         }
-
-        public static string CheckExcelHeaders(ExcelLibrary.Office.Excel.CellCollection cells, string[] main_headers)
-        {
-
-            foreach (var file_header in cells.GetRow(cells.FirstRowIndex))
-            {
-                Application.DoEvents();
-                if (!main_headers.Contains(file_header.Value.StringValue))
-                {
-                    return file_header.Value.StringValue + " is not valid.";
-                }
-                else continue;
-            }
-
-            List<string> file_headers = new List<string>();
-            foreach (var file_header in cells.GetRow(cells.FirstRowIndex)) file_headers.Add(file_header.Value.StringValue);
-            foreach (var main_header in main_headers)
-            {
-                Application.DoEvents();
-                if (!file_headers.Contains(main_header))
-                {
-                    return "file does not have column: " + main_header;
-                }
-                else continue;
-            }
-
-            return "true";
-
-        }
-
-
 
         public enum ExcelPathType
         {
@@ -5803,7 +5939,7 @@ namespace SRL
 
         }
 
-        public static void LoadDGVFromFile(OpenFileDialog ofDialog, Label lblFileName, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
+        public static void LoadDGVFromFile(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
         {
             ofDialog.Filter = "access or excel 2003|*.accdb; *.xls";
 
@@ -5813,10 +5949,10 @@ namespace SRL
             switch (Path.GetExtension(ofDialog.FileName))
             {
                 case ".xls":
-                    SRL.ExcelManagement.LoadDGVFromExcel(ofDialog, lblFileName, main_headers, dgv, lblCount);
+                    SRL.ExcelManagement.LoadDGVFromExcel(ofDialog, lblFileName, check_type, main_headers, dgv, lblCount);
                     break;
                 case ".accdb":
-                    SRL.AccessManagement.LoadDGVFromAccess(ofDialog, lblFileName, main_headers, dgv, lblCount, table_name);
+                    SRL.AccessManagement.LoadDGVFromAccess(ofDialog, lblFileName, check_type, main_headers, dgv, lblCount, table_name);
                     break;
             }
 

@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace SRL
 {
@@ -11,6 +14,189 @@ namespace SRL
     {
         public class Nwms
         {
+            public class EstelamAccessFile
+            {
+                public class CoOrPersonClass
+                {
+                    public class CoOrPerson
+                    {
+                        public string code { get; set; }
+                        public string name { get; set; }
+                        public string family { get; set; }
+                        public string error { get; set; }
+                        public string status { get; set; }
+                    }
+
+                    public static void CheckCoOrPersonIsCorrect(string access_file_name, string table_name)
+                    {
+                        SRL.AccessManagement.AddColumnToAccess("name", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
+                        SRL.AccessManagement.AddColumnToAccess("family", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
+                        SRL.AccessManagement.AddColumnToAccess("error", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
+                        SRL.AccessManagement.AddColumnToAccess("status", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
+
+                        DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
+                        var list_ = SRL.Convertor.ConvertDataTableToList<CoOrPerson>(dt);
+                        var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
+
+                        int count = list.Count();
+                        foreach (var item in list)
+                        { 
+
+                            try
+                            {
+                                HttpResponseMessage response = new HttpResponseMessage();
+
+                                if (item.code.Length > 10)
+                                {
+                                    var get = SRL.Projects.Nwms.GetCompanyByCoNationalId(item.code, out response);
+
+                                    if (string.IsNullOrWhiteSpace(get.error_name))
+                                    {
+                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.name + "' where code='" + item.code + "'";
+                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                    }
+                                    else
+                                    {
+                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.error_name + "' where code='" + item.code + "'";
+                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                    }
+                                }
+                                else
+                                {
+                                    var get = SRL.Projects.Nwms.GetPersonByNationalId(item.code, out response);
+                                    if (string.IsNullOrWhiteSpace(get.ErrorDescription))
+                                    {
+                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.FirstName + "', family='" + get.LastName + "' where code='" + item.code + "'";
+                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                    }
+                                    else
+                                    {
+                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.ErrorDescription + "' where code='" + item.code + "'";
+                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show(ex.Message);
+                            }
+                        }
+                    }
+                }
+                public class PostCodeEstelamResult
+                {
+                    public long ID { get; set; }
+                    public string postal_code { get; set; }
+                    public string status { get; set; }
+                    public string exist_anbar { get; set; }
+                    public string correct { get; set; }
+                    public string province { get; set; }
+                    public string township { get; set; }
+                    public string city { get; set; }
+                    public string address { get; set; }
+                    public string error { get; set; }
+                }
+
+                public class GetAddressByPostServerResult
+                {
+                    public long ID { get; set; }
+                    public string status { get; set; }
+                    public string correct { get; set; }
+                    public int ErrorCode { get; set; }
+                    public string ErrorMessage { get; set; }
+                    public string Location { get; set; }
+                    public int LocationCode { get; set; }
+                    public string LocationType { get; set; }
+                    public string PostCode { get; set; }
+                    public string State { get; set; }
+                    public string TownShip { get; set; }
+                    public string Village { get; set; }
+
+                }
+
+                public static void Estelam(string file_full_path, string table_name, string api_key)
+                {
+                    DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
+
+                    List<PostCodeEstelamResult> list = SRL.Convertor.ConvertDataTableToList<PostCodeEstelamResult>(table);
+
+                    foreach (var item in list)
+                    {
+                        if (item.status == "OK") continue;
+
+                        HttpResponseMessage response = new HttpResponseMessage();
+                        string message = "";
+                        SRL.Projects.Nwms.ComplexByPostCodeResult war =
+                        SRL.Projects.Nwms.GetComplexByPostalCode(item.postal_code, api_key, out response, out message);
+                        if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                        {
+                            try
+                            {
+                                string query = "update " + table_name + " set status='OK' , exist_anbar='" + war.warehouse_server + "' , correct='" + war.postal_code_server + "' "
+                                    + " , province='" + war.province + "'  , township='" + war.township + "'  , city='" + war.city + "'"
+                                    + "  , address='" + war.full_address + "'"
+                                    + " where postal_code='" + item.postal_code + "' ;";
+                                SRL.AccessManagement.ExecuteToAccess(query, file_full_path, true);
+
+
+                            }
+                            catch (Exception ex)
+                            {
+                                string query = "update " + table_name + " set  error='" + ex.Message + "' where ID=" + item.ID + " ;";
+                                SRL.AccessManagement.ExecuteToAccess(query, file_full_path, true);
+                            }
+                        }
+                        else
+                        {
+                            string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + message + "' where ID=" + item.ID + " ;";
+                            SRL.AccessManagement.ExecuteToAccess(query, file_full_path, true);
+                        }
+
+                    }
+                }
+
+                public static void ParallelAddressByPostServer(List<GetAddressByPostServerResult> list, BackgroundWorker bg, params object[] args)
+                {
+                    //args0: password, args1: client, args2: username, args3: file_full_path, args4: table_name
+                    foreach (var item in list)
+                    {
+                        if (item.status == "OK") continue;
+                        var time = new System.Diagnostics.Stopwatch();
+                        time.Start();
+                        var result = EstelamFromPostServer((PostCodeServiceReference.PostCodeClient)args[1], args[2].ToString(), item.PostCode, args[0].ToString());
+                        time.Stop();
+                        var sec = time.Elapsed.TotalSeconds;
+                        time = new System.Diagnostics.Stopwatch();
+
+                        try
+                        {
+                            string query = "update " + args[4] + " set status='OK', correct='" + (result.ErrorCode == 0 ?
+                       "true" : "false") + "', ErrorCode=" + result.ErrorCode + " , ErrorMessage='" + result.ErrorMessage + "', "
+                       + " Location='" + result.Location + "' , LocationCode=" + result.LocationCode + " "
+                                + " , LocationType='" + result.LocationType + "'  , State='" + result.State + "'  , TownShip='" + result.TownShip + "'"
+                                + "  , Village='" + result.Village + "'   where PostCode='" + item.PostCode + "' ;";
+
+                            SRL.AccessManagement.ExecuteToAccess(query, args[3].ToString(), false);
+
+
+                        }
+                        catch (Exception ex)
+                        {
+                            string query = "update " + args[4] + " set  status='" + ex.Message + "' where ID=" + item.ID + " ;";
+                            SRL.AccessManagement.ExecuteToAccess(query, args[3].ToString(), true);
+                        }
+                    }
+                }
+                 
+                public static void EstelamFromPost(string file_full_path, string table_name, string api_key, string parallel, string password, string username)
+                {
+                    DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
+                    List<GetAddressByPostServerResult> list = SRL.Convertor.ConvertDataTableToList<GetAddressByPostServerResult>(table).Where(x=>x.status !="OK" || x.status==null || x.status=="").ToList();
+                    PostCodeServiceReference.PostCodeClient client = new PostCodeServiceReference.PostCodeClient();
+                    SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<GetAddressByPostServerResult>(list, parallel, ParallelAddressByPostServer, null, null, password, client, username, file_full_path, table_name);
+                }
+            }
+
             public class ComplexByPostCodeResult
             {
 
@@ -154,23 +340,44 @@ namespace SRL
 
                 return person;
             }
+            public static string ComputePostCodeHash(string password, string param1 = null, string param2 = null, string param3 = null)
+            {
+                StringBuilder sb = new StringBuilder(password + "#");
+                if (!string.IsNullOrEmpty(param1))
+                    sb.Append(param1 + "#");
+                if (!string.IsNullOrEmpty(param2))
+                    sb.Append(param2 + "#");
+                if (!string.IsNullOrEmpty(param3))
+                    sb.Append(param3 + "#");
+                sb.Append(DateTime.Now.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture));
+
+                return SRL.Security.GetHashString(sb.ToString(), SRL.Security.HashAlgoritmType.Sha1);
+            }
+
+
+            public static PostCodeServiceReference.AddressResult EstelamFromPostServer
+                   (PostCodeServiceReference.PostCodeClient client, string username, string post_code, string password)
+            {
+                string hash = ComputePostCodeHash(password, post_code);
+                return client.GetAddressByPostcode(username, hash, post_code, "", "", "");
+            }
             public static PostalCodeFromPostClass EstelamPostalCodeFromPost(string postal_code, out HttpResponseMessage response)
             {
                 PostalCodeFromPostClass post = new PostalCodeFromPostClass();
                 post = null;
                 response = null;
                 HttpClient client_ = new HttpClient();
-                client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/2050130318/admin/ext-service/"); 
+                client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/2050130318/admin/ext-service/");
                 if (string.IsNullOrWhiteSpace(postal_code)) return null;
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["postal_code"] = postal_code;
                 response = client_.PostAsJsonAsync("postal_code", input).Result;
-                string result = response.Content.ReadAsStringAsync().Result; 
+                string result = response.Content.ReadAsStringAsync().Result;
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                { 
-                    post = Newtonsoft.Json.JsonConvert.DeserializeObject<PostalCodeFromPostClass>(result); 
-                      
-                } 
+                {
+                    post = Newtonsoft.Json.JsonConvert.DeserializeObject<PostalCodeFromPostClass>(result);
+
+                }
                 return post;
             }
             public static CompanyClass GetCompanyByCoNationalId(string co_national_id, out HttpResponseMessage response)
@@ -190,9 +397,10 @@ namespace SRL
                 response = client_.PostAsJsonAsync("co_inq", input).Result;
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
+                    company = new CompanyClass();
                     string result = response.Content.ReadAsStringAsync().Result;
                     Dictionary<string, object> data1 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                    if (data1["result"].ToString() == "OK")
+                    if (data1["Successful"].ToString() == "true")
                     {
                         string data3 = data1["data"].ToString();
                         Dictionary<string, object> data4 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(data3);
@@ -202,7 +410,7 @@ namespace SRL
                     }
                     else
                     {
-                        company.error_name = data1["data"].ToString();
+                        company.error_name = data1["Message"].ToString();
                         company.co_national_id = co_national_id;
                     }
                 }
@@ -219,7 +427,8 @@ namespace SRL
                 System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
                 client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
 
-                response = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code).Result;
+                var call = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code);
+                response = call.Result;
                 string result_ = response.Content.ReadAsStringAsync().Result;
                 result = System.Text.RegularExpressions.Regex.Unescape(result_);
 

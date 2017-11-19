@@ -74,6 +74,7 @@
       <HintPath>my_reference\System.Net.Http.Formatting.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Security" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Web" />
@@ -87,6 +88,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Projects.cs" />
+    <Compile Include="Service References\PostCodeServiceReference\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
     <Compile Include="tools\Button\GradientButton.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -285,6 +291,55 @@
     <Content Include="script\jquery.min.js" />
     <Content Include="script\select2.min.js" />
     <Content Include="script\SRL.js" />
+    <None Include="Service References\PostCodeServiceReference\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\configuration.svcinfo" />
+    <None Include="Service References\PostCodeServiceReference\configuration91.svcinfo" />
+    <None Include="Service References\PostCodeServiceReference\PostCode.disco" />
+    <None Include="app.config" />
+    <None Include="ClassDiagram1.cd" />
+    <None Include="Service References\PostCodeServiceReference\PostCode.wsdl" />
+    <None Include="Service References\PostCodeServiceReference\PostCode.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\PostCode1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\PostCode2.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.ActivityCodeResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.AddressResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.BooleanResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.CertificateResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.DataResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.PhoneAddressResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.PhoneResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.PositionResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.StringResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.WorkshopResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
     <None Include="tools\BPersianCalender\Resources\Calendar-1128083418.png" />
     <None Include="tools\BPersianCalender\Resources\Calendar.png" />
     <None Include="tools\BPersianCalender\Resources\1413037734_Last1.png" />
@@ -386,7 +441,12 @@
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadataStorage Include="Service References\PostCodeServiceReference\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
