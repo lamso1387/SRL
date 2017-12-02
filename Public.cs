@@ -929,8 +929,6 @@ namespace SRL
 
         public static void ClearControlsValue<ControlType>(IEnumerable<Control> controls_to_search, string property_to_clear, object clear_value)
         {
-
-
             var q = new Queue<ControlType>();
             controls_to_search.OfType<ControlType>().ToList().ForEach(q.Enqueue);
             while (q.Any())
@@ -938,7 +936,6 @@ namespace SRL
                 var next = q.Dequeue();
                 SRL.ClassManagement.SetProperty<ControlType>(property_to_clear, next, clear_value);
             }
-
         }
 
         /// <summary>
@@ -970,6 +967,7 @@ namespace SRL
                     if (item == typeof(TextBox)) ClearControlsValue<TextBox>(childs, "Text", string.Empty);
                     if (item == typeof(RadioButton)) ClearControlsValue<RadioButton>(childs, "Checked", false);
                     if (item == typeof(CheckBox)) ClearControlsValue<CheckBox>(childs, "Checked", false);
+                   
                 }
 
             if (controls_to_refresh != null)
@@ -977,6 +975,7 @@ namespace SRL
                 {
                     if (control is TextBox || control is ComboBox || control is MaskedTextBox) control.Text = string.Empty;
                     if (control is RadioButton || control is CheckBox) control.Checked = false;
+                    if (control is DataGridView) control.Rows.Clear();
                 }
             if (controls_to_enable != null)
                 foreach (dynamic item in controls_to_enable)
@@ -1028,6 +1027,23 @@ namespace SRL
     {
         public class FormActions
         {
+
+            public static void LoadEmbededAssembly(Form f)
+            {
+                AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+                {
+                    string resourceName = new System.Reflection.AssemblyName(args.Name).Name + ".dll";
+                    string resource = Array.Find(f.GetType().Assembly.GetManifestResourceNames(), element => element.EndsWith(resourceName));
+
+                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))
+                    {
+                        Byte[] assemblyData = new Byte[stream.Length];
+                        stream.Read(assemblyData, 0, assemblyData.Length);
+                        return System.Reflection.Assembly.Load(assemblyData);
+                    }
+                };
+            }
+
             public static void ForceExitOnClose(Form form)
             {
                 form.FormClosed += Form_FormClosed_exit;
@@ -3269,6 +3285,7 @@ namespace SRL
         {
             public class DigitSeperation
             {
+                static string sep = NumberFormatInfo.CurrentInfo.NumberGroupSeparator;
                 public static void Enable3DigitSeperation(params TextBox[] tb_list)
                 {
                     foreach (var tb_ in tb_list)
@@ -3279,12 +3296,14 @@ namespace SRL
                 private static void tb_TextChanged(object sender, EventArgs e)
                 {
                     var tb = sender as TextBox;
-                    string value = tb.Text.Replace(",", "");
-                    ulong ul;
-                    if (ulong.TryParse(value, out ul))
+                    string value = tb.Text.Replace(sep, "");
+                    double ul;
+                    if (double.TryParse(value, out ul))
                     {
                         tb.TextChanged -= tb_TextChanged;
-                        tb.Text = string.Format("{0:#,#}", ul);
+                        string format = "{0:#,##0.########}";
+                        string number = string.Format(format, ul);
+                        tb.Text = number;
                         tb.SelectionStart = tb.Text.Length;
                         tb.TextChanged += tb_TextChanged;
                     }
@@ -5780,6 +5799,7 @@ namespace SRL
         }
         public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
+
 
             if (!System.IO.File.Exists(ofDialog.FileName))
             {

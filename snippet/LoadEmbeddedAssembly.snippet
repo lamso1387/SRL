@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+
+    <!-- The header contains information describing the snippet. -->
+    <Header>
+
+      <!-- The Title of the snippet, this will be shown in the snippets manager. -->
+      <Title>Load Embedded Assembly</Title>
+
+      <!-- The description of the snippet. -->
+      <Description> </Description>
+
+      <!-- The author of the snippet. -->
+      <Author>SRL</Author>
+
+      <!-- The set of characters that must be keyed in to insert the snippet. -->
+      <Shortcut>LoadEmbeddedAssembly</Shortcut>
+
+      <!-- A URL for more help. -->
+      <HelpUrl>http://srl.ir</HelpUrl>
+
+      <!-- The set of snippet types we're dealing with - either Expansion or -->
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+
+    </Header>
+
+    <!-- Now we have the snippet itself. -->
+    <Snippet>
+
+      <!-- Sepecify the code language and the actual snippet content. -->
+      <Code Language="CSharp" Kind="any">
+        <![CDATA[
+ AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+                {
+                    string resourceName = new System.Reflection.AssemblyName(args.Name).Name + ".dll";
+                    string resource = Array.Find(this.GetType().Assembly.GetManifestResourceNames(), element => element.EndsWith(resourceName));
+
+                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))
+                    {
+                        Byte[] assemblyData = new Byte[stream.Length];
+                        stream.Read(assemblyData, 0, assemblyData.Length);
+                        return System.Reflection.Assembly.Load(assemblyData);
+                    }
+                };
+                ]]>
+      </Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>
