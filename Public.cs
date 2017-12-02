@@ -36,6 +36,7 @@ using System.Windows.Forms.Design;
 using System.Web.Script.Serialization;
 using System.ServiceModel;
 using System.Data.OleDb;
+using System.Data.Entity.Validation;
 
 namespace SRL
 {
@@ -64,6 +65,7 @@ namespace SRL
 
                 }
         }
+        //PermissionTB must have:id, role , permission
         public static void CheckAccess(string role, DbContext db, string tb_name, MenuStrip menu)
         {
             EnableMenuBasedOnPermissions("", menu);
@@ -746,7 +748,8 @@ namespace SRL
         {
 
             string sql = "update " + setting_table_name + " set value='" + value + "' where [key]='" + key + "'";
-            return SRL.Database.ExecuteQuery(db, sql);
+            var res = SRL.Database.ExecuteQuery(db, sql);
+            return res;
         }
         public bool CheckSettingIsSet()
         {
@@ -1041,76 +1044,30 @@ namespace SRL
         {
             public class ParallelMethodCaller
             {
-                //public static Label form_progress_bar_label;
-                // var progress = new ProgressControl(); 
-                //Publics.form_progress_bar_label = progress.lbl_progress;
-                //Publics.form_progress_bar = progress.progress_bar; 
-                //Publics.form_progress_bar_label.Parent.Visible = false;
-
-                /*use: call ParallelCall. any method with any type of inputT multi input or no input can be  used. call back can be null:
-                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<SmsTB>(query.ToList(), nudSms.Value.ToString(), SendSms, null, progress_bar_lbl_);
-                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<SmsTB>(query.ToList(), nudSms.Value.ToString(), SendSms,()=> SendSmsCallBack(cont.ToString()),null, tbContent.Text, tbkey.Text);
-                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<string>(null, nudSms.Value.ToString(), SendSms,null,null tbContent.Text, tbkey.Text);
-                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<string>(null, nudSms.Value.ToString(), SendSms,()=> SendSmsCallBack(cont.ToString()), progress_bar_lbl_);
-
-
-                but in all type the method (hear SendSms) must have all inputs,however input may not be used in method codes:
-                no use of  bg can be done. use it like: 
-
-                public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
-        {
-             args[0]..
-            foreach (var item in list)
-            {
-                ... 
-            }
-        }
-
-
-                public void SendSms(List<string> list,BackgroundWorker bg, params object[] args)
-        {
-           ... no use of  args and list
-        }
-
-                    public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
-        {
-            ...no use of  args 
-            foreach (var item in list)
-            {
-                ... 
-            }
-        }
-
-
-                      public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
-        {
-             args[0]..
-              ...no use of  list 
-        }
-                */
-
                 public delegate void MethodDelegateListParams<T>(List<T> list, BackgroundWorker bg, params object[] args);
                 static List<BackgroundWorker> bgList = new List<BackgroundWorker>();
                 static Action call_back;
                 static Label progress_bar_lbl;
                 static int progress = 0;
+
                 /// <summary>
                 /// 
                 /// </summary>
                 /// <typeparam name="T"></typeparam>
                 /// <param name="DBitems"></param>
                 /// <param name="parallel"></param>
-                /// <param name="function">databdase in function to save changes, must be initiated inside function. always try catch function</param>
-                /// <param name="call_back_"></param>
+                /// <param name="function">only function names</param>
+                /// <param name="call_back_">like : ()=>fun(a,b)</param>
                 /// <param name="progress_bar_lbl_"></param>
-                /// <param name="parameters"></param>
+                /// <param name="parameters">consider order</param>
                 public static void ParallelCall<T>(List<T> DBitems, string parallel, MethodDelegateListParams<T> function, Action call_back_, Label progress_bar_lbl_, params object[] parameters)
                 {/*use:
-                    write this in function :
+                    write this in function loop :
                     if (bg.CancellationPending)
                     {
                         return;
-                    }
+                    }                    
+                    bg.ReportProgress(1);
 
                     */
                     progress = 0;
@@ -1203,7 +1160,7 @@ namespace SRL
             /// </summary>
             public class MethodBackgroundWorker
             {
-                // if function hase loop, set report_progress=rue,
+                // if function hase loop, set report_progress=true,
                 //and get bg from class instance,
                 //then add  bg.ReportProgress( list.IndexOf(item) *100 / list.Count); in loop
 
@@ -1260,6 +1217,64 @@ namespace SRL
                     progress_bar.Parent.Visible = false;
                 }
             }
+
+            public class RunMethodInBack
+            {
+                static ProgressBar progress_bar;
+                static ProgressBarStyle main_style;
+                static public BackgroundWorker bg = new BackgroundWorker();
+
+
+                public static void Run(Action function, Action call_back, ProgressBar progress_bar_, ProgressBarStyle bar_style)
+                {
+
+                    if (progress_bar_ != null)
+                    {
+                        bg.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bg_RunWorkerCompleted);
+                        bg.ProgressChanged += Bg_ProgressChanged;
+                        bg.WorkerReportsProgress = true;
+                        progress_bar = progress_bar_;
+                        progress_bar.Parent.Visible = true;
+                        main_style = progress_bar.Style;
+                        progress_bar.Style = bar_style;
+                    }
+
+                    if (call_back != null)
+                        bg.RunWorkerCompleted += (s1, e1) =>
+                        {
+                            SRL.ActionManagement.MethodCall.MethodInvoker(call_back);
+                        };
+
+
+                    System.Windows.Forms.Application.DoEvents();
+
+
+                    bg.DoWork += (s, e) =>
+                    {
+                        SRL.ActionManagement.MethodCall.MethodInvoker(function);
+                    };
+
+                    bg.RunWorkerAsync();
+
+
+
+
+                }
+
+                private static void bg_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+                {
+                    progress_bar.Style = main_style;
+                    progress_bar.Parent.Visible = false;
+                }
+                private static void Bg_ProgressChanged(object sender, ProgressChangedEventArgs e)
+                {
+
+                    progress_bar.Style = ProgressBarStyle.Blocks;
+                    progress_bar.Value = e.ProgressPercentage;
+                }
+
+
+            }
             public static void MethodDynamicInvoker(Action function, Control container_control, params object[] parameters)
             { // use it for datagridviews_CellEndEdit event in error "Operation is not valid because it results in a reentrant call to the SetCurrentCellAddressCore function"
               /* 
@@ -1275,7 +1290,7 @@ namespace SRL
 
                 container_control.BeginInvoke(new MethodInvoker(() =>
                 {
-                    function.DynamicInvoke(parameters);
+                    function.DynamicInvoke(parameters); 
                 }));
                 // return function.DynamicInvoke(parameters);
 
@@ -2175,6 +2190,33 @@ namespace SRL
 
         public class LoadingCircleControl
         {
+            public static void StartLoading(LoadingCircle loadingCircle1)
+            {
+                try
+                {
+                    Application.DoEvents();
+                    loadingCircle1.Visible = loadingCircle1.Active = true;
+                    System.Windows.Forms.Cursor.Current = Cursors.WaitCursor;
+                    loadingCircle1.OuterCircleRadius = 20;
+                    loadingCircle1.InnerCircleRadius = 10;
+                    loadingCircle1.NumberSpoke = 20;
+                    loadingCircle1.RotationSpeed = 120;
+                }
+                catch (Exception ex)
+                {
+
+                    MessageBox.Show("StartLoading" + ex.Message);
+                }
+
+
+            }
+
+            public static void EndLoading(LoadingCircle loadingCircle1)
+            {
+                loadingCircle1.Visible = loadingCircle1.Active = false;
+            }
+
+
             public partial class LoadingCircle : Control
             {
                 // Constants =========================================================
@@ -4325,6 +4367,11 @@ namespace SRL
     }
     public class Convertor
     {
+        public static string[] ClassToArray<TClass>()
+        {
+            string[] head = typeof(TClass).GetProperties().Select(p => p.Name).ToArray();
+            return head;
+        }
         public static List<T> ConvertDataTableToList<T>(DataTable dt)
         {
             var columnNames = dt.Columns.Cast<DataColumn>()
@@ -4339,7 +4386,13 @@ namespace SRL
                     if (columnNames.Contains(pro.Name))
                     {
                         PropertyInfo pI = objT.GetType().GetProperty(pro.Name);
-                        pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
+
+
+                        Type t = Nullable.GetUnderlyingType(pI.PropertyType) ?? pI.PropertyType;
+                        object safeValue = (row[pro.Name] == DBNull.Value) ? null : Convert.ChangeType(row[pro.Name], t);
+                        pro.SetValue(objT, safeValue, null);
+
+                        //  pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
                     }
                 }
                 return objT;
@@ -4987,6 +5040,31 @@ namespace SRL
 
         }
 
+        public class SqlServerTableConstrain
+        {
+            public string CONSTRAIN_CATALOG { get; set; }
+            public string CONSTRAIN_SCHEMA { get; set; }
+            public string CONSTRAIN_NAME { get; set; }
+            public string TABLE_CATALOG { get; set; }
+            public string TABLE_SCHEMA { get; set; }
+            public string TABLE_NAME { get; set; }
+            public string CONSTRAIN_TYPE { get; set; }
+        }
+
+        public enum SqlServerConstrainType
+        {
+            PRIMARY_KEY,
+            FOREIGN_KEY,
+            UNIQUE,
+            All
+
+        }
+
+        public class ReportTBClass
+        {
+            public string status { get; set; }
+            public int cont { get; set; }
+        }
         public class Backup
         {
             ProgressBar progressBar1;
@@ -5082,6 +5160,21 @@ namespace SRL
             }
 
 
+        }
+        public static SRL.WinTools.Modal ReportFromSqlServerTB(DbContext db, string table ,  string status_column = "status", string title = "وضعیت ارسال")
+        {
+            string query = "select " + status_column + ", count(*) as cont from " + table + " group by " + status_column;
+            var dt = SRL.Database.SqlQuery<ReportTBClass>(db, query).ToList(); 
+            var dgv = new DataGridView();
+            dgv.DataSource = dt;
+            dgv.Click += (se, de) =>
+            {
+                dt = SRL.Database.SqlQuery<ReportTBClass>(db, query);
+                dgv.DataSource = dt;
+            };
+            var modal = new SRL.WinTools.Modal(dgv, title, dgv.Width, dgv.Height);
+            modal.ShowDialog();
+            return modal;
         }
         public static void UpdateDgvCellValueToDb<EntityT>(DataGridView dgv, int row_index, string primary_column, string update_column, DbContext db)
         {
@@ -5315,6 +5408,14 @@ namespace SRL
             return query[0] + 1;
 
         }
+        public static List<SqlServerTableConstrain> ViewTableUniqueConstrains(DbContext db, SqlServerConstrainType constrain = SqlServerConstrainType.All)
+        {
+            string query = "SELECT* FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS ";
+            if (constrain != SqlServerConstrainType.All) query += " where CONSTRAINT_TYPE = '" + constrain.ToString().Replace("_", " ") + "'";
+            var list = SRL.Database.SqlQuery<SqlServerTableConstrain>(db, query);
+            return list;
+
+        }
         public static List<OutputType> SqlQuery<OutputType>(DbContext db, string query)
         {
             try
@@ -5434,26 +5535,37 @@ namespace SRL
         /// <param name="lblCount"></param>
         public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
         {
-            if (!System.IO.File.Exists(ofDialog.FileName))
+            try
             {
-                ofDialog.Filter = "Access files|*.accdb";
-                if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
-                lblFileName.Text = ofDialog.FileName;
-            }
-            DataTable table = GetDataTableFromAccess(ofDialog.FileName, table_name);
-            if (table == null) return null;
+                if (!System.IO.File.Exists(ofDialog.FileName))
+                {
+                    ofDialog.Filter = "Access files|*.accdb";
+                    if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
+                    lblFileName.Text = ofDialog.FileName;
+                }
+                DataTable table = GetDataTableFromAccess(ofDialog.FileName, table_name);
+                if (table == null) return null;
 
-            string header_checked = SRL.KeyValue.CheckDataTableHeaders(table, main_headers, check_type);
-            if (header_checked == "true")
+                string header_checked = SRL.KeyValue.CheckDataTableHeaders(table, main_headers, check_type);
+                if (header_checked == "true")
+                {
+                    dgv.DataSource = table;
+
+                    if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+                }
+
+                else MessageBox.Show(header_checked);
+                ofDialog.FileName = "";
+                return table;
+
+
+            }
+            catch (Exception ex)
             {
-                dgv.DataSource = table;
 
-                if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+                MessageBox.Show("LoadDGVFromAccess " + ex.Message);
+                throw;
             }
-
-            else MessageBox.Show(header_checked);
-            ofDialog.FileName = "";
-            return table;
         }
 
         public static DataTable GetDataTableFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
@@ -5518,6 +5630,22 @@ namespace SRL
 
         }
 
+        public static SRL.WinTools.Modal ReportFromAccess(string path, string status_column = "status", string table = "table1", string title = "وضعیت ارسال")
+        {
+            string query = "select " + status_column + ", count(*) as cont from " + table + " group by " + status_column;
+            var dt = SRL.AccessManagement.SqlQueryFromAccess(path, query);
+            var dgv = new DataGridView();
+            dgv.DataSource = dt;
+            dgv.Click += (se, de) =>
+            {
+                dt = SRL.AccessManagement.SqlQueryFromAccess(path, query);
+                dgv.DataSource = dt;
+            };
+            var modal = new SRL.WinTools.Modal(dgv, title, dgv.Width, dgv.Height);
+            modal.ShowDialog();
+            return modal;
+        }
+
         public static int ExecuteToAccess(string query, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
@@ -5532,7 +5660,7 @@ namespace SRL
                 {
                     con.Open();
                     cmd.CommandType = CommandType.Text;
-                    int res= cmd.ExecuteNonQuery();
+                    int res = cmd.ExecuteNonQuery();
                     return res;
                 }
                 catch (Exception ex)
@@ -5605,6 +5733,13 @@ namespace SRL
     }
     public class ExcelManagement : SRL.ControlLoad
     {
+        public enum ExcelPathType
+        {
+            NotSet,
+            DesktopDatetimeToSecond,
+            Desktop
+        }
+
         public ExcelManagement()
         {
         }
@@ -5688,19 +5823,20 @@ namespace SRL
             ofDialog.FileName = "";
         }
 
-        public enum ExcelPathType
-        {
-            NotSet,
-            DesktopDatetimeToSecond
-        }
-        public void ExportToExcell(DataGridView dgview, int? devider = null, string fileFullNameNoExtention = null, TextBox tbCountDynamic = null, ExcelPathType excel_naming = ExcelPathType.NotSet, string default_name = "")
+
+        public string ExportToExcell(DataGridView dgview, int? devider = null, string fileFullNameNoExtention = null, TextBox tbCountDynamic = null, ExcelPathType excel_naming = ExcelPathType.NotSet, string default_name = "")
         {
             string path = fileFullNameNoExtention + ".xls";
 
+            string file;
             switch (excel_naming)
             {
                 case ExcelPathType.DesktopDatetimeToSecond:
-                    string file = default_name + DateTime.Now.ToString("yyyyMMddHHmmss") + ".xls";
+                    file = default_name + DateTime.Now.ToString("yyyyMMddHHmmss") + ".xls";
+                    path = System.IO.Path.Combine(SRL.FileManagement.GetDesktopDirectory(), @file);
+                    break;
+                case ExcelPathType.Desktop:
+                    file = default_name + ".xls";
                     path = System.IO.Path.Combine(SRL.FileManagement.GetDesktopDirectory(), @file);
                     break;
             }
@@ -5712,10 +5848,11 @@ namespace SRL
             else
             {
                 int cont;
-                if (string.IsNullOrWhiteSpace(tbCountDynamic.Text) || !int.TryParse(tbCountDynamic.Text, out cont)) return;
+                if (string.IsNullOrWhiteSpace(tbCountDynamic.Text) || !int.TryParse(tbCountDynamic.Text, out cont)) return null;
 
                 ExportToExcellFile(dgview, cont, path);
             }
+            return path;
         }
 
         private void ExportToExcellFile(DataGridView dgview, int devider, string path)
@@ -5738,6 +5875,7 @@ namespace SRL
 
             ExcelLibrary.DataSetHelper.CreateWorkbook(@path, ds);
         }
+
 
     }
     public class ControlLoad : IDisposable
@@ -5898,6 +6036,11 @@ namespace SRL
     }
     public class FileManagement
     {
+        public enum FileType
+        {
+            Excel,
+            Access
+        }
         public FileManagement()
         {
 
@@ -6166,7 +6309,38 @@ namespace SRL
             }
         }
 
+        public static void CreateFileSample(string[] headers, string destination_name_no_extention, FileType type)
+        {
+            switch (type)
+            {
+                case FileType.Excel:
+                    DataGridView d = new DataGridView();
+                    foreach (var item in headers)
+                    {
+                        d.Columns.Add(item, item);
+                    }
+                    MessageBox.Show("file created in: " +
+                    new SRL.ExcelManagement().ExportToExcell(d, 100, null, null, SRL.ExcelManagement.ExcelPathType.Desktop, destination_name_no_extention));
+                    break;
 
+                case FileType.Access:
+                    string source = System.IO.Path.Combine(SRL.FileManagement.GetCurrentDirectory(), "sample.accdb");
+                    string name = destination_name_no_extention + ".accdb";
+                    string des = System.IO.Path.Combine(SRL.FileManagement.GetDesktopDirectory(), name);
+
+                    System.IO.File.Copy(source, des, true);
+
+                    foreach (var item in headers)
+                    {
+                        SRL.AccessManagement.ExecuteToAccess("alter table table1 add " + item + " nvarchar(50)", des, true);
+                    }
+                    SRL.AccessManagement.ExecuteToAccess("alter table table1 drop column Deleted_column", des, true);
+                    MessageBox.Show("file created in: " + des);
+                    break;
+
+            }
+
+        }
 
 
     }

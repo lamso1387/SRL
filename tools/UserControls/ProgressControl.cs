@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace sahmiye
+namespace SRL
 {
     public partial class ProgressControl : UserControl
     {

@@ -19,7 +19,7 @@ namespace SRL
     /// example shows how to use in load form event:
     /// SRL.WinLicenseForm li_form=new SRL.WinLicenseForm(Assembly.GetExecutingAssembly(),true);
     /// li_form.CheckLicenseKey-AppLicenseClass-();
-    /// if(!li_form.IsDisposed && !li_form.is_activated_before) li_form.ShowDialog();
+    /// if(!li_form.IsDisposed & !li_form.is_activated_before) li_form.ShowDialog();
     /// </summary>
     public partial class WinLicenseForm : Form
     {

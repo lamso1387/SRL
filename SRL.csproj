@@ -279,6 +279,9 @@
     <Content Include="query\query_oranger_dampezeshki.sql" />
     <Content Include="query\query_to_get_national_id_from_namefamily.sql" />
     <Content Include="query\query_update_postal_code.sql" />
+    <Content Include="sample.accdb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="script\bootstrap-treeview.min.js" />
     <Content Include="script\bootstrap.js" />
     <Content Include="script\bootstrap.min.js" />

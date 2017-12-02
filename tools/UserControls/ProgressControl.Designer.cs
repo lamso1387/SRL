@@ -1,4 +1,4 @@
-﻿namespace sahmiye
+﻿namespace SRL
 {
     partial class ProgressControl
     {
@@ -60,9 +60,9 @@
             this.lblProgress.AutoSize = true;
             this.lblProgress.Location = new System.Drawing.Point(393, 3);
             this.lblProgress.Name = "lblProgress";
-            this.lblProgress.Size = new System.Drawing.Size(17, 23);
+            this.lblProgress.Size = new System.Drawing.Size(12, 23);
             this.lblProgress.TabIndex = 9;
-            this.lblProgress.Text = "0";
+            this.lblProgress.Text = ".";
             this.lblProgress.TextChanged += new System.EventHandler(this.lblProgress_TextChanged);
             // 
             // progressBar1

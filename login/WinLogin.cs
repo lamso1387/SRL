@@ -29,7 +29,7 @@ namespace SRL
         WinSessionId session;
 
         /// <summary>
-        /// user table must have column: id (long or bigint),username, password, name, family, role(master, user)
+        /// user table must have column: id (long or bigint),username, password, name, family, role(master,admin, user)
         /// </summary>
         /// <param name="db_"></param>
         /// <param name="entity_name_"></param>
@@ -83,6 +83,15 @@ namespace SRL
             pnlLoginForm.Location = new Point(x, y);
             if (label_fore_color != null) lblUsername.ForeColor = lblPass.ForeColor = (Color)label_fore_color;
             return pnlLoginForm.Location;
+        }
+
+        public PictureBox SetLogoImage(Image logo, int x=100, int y=80 ,int width=130, int height=90)
+        { 
+            pbLogo.Location = new Point(x, y);
+            pbLogo.Image = logo;
+            pbLogo.Width = width;
+            pbLogo.Height = height;
+            return pbLogo;
         }
         public void ChangeFootNote(string str, bool is_center_align, float font_size, int x = 0, int y = 0, Color? fore_color = null)
         {
