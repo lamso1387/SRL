@@ -86,7 +86,8 @@ namespace SRL
         }
 
         public PictureBox SetLogoImage(Image logo, int x=100, int y=80 ,int width=130, int height=90)
-        { 
+        {
+            pbLogo.Visible = true;
             pbLogo.Location = new Point(x, y);
             pbLogo.Image = logo;
             pbLogo.Width = width;
@@ -116,6 +117,7 @@ namespace SRL
         {
             new SRL.WinUI.ButtonClass.StyleButton(btnEnter, Color.Blue, Color.BlueViolet);
             SRL.Security.MasterLogin.MasterKeboardLogin(lblExit, tbUsername, this, session);
+            pbLogo.Visible = false;
 
 
         }
