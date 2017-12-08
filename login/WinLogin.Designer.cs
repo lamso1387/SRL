@@ -39,9 +39,11 @@
             this.lblFotNote = new System.Windows.Forms.Label();
             this.panel2 = new System.Windows.Forms.Panel();
             this.lblTitle = new System.Windows.Forms.Label();
+            this.pbLogo = new System.Windows.Forms.PictureBox();
             this.pnlLoginForm.SuspendLayout();
             this.pnlFoot.SuspendLayout();
             this.panel2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pbLogo)).BeginInit();
             this.SuspendLayout();
             // 
             // btnEnter
@@ -75,7 +77,7 @@
             this.tbUsername.Margin = new System.Windows.Forms.Padding(5);
             this.tbUsername.Name = "tbUsername";
             this.tbUsername.Size = new System.Drawing.Size(164, 34);
-            this.tbUsername.TabIndex = 0; 
+            this.tbUsername.TabIndex = 0;
             // 
             // tbPassword
             // 
@@ -111,7 +113,7 @@
             this.lblExit.TabIndex = 3;
             this.lblExit.TabStop = true;
             this.lblExit.Text = "خروج";
-            this.lblExit.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lblExit_LinkClicked); 
+            this.lblExit.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lblExit_LinkClicked);
             // 
             // pnlLoginForm
             // 
@@ -121,7 +123,7 @@
             this.pnlLoginForm.Controls.Add(this.lblPass);
             this.pnlLoginForm.Controls.Add(this.tbUsername);
             this.pnlLoginForm.Controls.Add(this.tbPassword);
-            this.pnlLoginForm.Location = new System.Drawing.Point(104, 175);
+            this.pnlLoginForm.Location = new System.Drawing.Point(100, 176);
             this.pnlLoginForm.Name = "pnlLoginForm";
             this.pnlLoginForm.Size = new System.Drawing.Size(178, 221);
             this.pnlLoginForm.TabIndex = 6;
@@ -165,9 +167,19 @@
             this.lblTitle.ForeColor = System.Drawing.SystemColors.ControlLightLight;
             this.lblTitle.Location = new System.Drawing.Point(251, 98);
             this.lblTitle.Name = "lblTitle";
+            this.lblTitle.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
             this.lblTitle.Size = new System.Drawing.Size(58, 36);
             this.lblTitle.TabIndex = 9;
             this.lblTitle.Text = "title";
+            // 
+            // pbLogo
+            // 
+            this.pbLogo.Location = new System.Drawing.Point(100, 80);
+            this.pbLogo.Name = "pbLogo";
+            this.pbLogo.Size = new System.Drawing.Size(130, 90);
+            this.pbLogo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.pbLogo.TabIndex = 10;
+            this.pbLogo.TabStop = false;
             // 
             // WinLogin
             // 
@@ -176,6 +188,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(396, 462);
             this.ControlBox = false;
+            this.Controls.Add(this.pbLogo);
             this.Controls.Add(this.lblTitle);
             this.Controls.Add(this.panel2);
             this.Controls.Add(this.pnlFoot);
@@ -188,13 +201,14 @@
             this.Name = "WinLogin";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "ورود به نرم افزار";
-            this.Load += new System.EventHandler(this.WinLogin_Load); 
+            this.Load += new System.EventHandler(this.WinLogin_Load);
             this.pnlLoginForm.ResumeLayout(false);
             this.pnlLoginForm.PerformLayout();
             this.pnlFoot.ResumeLayout(false);
             this.pnlFoot.PerformLayout();
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pbLogo)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -213,5 +227,6 @@
         private System.Windows.Forms.Label lblFotNote;
         private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Label lblTitle;
+        private System.Windows.Forms.PictureBox pbLogo;
     }
 }

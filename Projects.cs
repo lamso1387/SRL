@@ -27,7 +27,61 @@ namespace SRL
                         public string status { get; set; }
                     }
 
-                    public static void CheckCoOrPersonIsCorrect(string access_file_name, string table_name)
+                    public static void StartParallelCallCoOrPerson(List<CoOrPerson> list, BackgroundWorker worker, params object[] args)
+                    {
+                        string table_name = args[0].ToString();
+                        string access_file_name = args[1].ToString();
+
+                        foreach (var item in list)
+                        {
+
+                            //try
+                            //{
+                            HttpResponseMessage response = new HttpResponseMessage();
+                            if (item.code == null) continue;
+                            if (item.code.Length > 10)
+                            {
+                                var get = SRL.Projects.Nwms.GetCompanyByCoNationalId(item.code, out response);
+
+                                if (get == null)
+                                {
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "'  where code='" + item.code + "'";
+                                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                }
+                                else if (string.IsNullOrWhiteSpace(get.error_name))
+                                {
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.name + "' where code='" + item.code + "'";
+                                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                }
+                                else
+                                {
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.error_name + "' where code='" + item.code + "'";
+                                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                }
+                            }
+                            else
+                            {
+                                var get = SRL.Projects.Nwms.GetPersonByNationalId(item.code, out response);
+                                if (string.IsNullOrWhiteSpace(get.ErrorDescription))
+                                {
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.FirstName + "', family='" + get.LastName + "' where code='" + item.code + "'";
+                                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                }
+                                else
+                                {
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.ErrorDescription + "' where code='" + item.code + "'";
+                                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                }
+                            }
+                            //}
+                            //catch (Exception ex)
+                            //{
+                            //    MessageBox.Show(ex.Message);
+                            //}
+                        }
+                    }
+
+                    public static void CheckCoOrPersonIsCorrect(string access_file_name, string table_name, int paralel)
                     {
                         SRL.AccessManagement.AddColumnToAccess("name", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
                         SRL.AccessManagement.AddColumnToAccess("family", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
@@ -36,51 +90,11 @@ namespace SRL
 
                         DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
                         var list_ = SRL.Convertor.ConvertDataTableToList<CoOrPerson>(dt);
-                        var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
+                        var list = list_.Where(x => x.status == "" || x.status == null || x.status !="OK").ToList();
 
-                        int count = list.Count();
-                        foreach (var item in list)
-                        { 
+                        SRL.AccessManagement.ExecuteToAccess("update " + table_name + " set code=Trim(code)", access_file_name, true);
 
-                            try
-                            {
-                                HttpResponseMessage response = new HttpResponseMessage();
-
-                                if (item.code.Length > 10)
-                                {
-                                    var get = SRL.Projects.Nwms.GetCompanyByCoNationalId(item.code, out response);
-
-                                    if (string.IsNullOrWhiteSpace(get.error_name))
-                                    {
-                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.name + "' where code='" + item.code + "'";
-                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
-                                    }
-                                    else
-                                    {
-                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.error_name + "' where code='" + item.code + "'";
-                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
-                                    }
-                                }
-                                else
-                                {
-                                    var get = SRL.Projects.Nwms.GetPersonByNationalId(item.code, out response);
-                                    if (string.IsNullOrWhiteSpace(get.ErrorDescription))
-                                    {
-                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.FirstName + "', family='" + get.LastName + "' where code='" + item.code + "'";
-                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
-                                    }
-                                    else
-                                    {
-                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.ErrorDescription + "' where code='" + item.code + "'";
-                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                MessageBox.Show(ex.Message);
-                            }
-                        }
+                        SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<CoOrPerson>(list, paralel.ToString(), StartParallelCallCoOrPerson, () => { MessageBox.Show("done"); }, null, table_name, access_file_name);
                     }
                 }
                 public class PostCodeEstelamResult
@@ -187,11 +201,11 @@ namespace SRL
                         }
                     }
                 }
-                 
+
                 public static void EstelamFromPost(string file_full_path, string table_name, string api_key, string parallel, string password, string username)
                 {
                     DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
-                    List<GetAddressByPostServerResult> list = SRL.Convertor.ConvertDataTableToList<GetAddressByPostServerResult>(table).Where(x=>x.status !="OK" || x.status==null || x.status=="").ToList();
+                    List<GetAddressByPostServerResult> list = SRL.Convertor.ConvertDataTableToList<GetAddressByPostServerResult>(table).Where(x => x.status != "OK" || x.status == null || x.status == "").ToList();
                     PostCodeServiceReference.PostCodeClient client = new PostCodeServiceReference.PostCodeClient();
                     SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<GetAddressByPostServerResult>(list, parallel, ParallelAddressByPostServer, null, null, password, client, username, file_full_path, table_name);
                 }
@@ -400,12 +414,10 @@ namespace SRL
                     company = new CompanyClass();
                     string result = response.Content.ReadAsStringAsync().Result;
                     Dictionary<string, object> data1 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                    if (data1["Successful"].ToString() == "true")
+                    if (data1["Successful"].ToString() == "true" || data1["Successful"].ToString() == "True")
                     {
-                        string data3 = data1["data"].ToString();
-                        Dictionary<string, object> data4 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(data3);
 
-                        company.name = data4["Name"].ToString();
+                        company.name = data1["Name"].ToString();
                         company.co_national_id = co_national_id;
                     }
                     else
