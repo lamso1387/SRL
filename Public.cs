@@ -475,6 +475,7 @@ namespace SRL
             timer.Tick += new EventHandler((sender, e) => timer_Tick(sender, e, time_format, custom_time_format));
             timer.Enabled = true;
             control_to_show_time = control;
+
         }
         public void StartStopWatch(Control control, TimeFormat time_format, string custom_time_format = null)
         {
@@ -968,7 +969,7 @@ namespace SRL
         /// <param name="parent_to_refresh"></param>
         /// <param name="types_to_refresh"></param>
         /// <param name="controls_to_refresh">new List Type() { typeof(Button), typeof(TextBox),... }</param>
-        public static void RefreshFormControls(Control parent_to_refresh, List<Type> types_to_refresh = null, List<Control> controls_to_refresh = null, List<Control> controls_to_enable = null)
+        public static void RefreshFormControls(Control parent_to_refresh, List<Type> types_to_refresh = null, List<Control> controls_to_refresh = null, Control[] controls_to_enable = null)
         {
             IEnumerable<Control> childs = GetAllChildrenControls(parent_to_refresh);
 
