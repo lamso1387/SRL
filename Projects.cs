@@ -90,7 +90,7 @@ namespace SRL
 
                         DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
                         var list_ = SRL.Convertor.ConvertDataTableToList<CoOrPerson>(dt);
-                        var list = list_.Where(x => x.status == "" || x.status == null || x.status !="OK").ToList();
+                        var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
 
                         SRL.AccessManagement.ExecuteToAccess("update " + table_name + " set code=Trim(code)", access_file_name, true);
 
@@ -285,8 +285,40 @@ namespace SRL
                 public string Town { get; set; }
                 public string Gender { get; set; }
                 public string ErrorDescription { get; set; }
+
             }
 
+            public class AnbarPersonClass
+            {
+
+                public int create_date { get; set; }
+                public string national_id { get; set; }
+                public string modifier_national_id { get; set; }
+                public object phonenumber { get; set; }
+                public string account_status { get; set; }
+                public string alivestatus { get; set; }
+                public string password { get; set; }
+                public string creator_national_id { get; set; }
+                public string lastname { get; set; }
+                public object SSNN_serial { get; set; }
+                public object email { get; set; }
+                public object files { get; set; }
+                public string firstname { get; set; }
+                public string using_two_phase_password { get; set; }
+                public string SSNN_no { get; set; }
+                public object address { get; set; }
+                public string postalcode { get; set; }
+                public object org_creator_national_id { get; set; }
+                public string birthepoch { get; set; }
+                public object user_national_card_image { get; set; }
+                public object user_profile_image { get; set; }
+                public string mobile { get; set; }
+                public string gender { get; set; }
+                public string userid { get; set; }
+                public string fathername { get; set; }
+
+
+            }
             public class CompanyClass
             {
                 public long ID { get; set; }
@@ -294,6 +326,51 @@ namespace SRL
                 public string name { get; set; }
                 public string error_name { get; set; }
             }
+            public class CompanyListClass
+            {
+                public object website { get; set; }
+                public string register_code { get; set; }
+                public string national_id { get; set; }
+                public string commercial_code { get; set; }
+                public string register_epoch { get; set; }
+                public string account_status { get; set; }
+                public string phonenumber { get; set; }
+                public string modifier_national_id { get; set; }
+                public object roozname_rasmi_url { get; set; }
+                public string id { get; set; }
+                public string en_name { get; set; }
+                public object register_city { get; set; }
+                public object email { get; set; }
+                public object files { get; set; }
+                public string fax { get; set; }
+                public object ceo_expire_epoch { get; set; }
+                public string ceo_national_id { get; set; }
+                public object address { get; set; }
+                public object org_creator_national_id { get; set; }
+                public string name { get; set; }
+                public string creator_national_id { get; set; }
+                public string postal_code { get; set; }
+                public Ceo ceo { get; set; }
+
+                public class Ceo
+                {
+                    public object org_creator_national_id { get; set; }
+                    public string name { get; set; }
+                    public string title { get; set; }
+                    public string national_id { get; set; }
+                    public object creator_national_id { get; set; }
+                    public int start_epoch { get; set; }
+                    public string common_name { get; set; }
+                    public string account_status { get; set; }
+                    public object modifier_national_id { get; set; }
+                    public int expire_epoch { get; set; }
+                    public string id { get; set; }
+                    public string ceo_mobile { get; set; }
+                }
+
+
+            }
+
             public class PostalCodeFromPostClass
             {
                 public int ErrorCode { get; set; }
@@ -352,6 +429,26 @@ namespace SRL
 
                 }
 
+                return person;
+            }
+
+            public static AnbarPersonClass GetAnbarPersonByNationalId(string national_id, out HttpResponseMessage result)
+            {
+
+                HttpClient client1 = new HttpClient();
+                client1.BaseAddress = new Uri("https://app.nwms.ir");
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                input.Add("account_status", "1");
+                input.Add("national_id", national_id);
+                result = client1.PostAsJsonAsync("/v2/b2b-api/2050130318/admin/users/_search/0/1", input).Result;
+                string response = result.Content.ReadAsStringAsync().Result;
+                Dictionary<string, object> response_con = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(response);
+                List<object> data = Newtonsoft.Json.JsonConvert.DeserializeObject<List<object>>(response_con["data"].ToString());
+                if (data.Count < 1)
+                {
+                    return null;
+                }
+                AnbarPersonClass person = Newtonsoft.Json.JsonConvert.DeserializeObject<AnbarPersonClass>(data[0].ToString());
                 return person;
             }
             public static string ComputePostCodeHash(string password, string param1 = null, string param2 = null, string param3 = null)
@@ -427,6 +524,50 @@ namespace SRL
                     }
                 }
                 return company;
+
+
+            }
+
+            public static List<CompanyListClass> GetCompanySeoByCoNationalId(string co_national_id, string api_key, out HttpResponseMessage response)
+            {
+                List<CompanyListClass> result_list = new List<CompanyListClass>();
+
+                response = null;
+
+                HttpClient client_list = new HttpClient();
+                client_list.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/company/_search/");
+
+
+                if (string.IsNullOrWhiteSpace(co_national_id)) return null;
+
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                input["national_id"] = co_national_id;
+                response = client_list.PostAsJsonAsync("0/99", input).Result;
+                if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+
+
+                    string result = response.Content.ReadAsStringAsync().Result;
+
+                    string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+
+                    List<CompanyListClass> co_list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<CompanyListClass>>(data);
+
+                    foreach (var item in co_list)
+                    {
+                        if (item.account_status == "3") continue;
+
+                        item.ceo.ceo_mobile = Nwms.GetAnbarPersonByNationalId(item.ceo.national_id, out response)?.mobile;
+                        result_list.Add(item);
+
+                    }
+                }
+                else
+                {
+                    result_list = null;
+                }
+
+                return result_list;
 
 
             }

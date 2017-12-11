@@ -37,6 +37,7 @@ using System.Web.Script.Serialization;
 using System.ServiceModel;
 using System.Data.OleDb;
 using System.Data.Entity.Validation;
+using System.Diagnostics;
 
 namespace SRL
 {
@@ -465,6 +466,8 @@ namespace SRL
         }
         System.Windows.Forms.Timer timer = null;
         Control control_to_show_time;
+        Stopwatch stopwatch = new Stopwatch();
+
         public void StartTimer(Control control, TimeFormat time_format, string custom_time_format = null)
         {
             timer = new System.Windows.Forms.Timer();
@@ -473,7 +476,16 @@ namespace SRL
             timer.Enabled = true;
             control_to_show_time = control;
         }
+        public void StartStopWatch(Control control, TimeFormat time_format, string custom_time_format = null)
+        {
+            stopwatch.Start();
 
+            timer = new System.Windows.Forms.Timer();
+            timer.Interval = 1000;
+            timer.Tick += new EventHandler((sender, e) => stopwatch_Tick(sender, e, time_format, custom_time_format));
+            timer.Enabled = true;
+            control_to_show_time = control;
+        }
         void timer_Tick(object sender, EventArgs e, TimeFormat show_type, string custom_time_format)
         {
             switch (show_type)
@@ -495,6 +507,18 @@ namespace SRL
                 default:
                     break;
             }
+
+
+
+        }
+
+        void stopwatch_Tick(object sender, EventArgs e, TimeFormat show_type, string custom_time_format)
+        {
+            TimeSpan ts = stopwatch.Elapsed;
+            string elapsed = ts.ToString("mm\\:ss\\.ff");
+
+            control_to_show_time.Text = elapsed;
+
 
 
 
@@ -967,7 +991,7 @@ namespace SRL
                     if (item == typeof(TextBox)) ClearControlsValue<TextBox>(childs, "Text", string.Empty);
                     if (item == typeof(RadioButton)) ClearControlsValue<RadioButton>(childs, "Checked", false);
                     if (item == typeof(CheckBox)) ClearControlsValue<CheckBox>(childs, "Checked", false);
-                   
+
                 }
 
             if (controls_to_refresh != null)
@@ -1118,7 +1142,15 @@ namespace SRL
 
                         bg.DoWork += (s, e) =>
                         {
-                            function(DBitems != null ? query.ToList() : null, bg, parameters);
+                            try
+                            {
+                                function(DBitems != null ? query.ToList() : null, bg, parameters);
+                            }
+                            catch (Exception ex)
+                            {
+                                throw new InvalidOperationException("Message: " + ex.Message + ". StackTrace" + ex.StackTrace);
+                            }
+
                         };
 
                         bg.RunWorkerCompleted += Workers_Complete;
@@ -1159,13 +1191,22 @@ namespace SRL
                     BackgroundWorker bgw = (BackgroundWorker)sender;
                     bgList.Remove(bgw);
                     bgw.Dispose();
-                    if (bgList.Count == 0)
-                    {
-                        if (call_back != null)
-                        {
-                            call_back();
-                        }
 
+                    if (e.Error != null)
+                    {
+                        MessageBox.Show("There was an error for one thread: " + e.Error.ToString());
+                    }
+
+                    else
+                    {
+                        if (bgList.Count == 0)
+                        {
+                            if (call_back != null)
+                            {
+                                call_back();
+                            }
+
+                        }
                     }
                 }
 
@@ -1258,7 +1299,17 @@ namespace SRL
                     if (call_back != null)
                         bg.RunWorkerCompleted += (s1, e1) =>
                         {
-                            SRL.ActionManagement.MethodCall.MethodInvoker(call_back);
+                            BackgroundWorker bgw = (BackgroundWorker)s1;
+
+                            if (e1.Error != null)
+                            {
+                                MessageBox.Show("There was an error for one thread: " + e1.Error.ToString());
+                            }
+
+                            else
+                            {
+                                SRL.ActionManagement.MethodCall.MethodInvoker(call_back);
+                            }
                         };
 
 
@@ -1306,7 +1357,7 @@ namespace SRL
 
                 container_control.BeginInvoke(new MethodInvoker(() =>
                 {
-                    function.DynamicInvoke(parameters); 
+                    function.DynamicInvoke(parameters);
                 }));
                 // return function.DynamicInvoke(parameters);
 
@@ -1314,7 +1365,14 @@ namespace SRL
 
             public static void MethodInvoker(Action function)
             {
-                function.Invoke();
+                try
+                {
+                    function.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Message: " + ex.Message + ". StackTrace" + ex.StackTrace);
+                }
             }
 
             public static object MethodDynamicInvoker<T>(Func<T> function, params object[] parameters)
@@ -2221,7 +2279,7 @@ namespace SRL
                 catch (Exception ex)
                 {
 
-                    MessageBox.Show("StartLoading" + ex.Message);
+                    MessageBox.Show("StartLoading " + ex.Message);
                 }
 
 
@@ -5180,10 +5238,10 @@ namespace SRL
 
 
         }
-        public static SRL.WinTools.Modal ReportFromSqlServerTB(DbContext db, string table ,  string status_column = "status", string title = "وضعیت ارسال")
+        public static SRL.WinTools.Modal ReportFromSqlServerTB(DbContext db, string table, string status_column = "status", string title = "وضعیت ارسال")
         {
             string query = "select " + status_column + ", count(*) as cont from " + table + " group by " + status_column;
-            var dt = SRL.Database.SqlQuery<ReportTBClass>(db, query).ToList(); 
+            var dt = SRL.Database.SqlQuery<ReportTBClass>(db, query).ToList();
             var dgv = new DataGridView();
             dgv.DataSource = dt;
             dgv.Click += (se, de) =>
@@ -5474,7 +5532,7 @@ namespace SRL
             System.Data.Entity.Core.EntityClient.EntityConnectionStringBuilder entityConnectionStringBuilder =
                 new System.Data.Entity.Core.EntityClient.EntityConnectionStringBuilder(genusConnectionString);
             SqlConnectionStringBuilder sqlConnectionStringBuilder = new SqlConnectionStringBuilder(entityConnectionStringBuilder.ProviderConnectionString);
-            string genusSqlServerName = sqlConnectionStringBuilder.DataSource;
+            string genusSqlServerName = sqlConnectionStringBuilder.ConnectionString;
 
             return genusSqlServerName;
         }
