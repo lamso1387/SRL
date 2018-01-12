@@ -968,7 +968,7 @@ namespace SRL
                     if (item == typeof(TextBox)) ClearControlsValue<TextBox>(childs, "Text", string.Empty);
                     if (item == typeof(RadioButton)) ClearControlsValue<RadioButton>(childs, "Checked", false);
                     if (item == typeof(CheckBox)) ClearControlsValue<CheckBox>(childs, "Checked", false);
-                   
+
                 }
 
             if (controls_to_refresh != null)
@@ -1307,7 +1307,7 @@ namespace SRL
 
                 container_control.BeginInvoke(new MethodInvoker(() =>
                 {
-                    function.DynamicInvoke(parameters); 
+                    function.DynamicInvoke(parameters);
                 }));
                 // return function.DynamicInvoke(parameters);
 
@@ -5181,10 +5181,10 @@ namespace SRL
 
 
         }
-        public static SRL.WinTools.Modal ReportFromSqlServerTB(DbContext db, string table ,  string status_column = "status", string title = "وضعیت ارسال")
+        public static SRL.WinTools.Modal ReportFromSqlServerTB(DbContext db, string table, string status_column = "status", string title = "وضعیت ارسال")
         {
             string query = "select " + status_column + ", count(*) as cont from " + table + " group by " + status_column;
-            var dt = SRL.Database.SqlQuery<ReportTBClass>(db, query).ToList(); 
+            var dt = SRL.Database.SqlQuery<ReportTBClass>(db, query).ToList();
             var dgv = new DataGridView();
             dgv.DataSource = dt;
             dgv.Click += (se, de) =>
@@ -5960,13 +5960,69 @@ namespace SRL
         }
 
     }
-    public class WinReport<SubReportType>
+    public class WinReport
     {
-        public string DatasetName { get; set; }
-        List<SubReportType> SubreportList;
-        public WinReport(string dataset_name)
+
+        public static void Reporter<ReportType, SubReportType>(ReportViewer rw, BindingSource bs, bool print, DisplayMode display_mode,
+            string printer_name, string dataset, string report_path, short copies, bool print_directly, List<ReportType> report_data, List<SubReportType> sub_data, float dpi,
+            int max_width = 1000, int max_height = 700, int zoom_percent = 75)
         {
-            DatasetName = dataset_name;
+
+            rw.AutoScroll = true;
+
+            rw.SetDisplayMode(DisplayMode.PrintLayout);
+
+            Microsoft.Reporting.WinForms.ReportDataSource reportDataSource1 = new Microsoft.Reporting.WinForms.ReportDataSource();
+ 
+            ((System.ComponentModel.ISupportInitialize)(bs)).BeginInit();
+
+            reportDataSource1.Name = "DataSet1";
+            reportDataSource1.Value = bs;
+
+            rw.LocalReport.DataSources.Clear();
+            rw.LocalReport.DataSources.Add(reportDataSource1);
+            
+
+            // reportViewer1.LocalReport.ReportPath = report_path;
+            //reportViewer1.LocalReport.DataSources.Add(new ReportDataSource(dataset, bs));
+
+            ((System.ComponentModel.ISupportInitialize)(bs)).EndInit();
+
+            
+
+            SizeF size = SRL.WinReport.GetLocalReportRdlcSize(rw);
+            int widthPixel = SRL.Convertor.InchToPixel(size.Width, 96);
+            int heightPixel = SRL.Convertor.InchToPixel(size.Height, 96);
+
+            widthPixel = Math.Min(widthPixel, 1000);
+            heightPixel = Math.Min(heightPixel, 700);
+            rw.Width = widthPixel;
+            rw.Height = heightPixel;
+
+            System.Drawing.Printing.PageSettings ps = rw.GetPageSettings();
+            ps.PrinterSettings.PrinterName = printer_name;
+            ps.PrinterSettings.Copies = 2;
+            rw.SetPageSettings(ps);
+
+            rw.ZoomMode = ZoomMode.Percent;
+            rw.ZoomPercent = 75;
+
+
+            rw.Visible = true;
+            //this.Controls.Add(rw);
+            var modal = new SRL.WinTools.Modal(rw, "گزارش چاپی", 1000, 700, Color.Yellow);
+            modal.BackColor = Color.Blue;
+            modal.AutoScroll = true;
+            modal.ShowDialog();
+
+            rw.RefreshReport();
+
+
+        }
+        private static void MySubreportEventHandler<SubReportType>(object sender
+            , SubreportProcessingEventArgs e, string dataset, List<SubReportType> sub_data)
+        {
+            e.DataSources.Add(new ReportDataSource(dataset, sub_data));
         }
 
         public void MakePDFInDialog(Microsoft.Reporting.WinForms.ReportViewer reportViewer1)
@@ -6016,44 +6072,22 @@ namespace SRL
 
         }
 
-        public void LoadReport<ReportType>(Microsoft.Reporting.WinForms.ReportViewer reportViewer1
-            , BindingSource report_binding_source, List<ReportType> report_list, List<SubReportType> sub_report_list)
+        public static SizeF GetLocalReportRdlcSize(ReportViewer report_viewer)
         {
-            if (sub_report_list != null)
-                reportViewer1.LocalReport.SubreportProcessing +=
-               new SubreportProcessingEventHandler(MySubreportEventHandler);
-            SubreportList = sub_report_list;
-
-            report_binding_source.DataSource = report_list;
-            reportViewer1.RefreshReport();
-        }
-
-        private void MySubreportEventHandler(object sender
-            , SubreportProcessingEventArgs e)
-        {
-            e.DataSources.Add(new ReportDataSource(DatasetName, SubreportList));
-        }
-
-        public bool GetLocalReportRdlcSize(ReportViewer report_viewer, out float width, out float height)
-        {
-            System.Drawing.Printing.PaperSize paper_size = new System.Drawing.Printing.PaperSize();
+            SizeF size = new SizeF();
             var report_setting = report_viewer.LocalReport.GetDefaultPageSettings();
 
             float width_ = report_setting.PaperSize.Width / 100F;
             float height_ = report_setting.PaperSize.Height / 100F;
 
-            width = width_;
-            height = height_;
-            if (report_setting.IsLandscape)
-            {
-                width = height_;
-                height = width_;
+            size.Width = width_;
+            size.Height = height_;
 
-            }
-
-            return report_setting.IsLandscape;
+            return size;
 
         }
+
+
     }
     public class FileManagement
     {
