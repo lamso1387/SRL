@@ -6021,17 +6021,30 @@ namespace SRL
     public class WinReport
     {
 
-        public static void Reporter<ReportType, SubReportType>(ReportViewer rw, BindingSource bs, bool print, DisplayMode display_mode,
+        public static void Reporter<ReportType, SubReportType>(DbContext db, Assembly assembly, bool print, DisplayMode display_mode,
             string printer_name, string dataset, string report_path, short copies, bool print_directly, List<ReportType> report_data, List<SubReportType> sub_data, float dpi,
-            int max_width = 1000, int max_height = 700, int zoom_percent = 75)
+            int max_width = 1000, int max_height = 700, int zoom_percent = 75) where ReportType : class
         {
+            ReportViewer rw = new ReportViewer();
+            //use: rw.LocalReport.ReportEmbeddedResource = "hesabdari_app.Rep.Purchase.rdlc" in one project instead assembly
+           
+            Stream stream = assembly.GetManifestResourceStream("hesabdari_app.Rep.Purchase.rdlc");
+            rw.ProcessingMode = ProcessingMode.Local;
+            rw.LocalReport.LoadReportDefinition(stream);
+
+
+            var bs = new System.Windows.Forms.BindingSource();
+            bs.DataSource = db.Set<ReportType>().Local;
+            bs.DataSource = typeof(ReportType);
+            bs.DataSource = report_data;
+
 
             rw.AutoScroll = true;
 
             rw.SetDisplayMode(DisplayMode.PrintLayout);
 
             Microsoft.Reporting.WinForms.ReportDataSource reportDataSource1 = new Microsoft.Reporting.WinForms.ReportDataSource();
- 
+
             ((System.ComponentModel.ISupportInitialize)(bs)).BeginInit();
 
             reportDataSource1.Name = "DataSet1";
@@ -6039,14 +6052,14 @@ namespace SRL
 
             rw.LocalReport.DataSources.Clear();
             rw.LocalReport.DataSources.Add(reportDataSource1);
-            
+
 
             // reportViewer1.LocalReport.ReportPath = report_path;
             //reportViewer1.LocalReport.DataSources.Add(new ReportDataSource(dataset, bs));
 
             ((System.ComponentModel.ISupportInitialize)(bs)).EndInit();
 
-            
+
 
             SizeF size = SRL.WinReport.GetLocalReportRdlcSize(rw);
             int widthPixel = SRL.Convertor.InchToPixel(size.Width, 96);
