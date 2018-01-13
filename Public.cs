@@ -3262,6 +3262,43 @@ namespace SRL
                 cb.DataSource = data_source;
 
             }
+
+            public static void Align(ComboBox cbKalaGroup)
+            {
+                cbKalaGroup.DrawMode = DrawMode.OwnerDrawFixed;
+                cbKalaGroup.DrawItem += cbxDesign_DrawItem;
+            }
+
+            private static void cbxDesign_DrawItem(object sender, DrawItemEventArgs e)
+            {
+                // By using Sender, one method could handle multiple ComboBoxes
+                ComboBox cbx = sender as ComboBox;
+                if (cbx != null)
+                {
+                    // Always draw the background
+                    e.DrawBackground();
+
+                    // Drawing one of the items?
+                    if (e.Index >= 0)
+                    {
+                        // Set the string alignment.  Choices are Center, Near and Far
+                        StringFormat sf = new StringFormat();
+                        sf.LineAlignment = StringAlignment.Center;
+                        sf.Alignment = StringAlignment.Center;
+
+                        // Set the Brush to ComboBox ForeColor to maintain any ComboBox color settings
+                        // Assumes Brush is solid
+                        Brush brush = new SolidBrush(cbx.ForeColor);
+
+                        // If drawing highlighted selection, change brush
+                        if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
+                            brush = SystemBrushes.HighlightText;
+
+                        // Draw the string
+                        e.Graphics.DrawString(cbx.Items[e.Index].ToString(), cbx.Font, brush, e.Bounds, sf);
+                    }
+                }
+            }
         }
 
         public class NavigatorTools
@@ -3387,6 +3424,18 @@ namespace SRL
                 return raw_text;
             }
 
+            public static void RaiseButtonClickOnEnter(TextBox tb, Button btn)
+            {
+                tb.KeyDown +=(s,e)=> tb_raise_click(s,e,btn);
+            }
+
+            private static void tb_raise_click(object sender, KeyEventArgs e, Button btn)
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    btn.PerformClick();   
+                }
+            }
         }
         public static void AddChildToParentControls(Control parent, Control child, bool reset_child_font = false, bool clear_parent = true)
         {
@@ -6021,79 +6070,76 @@ namespace SRL
     public class WinReport
     {
 
-        public static void Reporter<ReportType, SubReportType>(DbContext db, Assembly assembly, bool print, DisplayMode display_mode,
-            string printer_name, string dataset, string report_path, short copies, bool print_directly, List<ReportType> report_data, List<SubReportType> sub_data, float dpi,
-            int max_width = 1000, int max_height = 700, int zoom_percent = 75) where ReportType : class
+        public static void Reporter<ReportType, SubReportType>(Assembly assembly, List<ReportType> report_data, string printer_name, string dataset, string report_path, string title, short copies,
+            string sub_path,string sub_name, List<SubReportType> sub_data = null, string sub_dataset = null,
+            DisplayMode display_mode = DisplayMode.PrintLayout, int max_width = 1000, int max_height = 700, int zoom_percent = 75)
         {
-            ReportViewer rw = new ReportViewer();
-            //use: rw.LocalReport.ReportEmbeddedResource = "hesabdari_app.Rep.Purchase.rdlc" in one project instead assembly
-           
-            Stream stream = assembly.GetManifestResourceStream("hesabdari_app.Rep.Purchase.rdlc");
-            rw.ProcessingMode = ProcessingMode.Local;
-            rw.LocalReport.LoadReportDefinition(stream);
+            // SRL.WinReport.Reporter<PurchaseTB, PurchaseKalaTB>(Assembly.GetExecutingAssembly(), Public.dbGlobal.PurchaseTB.Where(x => x.Id == purchase_id).ToList(),  Public.srl_setting_class.SqlQuerySettingTable("printer_name"),
+            //"DataSet1","hesabdari_app.Rep.Purchase.rdlc", "گزارش چاپی", 2, "hesabdari_app.Rep.PurchaseKala.rdlc", "PurchaseKala", Public.dbGlobal.PurchaseKalaTB.Where(x => x.purchase_id == purchase_id).ToList(),"DataSetPurchaseKala");
 
+            //rdlc files must be addded to resources
+            //report_path like "hesabdari_app.Rep.Purchase.rdlc"  starts with namespace then folders then file
+
+            ReportViewer rw = new ReportViewer();
+
+            //use: rw.LocalReport.ReportEmbeddedResource = "hesabdari_app.Rep.Purchase.rdlc" in one project instead assembly           
+            Stream stream = assembly.GetManifestResourceStream(report_path);
+            rw.LocalReport.LoadReportDefinition(stream);
+            if (sub_name !=null)
+            {
+                Stream sub_stream = assembly.GetManifestResourceStream(sub_path);
+                rw.LocalReport.LoadSubreportDefinition(sub_name, sub_stream);
+            }
 
             var bs = new System.Windows.Forms.BindingSource();
-            bs.DataSource = db.Set<ReportType>().Local;
-            bs.DataSource = typeof(ReportType);
             bs.DataSource = report_data;
-
-
-            rw.AutoScroll = true;
-
-            rw.SetDisplayMode(DisplayMode.PrintLayout);
-
             Microsoft.Reporting.WinForms.ReportDataSource reportDataSource1 = new Microsoft.Reporting.WinForms.ReportDataSource();
-
-            ((System.ComponentModel.ISupportInitialize)(bs)).BeginInit();
-
-            reportDataSource1.Name = "DataSet1";
+            //in view: report data window, manage dataset. like: DataSet1
+            reportDataSource1.Name = dataset;
             reportDataSource1.Value = bs;
-
             rw.LocalReport.DataSources.Clear();
             rw.LocalReport.DataSources.Add(reportDataSource1);
 
+            rw.ProcessingMode = ProcessingMode.Local;
 
-            // reportViewer1.LocalReport.ReportPath = report_path;
-            //reportViewer1.LocalReport.DataSources.Add(new ReportDataSource(dataset, bs));
-
-            ((System.ComponentModel.ISupportInitialize)(bs)).EndInit();
-
-
-
+            if (sub_data != null)
+                 rw.LocalReport.SubreportProcessing += (s, e) => MySubreportEventHandler<SubReportType>(s, e, sub_dataset, sub_data, reportDataSource1);
+              
+            //in rdlc, report menu: report properties, first set page size(these are defaults), then consider margines, so in rdlc body, set sizes(less defaults). properties:Report , page sizes are like defaults.
             SizeF size = SRL.WinReport.GetLocalReportRdlcSize(rw);
-            int widthPixel = SRL.Convertor.InchToPixel(size.Width, 96);
-            int heightPixel = SRL.Convertor.InchToPixel(size.Height, 96);
-
-            widthPixel = Math.Min(widthPixel, 1000);
-            heightPixel = Math.Min(heightPixel, 700);
+            float dpi = SRL.WinTools.Media.GetScreenDpi(rw);
+            int widthPixel = SRL.Convertor.InchToPixel(size.Width, dpi);
+            int heightPixel = SRL.Convertor.InchToPixel(size.Height, dpi);
+            widthPixel = Math.Min(widthPixel, max_width);
+            heightPixel = Math.Min(heightPixel, max_height);
             rw.Width = widthPixel;
             rw.Height = heightPixel;
 
-            System.Drawing.Printing.PageSettings ps = rw.GetPageSettings();
-            ps.PrinterSettings.PrinterName = printer_name;
-            ps.PrinterSettings.Copies = 2;
-            rw.SetPageSettings(ps);
-
+            rw.PrinterSettings.PrinterName = printer_name;
+            rw.PrinterSettings.Copies = copies;
+            rw.AutoScroll = true;
+            rw.SetDisplayMode(display_mode);
             rw.ZoomMode = ZoomMode.Percent;
-            rw.ZoomPercent = 75;
+            rw.ZoomPercent = zoom_percent;
 
-
-            rw.Visible = true;
-            //this.Controls.Add(rw);
-            var modal = new SRL.WinTools.Modal(rw, "گزارش چاپی", 1000, 700, Color.Yellow);
+            var modal = new SRL.WinTools.Modal(rw, title, widthPixel, heightPixel, Color.Yellow);
             modal.BackColor = Color.Blue;
             modal.AutoScroll = true;
             modal.ShowDialog();
 
             rw.RefreshReport();
-
-
         }
+
         private static void MySubreportEventHandler<SubReportType>(object sender
-            , SubreportProcessingEventArgs e, string dataset, List<SubReportType> sub_data)
+            , SubreportProcessingEventArgs e, string dataset, List<SubReportType> sub_data, ReportDataSource rds)
         {
-            e.DataSources.Add(new ReportDataSource(dataset, sub_data));
+            var sub_bs = new System.Windows.Forms.BindingSource();
+            sub_bs.DataSource = sub_data;
+            Microsoft.Reporting.WinForms.ReportDataSource sub_data_source = new Microsoft.Reporting.WinForms.ReportDataSource();
+            sub_data_source.Name = dataset;
+            sub_data_source.Value = sub_bs;
+            e.DataSources.Add(sub_data_source);
+            e.DataSources.Add(rds);
         }
 
         public void MakePDFInDialog(Microsoft.Reporting.WinForms.ReportViewer reportViewer1)
@@ -6147,10 +6193,9 @@ namespace SRL
         {
             SizeF size = new SizeF();
             var report_setting = report_viewer.LocalReport.GetDefaultPageSettings();
-
             float width_ = report_setting.PaperSize.Width / 100F;
             float height_ = report_setting.PaperSize.Height / 100F;
-
+            
             size.Width = width_;
             size.Height = height_;
 
