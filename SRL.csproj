@@ -302,7 +302,6 @@
     <None Include="Service References\PostCodeServiceReference\configuration91.svcinfo" />
     <None Include="Service References\PostCodeServiceReference\PostCode.disco" />
     <None Include="app.config" />
-    <None Include="ClassDiagram1.cd" />
     <None Include="Service References\PostCodeServiceReference\PostCode.wsdl" />
     <None Include="Service References\PostCodeServiceReference\PostCode.xsd">
       <SubType>Designer</SubType>
