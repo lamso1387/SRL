@@ -1,11 +1,15 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace SRL
@@ -209,6 +213,85 @@ namespace SRL
                     PostCodeServiceReference.PostCodeClient client = new PostCodeServiceReference.PostCodeClient();
                     SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<GetAddressByPostServerResult>(list, parallel, ParallelAddressByPostServer, null, null, password, client, username, file_full_path, table_name);
                 }
+            }
+
+            public static List<SearchResult.SearchWarehouseResult> SearchWarehouse(Dictionary<string, object> input_json, string api_key)
+            {
+                List<SearchResult.SearchWarehouseResult> warehouses = new List<SearchResult.SearchWarehouseResult>();
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/_search/");
+                List<SearchResult.SearchWarehouseResult> warehouse_list = new List<SearchResult.SearchWarehouseResult>();
+                int from = 0;
+                do
+                {
+
+                    HttpResponseMessage response = client.PostAsJsonAsync(from + "/10", input_json).Result;
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        return null;
+                    }
+
+                    string result = response.Content.ReadAsStringAsync().Result;
+                    Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                    string data = result_json["data"].ToString();
+                    if (string.IsNullOrWhiteSpace(data)) break;
+                    warehouse_list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchWarehouseResult>>(data);
+
+                    warehouses.AddRange(warehouse_list);
+                    from += 10;
+                } while (warehouse_list.Count ==10);
+
+                return warehouses;
+            }
+
+
+            public static List<SearchResult.SearchComplexResult> SearchComplex(Dictionary<string, object> input_json, string api_key)
+            {
+                List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/_search/");
+
+                List<SearchResult.SearchComplexResult> data_list = new List<SearchResult.SearchComplexResult>();
+                int from = 0;
+                do
+                {
+                    HttpResponseMessage response = client.PostAsJsonAsync(from + "/10", input_json).Result;
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        return null;
+                    }
+
+                    string result = response.Content.ReadAsStringAsync().Result;
+                    Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                    string data = result_json["data"].ToString();
+                    if (string.IsNullOrWhiteSpace(data)) break;
+                    data_list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchComplexResult>>(data);
+
+                    complexes.AddRange(data_list);
+
+                    from += 10;
+                } while (data_list.Any());
+
+                return complexes;
+            }
+
+            public static List<SearchResult.SearchComplexResult> GetAllWarComplexByNationalId(string api_key, string national_id)
+            {
+                List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri("https://app.nwms.ir");
+
+                HttpResponseMessage response = client.GetAsync("/v2/b2b-api-imp/" + api_key + "/" + national_id + "/complex/_all").Result;
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    return null;
+                }
+
+                string result = response.Content.ReadAsStringAsync().Result;
+                Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                string data = result_json["data"].ToString();
+                complexes = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchComplexResult>>(data);
+                return complexes;
             }
 
             public class ComplexByPostCodeResult
@@ -594,6 +677,62 @@ namespace SRL
                 return estelam_result;
 
             }
+
+            public class SearchResult
+            {
+                public class Polygon
+                {
+                    public double lat { get; set; }
+                    public double lng { get; set; }
+                }
+
+                public class Person
+                {
+                    public string national_id { get; set; }
+                    public string name { get; set; }
+                    public string id { get; set; }
+                }
+                public class SearchComplexResult
+                {
+                    public int? create_date { get; set; }
+                    public string telephone_number { get; set; }
+                    public string account_status { get; set; } 
+                    public string postal_code { get; set; }
+                    public string village { get; set; }
+                    public string id { get; set; } 
+                    public string city { get; set; }
+                    public IList<Polygon> polygon { get; set; }
+                    public string zone { get; set; }
+                    public object area { get; set; }
+                    public string warehouse_usage_type { get; set; }
+                    public string province { get; set; }
+                    public object gov_wh_number { get; set; }
+                    public string complex_set_type { get; set; }
+                    public string full_address { get; set; }
+                    public object address { get; set; }
+                    public string township { get; set; }
+                    public string org_creator_national_id { get; set; }
+                    public string warehouse_ownership_type { get; set; }
+                    public IList<Person> owners { get; set; }
+                    public Person agent { get; set; }
+                    public string name { get; set; }
+                    public string country { get; set; }
+                    public string rural { get; set; }
+                }
+
+                public class SearchWarehouseResult
+                {
+                    public string postal_code { get; set; }
+                    public List<Person> contractors { get; set; }
+                    public string org_creator_national_id { get; set; }
+                    public string name { get; set; }
+                    public string id { get; set; }
+
+                }
+
+
+            }
+
 
         }
     }
