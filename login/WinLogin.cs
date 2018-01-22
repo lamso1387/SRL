@@ -27,6 +27,7 @@ namespace SRL
         DbContext db;
         string entity_name;
         WinSessionId session;
+        Security.HashAlgoritmType password_type;
 
         /// <summary>
         /// user table must have column: id (long or bigint),username, password, name, family, role(master,admin, user)
@@ -34,13 +35,15 @@ namespace SRL
         /// <param name="db_"></param>
         /// <param name="entity_name_"></param>
         /// <param name="session_"></param>
-        public WinLogin(DbContext db_, string entity_name_, WinSessionId session_, Color? back_color_ = null)
+        public WinLogin(DbContext db_, string entity_name_, WinSessionId session_, Security.HashAlgoritmType password_type_, Color? back_color_ = null)
         {
+            
             InitializeComponent();
             db = db_;
             entity_name = entity_name_;
             session = session_;
             if (back_color_ != null) this.BackColor = (Color)back_color_;
+            password_type = password_type_;
 
             /*use example:
              in app before  InitializeComponent(); write:
@@ -133,7 +136,7 @@ namespace SRL
             bool loged = false;
             if (userQ != null)
                 if (userQ.Any())
-                    if (tbPassword.Text == userQ.First().password)
+                    if (SRL.Security.GetHashString(tbPassword.Text,password_type) ==userQ.First().password)
                         loged = true;
 
             if (loged == false)

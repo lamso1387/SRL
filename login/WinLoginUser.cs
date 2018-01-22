@@ -23,6 +23,7 @@ namespace SRL
         WinLoginProfile profile;
         bool multi_admin;
         MenuStrip menu;
+        Security.HashAlgoritmType password_type;
 
         /// <summary>
         /// user table must have column: ID (long or bigint),username, password, name, family, role(master, user)
@@ -30,7 +31,7 @@ namespace SRL
         /// <param name="db_"></param>
         /// <param name="entity_name_"></param>
         /// <param name="session_"></param>
-        public WinLoginUser(DbContext db_, string personnel_entity_, WinSessionId session_, Color btn_color_, string permission_entity_, MenuStrip menu_, bool multi_admin_)
+        public WinLoginUser(DbContext db_, string personnel_entity_, WinSessionId session_, Color btn_color_, string permission_entity_, MenuStrip menu_, bool multi_admin_, Security.HashAlgoritmType password_type_)
         {
             InitializeComponent();
             db = db_;
@@ -40,6 +41,7 @@ namespace SRL
             btn_color = btn_color_;
             multi_admin = multi_admin_;
             menu = menu_;
+            password_type = password_type_;
             foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
             {
                 new SRL.WinUI.ButtonClass.StyleButton(item, btn_color_, Color.Black, Color.FromKnownColor(KnownColor.Control));
@@ -67,7 +69,7 @@ namespace SRL
         }
         private void WinLoginUser_Load(object sender, EventArgs e)
         {
-            profile = new WinLoginProfile(db, personnel_entity, session, btn_color, this, WinLoginProfile.ProfileMode.New, null,multi_admin,permission_entity);
+            profile = new WinLoginProfile(db, personnel_entity, session, btn_color, this, WinLoginProfile.ProfileMode.New,password_type, null,multi_admin,permission_entity);
 
             LoadUsersInDgv();
 

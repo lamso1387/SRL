@@ -4046,7 +4046,8 @@ namespace SRL
         {
             Sha1,
             MD5,
-            Sha256
+            Sha256,
+            None
         }
 
         /// <summary>
@@ -4124,9 +4125,9 @@ namespace SRL
         {
             return System.Security.Principal.WindowsIdentity.GetCurrent().Name;
         }
-        public static void WinCheckLogin(DbContext db, string entity_name, WinSessionId session)
+        public static void WinCheckLogin(DbContext db, string entity_name, WinSessionId session, Security.HashAlgoritmType password_type)
         {
-            new SRL.WinLogin(db, entity_name, session).ShowDialog();
+            new SRL.WinLogin(db, entity_name, session, password_type).ShowDialog();
 
             if (!session.IsLogined) Environment.Exit(0);
         }
@@ -4235,6 +4236,10 @@ namespace SRL
         }
         public static string GetHashString(string input, HashAlgoritmType algorytmType = HashAlgoritmType.Sha1)
         {
+            if(algorytmType==HashAlgoritmType.None)
+            {
+                return input;
+            }
             byte[] hash = null;
 
             switch (algorytmType)
