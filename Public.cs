@@ -2127,7 +2127,46 @@ namespace SRL
             }
             return Icon.FromHandle(bitmap.GetHicon());
         }
+        
+        public static void ControlShadow(Control container, Control[] directChildsToShadow)
+        {//panel.Controls.OfType<Control>()
+            container.Paint += (s, e) => drop_Shadow(s, e, directChildsToShadow);
+        }
+        private static void drop_Shadow(object sender, PaintEventArgs e, Control[] directChildToShadow)
+        {
+            
+            Control panel = (Control)sender;
+            Color[] shadow = new Color[3];
+            shadow[0] = Color.FromArgb(181, 181, 181);
+            shadow[1] = Color.FromArgb(195, 195, 195);
+            shadow[2] = Color.FromArgb(211, 211, 211);
+            Pen pen = new Pen(shadow[0]);
+            using (pen)
+            {
+                
+                foreach (Control p in directChildToShadow)
+                {
+                    Point ptBottom = p.Location;
+                    ptBottom.Y += p.Height;
+                    for (var sp = 0; sp < 3; sp++)
+                    {
+                        pen.Color = shadow[sp];
+                        e.Graphics.DrawLine(pen, ptBottom.X, ptBottom.Y, ptBottom.X + p.Width - 1, ptBottom.Y);
+                        ptBottom.Y++;
+                    }
+                    
+                    Point ptRight = p.Location;
+                    ptRight.X += p.Width;
+                    for (var sp = 0; sp < 3; sp++)
+                    {
+                        pen.Color = shadow[sp];
+                        e.Graphics.DrawLine(pen, ptRight.X, ptRight.Y, ptRight.X, ptRight.Y+p.Height - 1);
+                        ptRight.X++;
+                    }
+                }
 
+            }
+        }
         public static void BackColor(IEnumerable<Control> controls, Color color)
         {
             foreach (var item in controls)
@@ -2135,7 +2174,7 @@ namespace SRL
                 item.BackColor = color;
             }
         }
-
+        
         public class ButtonClass
         {
             public class StyleButton : Button
