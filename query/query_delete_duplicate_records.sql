@@ -1,4 +1,3 @@
-
 DECLARE @intFlag INT
 SET @intFlag = 1
 WHILE (@intFlag >0)

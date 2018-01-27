@@ -36,6 +36,9 @@ using System.Windows.Forms.Design;
 using System.Web.Script.Serialization;
 using System.ServiceModel;
 using System.Data.OleDb;
+using System.Data.Entity.Validation;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace SRL
 {
@@ -64,6 +67,7 @@ namespace SRL
 
                 }
         }
+        //PermissionTB must have:id, role , permission
         public static void CheckAccess(string role, DbContext db, string tb_name, MenuStrip menu)
         {
             EnableMenuBasedOnPermissions("", menu);
@@ -463,6 +467,8 @@ namespace SRL
         }
         System.Windows.Forms.Timer timer = null;
         Control control_to_show_time;
+        Stopwatch stopwatch = new Stopwatch();
+
         public void StartTimer(Control control, TimeFormat time_format, string custom_time_format = null)
         {
             timer = new System.Windows.Forms.Timer();
@@ -470,8 +476,18 @@ namespace SRL
             timer.Tick += new EventHandler((sender, e) => timer_Tick(sender, e, time_format, custom_time_format));
             timer.Enabled = true;
             control_to_show_time = control;
-        }
 
+        }
+        public void StartStopWatch(Control control, TimeFormat time_format, string custom_time_format = null)
+        {
+            stopwatch.Start();
+
+            timer = new System.Windows.Forms.Timer();
+            timer.Interval = 1000;
+            timer.Tick += new EventHandler((sender, e) => stopwatch_Tick(sender, e, time_format, custom_time_format));
+            timer.Enabled = true;
+            control_to_show_time = control;
+        }
         void timer_Tick(object sender, EventArgs e, TimeFormat show_type, string custom_time_format)
         {
             switch (show_type)
@@ -493,6 +509,18 @@ namespace SRL
                 default:
                     break;
             }
+
+
+
+        }
+
+        void stopwatch_Tick(object sender, EventArgs e, TimeFormat show_type, string custom_time_format)
+        {
+            TimeSpan ts = stopwatch.Elapsed;
+            string elapsed = ts.ToString("mm\\:ss\\.ff");
+
+            control_to_show_time.Text = elapsed;
+
 
 
 
@@ -746,7 +774,8 @@ namespace SRL
         {
 
             string sql = "update " + setting_table_name + " set value='" + value + "' where [key]='" + key + "'";
-            return SRL.Database.ExecuteQuery(db, sql);
+            var res = SRL.Database.ExecuteQuery(db, sql);
+            return res;
         }
         public bool CheckSettingIsSet()
         {
@@ -926,8 +955,6 @@ namespace SRL
 
         public static void ClearControlsValue<ControlType>(IEnumerable<Control> controls_to_search, string property_to_clear, object clear_value)
         {
-
-
             var q = new Queue<ControlType>();
             controls_to_search.OfType<ControlType>().ToList().ForEach(q.Enqueue);
             while (q.Any())
@@ -935,7 +962,6 @@ namespace SRL
                 var next = q.Dequeue();
                 SRL.ClassManagement.SetProperty<ControlType>(property_to_clear, next, clear_value);
             }
-
         }
 
         /// <summary>
@@ -944,7 +970,7 @@ namespace SRL
         /// <param name="parent_to_refresh"></param>
         /// <param name="types_to_refresh"></param>
         /// <param name="controls_to_refresh">new List Type() { typeof(Button), typeof(TextBox),... }</param>
-        public static void RefreshFormControls(Control parent_to_refresh, List<Type> types_to_refresh = null, List<Control> controls_to_refresh = null, List<Control> controls_to_enable = null)
+        public static void RefreshFormControls(Control parent_to_refresh, List<Type> types_to_refresh = null, List<Control> controls_to_refresh = null, Control[] controls_to_enable = null)
         {
             IEnumerable<Control> childs = GetAllChildrenControls(parent_to_refresh);
 
@@ -967,6 +993,7 @@ namespace SRL
                     if (item == typeof(TextBox)) ClearControlsValue<TextBox>(childs, "Text", string.Empty);
                     if (item == typeof(RadioButton)) ClearControlsValue<RadioButton>(childs, "Checked", false);
                     if (item == typeof(CheckBox)) ClearControlsValue<CheckBox>(childs, "Checked", false);
+
                 }
 
             if (controls_to_refresh != null)
@@ -974,6 +1001,7 @@ namespace SRL
                 {
                     if (control is TextBox || control is ComboBox || control is MaskedTextBox) control.Text = string.Empty;
                     if (control is RadioButton || control is CheckBox) control.Checked = false;
+                    if (control is DataGridView) control.Rows.Clear();
                 }
             if (controls_to_enable != null)
                 foreach (dynamic item in controls_to_enable)
@@ -1025,6 +1053,23 @@ namespace SRL
     {
         public class FormActions
         {
+
+            public static void LoadEmbededAssembly(Form f)
+            {
+                AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+                {
+                    string resourceName = new System.Reflection.AssemblyName(args.Name).Name + ".dll";
+                    string resource = Array.Find(f.GetType().Assembly.GetManifestResourceNames(), element => element.EndsWith(resourceName));
+
+                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))
+                    {
+                        Byte[] assemblyData = new Byte[stream.Length];
+                        stream.Read(assemblyData, 0, assemblyData.Length);
+                        return System.Reflection.Assembly.Load(assemblyData);
+                    }
+                };
+            }
+
             public static void ForceExitOnClose(Form form)
             {
                 form.FormClosed += Form_FormClosed_exit;
@@ -1032,6 +1077,7 @@ namespace SRL
 
             private static void Form_FormClosed_exit(object sender, FormClosedEventArgs e)
             {
+                if(Application.OpenForms.Count<1)
                 Environment.Exit(0);
             }
 
@@ -1041,76 +1087,30 @@ namespace SRL
         {
             public class ParallelMethodCaller
             {
-                //public static Label form_progress_bar_label;
-                // var progress = new ProgressControl(); 
-                //Publics.form_progress_bar_label = progress.lbl_progress;
-                //Publics.form_progress_bar = progress.progress_bar; 
-                //Publics.form_progress_bar_label.Parent.Visible = false;
-
-                /*use: call ParallelCall. any method with any type of inputT multi input or no input can be  used. call back can be null:
-                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<SmsTB>(query.ToList(), nudSms.Value.ToString(), SendSms, null, progress_bar_lbl_);
-                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<SmsTB>(query.ToList(), nudSms.Value.ToString(), SendSms,()=> SendSmsCallBack(cont.ToString()),null, tbContent.Text, tbkey.Text);
-                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<string>(null, nudSms.Value.ToString(), SendSms,null,null tbContent.Text, tbkey.Text);
-                SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<string>(null, nudSms.Value.ToString(), SendSms,()=> SendSmsCallBack(cont.ToString()), progress_bar_lbl_);
-
-
-                but in all type the method (hear SendSms) must have all inputs,however input may not be used in method codes:
-                no use of  bg can be done. use it like: 
-
-                public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
-        {
-             args[0]..
-            foreach (var item in list)
-            {
-                ... 
-            }
-        }
-
-
-                public void SendSms(List<string> list,BackgroundWorker bg, params object[] args)
-        {
-           ... no use of  args and list
-        }
-
-                    public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
-        {
-            ...no use of  args 
-            foreach (var item in list)
-            {
-                ... 
-            }
-        }
-
-
-                      public void SendSms(List<SmsTB> list,BackgroundWorker bg, params object[] args)
-        {
-             args[0]..
-              ...no use of  list 
-        }
-                */
-
                 public delegate void MethodDelegateListParams<T>(List<T> list, BackgroundWorker bg, params object[] args);
                 static List<BackgroundWorker> bgList = new List<BackgroundWorker>();
                 static Action call_back;
                 static Label progress_bar_lbl;
                 static int progress = 0;
+
                 /// <summary>
                 /// 
                 /// </summary>
                 /// <typeparam name="T"></typeparam>
                 /// <param name="DBitems"></param>
                 /// <param name="parallel"></param>
-                /// <param name="function">databdase in function to save changes, must be initiated inside function. always try catch function</param>
-                /// <param name="call_back_"></param>
+                /// <param name="function">only function names</param>
+                /// <param name="call_back_">like : ()=>fun(a,b)</param>
                 /// <param name="progress_bar_lbl_"></param>
-                /// <param name="parameters"></param>
+                /// <param name="parameters">consider order</param>
                 public static void ParallelCall<T>(List<T> DBitems, string parallel, MethodDelegateListParams<T> function, Action call_back_, Label progress_bar_lbl_, params object[] parameters)
                 {/*use:
-                    write this in function :
+                    write this in function loop :
                     if (bg.CancellationPending)
                     {
                         return;
-                    }
+                    }                    
+                    bg.ReportProgress(1);
 
                     */
                     progress = 0;
@@ -1145,7 +1145,15 @@ namespace SRL
 
                         bg.DoWork += (s, e) =>
                         {
-                            function(DBitems != null ? query.ToList() : null, bg, parameters);
+                            try
+                            {
+                                function(DBitems != null ? query.ToList() : null, bg, parameters);
+                            }
+                            catch (Exception ex)
+                            {
+                                throw new InvalidOperationException("Message: " + ex.Message + ". StackTrace" + ex.StackTrace);
+                            }
+
                         };
 
                         bg.RunWorkerCompleted += Workers_Complete;
@@ -1186,13 +1194,22 @@ namespace SRL
                     BackgroundWorker bgw = (BackgroundWorker)sender;
                     bgList.Remove(bgw);
                     bgw.Dispose();
-                    if (bgList.Count == 0)
-                    {
-                        if (call_back != null)
-                        {
-                            call_back();
-                        }
 
+                    if (e.Error != null)
+                    {
+                        MessageBox.Show("There was an error for one thread: " + e.Error.ToString());
+                    }
+
+                    else
+                    {
+                        if (bgList.Count == 0)
+                        {
+                            if (call_back != null)
+                            {
+                                call_back();
+                            }
+
+                        }
                     }
                 }
 
@@ -1203,7 +1220,7 @@ namespace SRL
             /// </summary>
             public class MethodBackgroundWorker
             {
-                // if function hase loop, set report_progress=rue,
+                // if function hase loop, set report_progress=true,
                 //and get bg from class instance,
                 //then add  bg.ReportProgress( list.IndexOf(item) *100 / list.Count); in loop
 
@@ -1260,6 +1277,74 @@ namespace SRL
                     progress_bar.Parent.Visible = false;
                 }
             }
+
+            public class RunMethodInBack
+            {
+                static ProgressBar progress_bar;
+                static ProgressBarStyle main_style;
+                static public BackgroundWorker bg = new BackgroundWorker();
+
+
+                public static void Run(Action function, Action call_back, ProgressBar progress_bar_, ProgressBarStyle bar_style)
+                {
+
+                    if (progress_bar_ != null)
+                    {
+                        bg.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bg_RunWorkerCompleted);
+                        bg.ProgressChanged += Bg_ProgressChanged;
+                        bg.WorkerReportsProgress = true;
+                        progress_bar = progress_bar_;
+                        progress_bar.Parent.Visible = true;
+                        main_style = progress_bar.Style;
+                        progress_bar.Style = bar_style;
+                    }
+
+                    if (call_back != null)
+                        bg.RunWorkerCompleted += (s1, e1) =>
+                        {
+                            BackgroundWorker bgw = (BackgroundWorker)s1;
+
+                            if (e1.Error != null)
+                            {
+                                MessageBox.Show("There was an error for one thread: " + e1.Error.ToString());
+                            }
+
+                            else
+                            {
+                                SRL.ActionManagement.MethodCall.MethodInvoker(call_back);
+                            }
+                        };
+
+
+                    System.Windows.Forms.Application.DoEvents();
+
+
+                    bg.DoWork += (s, e) =>
+                    {
+                        SRL.ActionManagement.MethodCall.MethodInvoker(function);
+                    };
+
+                    bg.RunWorkerAsync();
+
+
+
+
+                }
+
+                private static void bg_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+                {
+                    progress_bar.Style = main_style;
+                    progress_bar.Parent.Visible = false;
+                }
+                private static void Bg_ProgressChanged(object sender, ProgressChangedEventArgs e)
+                {
+
+                    progress_bar.Style = ProgressBarStyle.Blocks;
+                    progress_bar.Value = e.ProgressPercentage;
+                }
+
+
+            }
             public static void MethodDynamicInvoker(Action function, Control container_control, params object[] parameters)
             { // use it for datagridviews_CellEndEdit event in error "Operation is not valid because it results in a reentrant call to the SetCurrentCellAddressCore function"
               /* 
@@ -1283,7 +1368,14 @@ namespace SRL
 
             public static void MethodInvoker(Action function)
             {
-                function.Invoke();
+                try
+                {
+                    function.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Message: " + ex.Message + ". StackTrace" + ex.StackTrace);
+                }
             }
 
             public static object MethodDynamicInvoker<T>(Func<T> function, params object[] parameters)
@@ -2035,7 +2127,54 @@ namespace SRL
             }
             return Icon.FromHandle(bitmap.GetHicon());
         }
+        
+        public static void ControlShadow(Control container, Control[] directChildsToShadow)
+        {//panel.Controls.OfType<Control>()
+            container.Paint += (s, e) => drop_Shadow(s, e, directChildsToShadow);
+        }
+        private static void drop_Shadow(object sender, PaintEventArgs e, Control[] directChildToShadow)
+        {
+            
+            Control panel = (Control)sender;
+            Color[] shadow = new Color[3];
+            shadow[0] = Color.FromArgb(181, 181, 181);
+            shadow[1] = Color.FromArgb(195, 195, 195);
+            shadow[2] = Color.FromArgb(211, 211, 211);
+            Pen pen = new Pen(shadow[0]);
+            using (pen)
+            {
+                
+                foreach (Control p in directChildToShadow)
+                {
+                    Point ptBottom = p.Location;
+                    ptBottom.Y += p.Height;
+                    for (var sp = 0; sp < 3; sp++)
+                    {
+                        pen.Color = shadow[sp];
+                        e.Graphics.DrawLine(pen, ptBottom.X, ptBottom.Y, ptBottom.X + p.Width - 1, ptBottom.Y);
+                        ptBottom.Y++;
+                    }
+                    
+                    Point ptRight = p.Location;
+                    ptRight.X += p.Width;
+                    for (var sp = 0; sp < 3; sp++)
+                    {
+                        pen.Color = shadow[sp];
+                        e.Graphics.DrawLine(pen, ptRight.X, ptRight.Y, ptRight.X, ptRight.Y+p.Height - 1);
+                        ptRight.X++;
+                    }
+                }
 
+            }
+        }
+        public static void BackColor(IEnumerable<Control> controls, Color color)
+        {
+            foreach (var item in controls)
+            {
+                item.BackColor = color;
+            }
+        }
+        
         public class ButtonClass
         {
             public class StyleButton : Button
@@ -2175,6 +2314,33 @@ namespace SRL
 
         public class LoadingCircleControl
         {
+            public static void StartLoading(LoadingCircle loadingCircle1)
+            {
+                try
+                {
+                    Application.DoEvents();
+                    loadingCircle1.Visible = loadingCircle1.Active = true;
+                    System.Windows.Forms.Cursor.Current = Cursors.WaitCursor;
+                    loadingCircle1.OuterCircleRadius = 20;
+                    loadingCircle1.InnerCircleRadius = 10;
+                    loadingCircle1.NumberSpoke = 20;
+                    loadingCircle1.RotationSpeed = 120;
+                }
+                catch (Exception ex)
+                {
+
+                    MessageBox.Show("StartLoading " + ex.Message);
+                }
+
+
+            }
+
+            public static void EndLoading(LoadingCircle loadingCircle1)
+            {
+                loadingCircle1.Visible = loadingCircle1.Active = false;
+            }
+
+
             public partial class LoadingCircle : Control
             {
                 // Constants =========================================================
@@ -3145,6 +3311,43 @@ namespace SRL
                 cb.DataSource = data_source;
 
             }
+
+            public static void Align(ComboBox cbKalaGroup)
+            {
+                cbKalaGroup.DrawMode = DrawMode.OwnerDrawFixed;
+                cbKalaGroup.DrawItem += cbxDesign_DrawItem;
+            }
+
+            private static void cbxDesign_DrawItem(object sender, DrawItemEventArgs e)
+            {
+                // By using Sender, one method could handle multiple ComboBoxes
+                ComboBox cbx = sender as ComboBox;
+                if (cbx != null)
+                {
+                    // Always draw the background
+                    e.DrawBackground();
+
+                    // Drawing one of the items?
+                    if (e.Index >= 0)
+                    {
+                        // Set the string alignment.  Choices are Center, Near and Far
+                        StringFormat sf = new StringFormat();
+                        sf.LineAlignment = StringAlignment.Center;
+                        sf.Alignment = StringAlignment.Center;
+
+                        // Set the Brush to ComboBox ForeColor to maintain any ComboBox color settings
+                        // Assumes Brush is solid
+                        Brush brush = new SolidBrush(cbx.ForeColor);
+
+                        // If drawing highlighted selection, change brush
+                        if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
+                            brush = SystemBrushes.HighlightText;
+
+                        // Draw the string
+                        e.Graphics.DrawString(cbx.Items[e.Index].ToString(), cbx.Font, brush, e.Bounds, sf);
+                    }
+                }
+            }
         }
 
         public class NavigatorTools
@@ -3227,6 +3430,7 @@ namespace SRL
         {
             public class DigitSeperation
             {
+                static string sep = NumberFormatInfo.CurrentInfo.NumberGroupSeparator;
                 public static void Enable3DigitSeperation(params TextBox[] tb_list)
                 {
                     foreach (var tb_ in tb_list)
@@ -3237,12 +3441,14 @@ namespace SRL
                 private static void tb_TextChanged(object sender, EventArgs e)
                 {
                     var tb = sender as TextBox;
-                    string value = tb.Text.Replace(",", "");
-                    ulong ul;
-                    if (ulong.TryParse(value, out ul))
+                    string value = tb.Text.Replace(sep, "");
+                    double ul;
+                    if (double.TryParse(value, out ul))
                     {
                         tb.TextChanged -= tb_TextChanged;
-                        tb.Text = string.Format("{0:#,#}", ul);
+                        string format = "{0:#,##0.########}";
+                        string number = string.Format(format, ul);
+                        tb.Text = number;
                         tb.SelectionStart = tb.Text.Length;
                         tb.TextChanged += tb_TextChanged;
                     }
@@ -3267,6 +3473,18 @@ namespace SRL
                 return raw_text;
             }
 
+            public static void RaiseButtonClickOnEnter(TextBox tb, Button btn)
+            {
+                tb.KeyDown +=(s,e)=> tb_raise_click(s,e,btn);
+            }
+
+            private static void tb_raise_click(object sender, KeyEventArgs e, Button btn)
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    btn.PerformClick();   
+                }
+            }
         }
         public static void AddChildToParentControls(Control parent, Control child, bool reset_child_font = false, bool clear_parent = true)
         {
@@ -3867,7 +4085,8 @@ namespace SRL
         {
             Sha1,
             MD5,
-            Sha256
+            Sha256,
+            None
         }
 
         /// <summary>
@@ -3945,9 +4164,9 @@ namespace SRL
         {
             return System.Security.Principal.WindowsIdentity.GetCurrent().Name;
         }
-        public static void WinCheckLogin(DbContext db, string entity_name, WinSessionId session)
+        public static void WinCheckLogin(DbContext db, string entity_name, WinSessionId session, Security.HashAlgoritmType password_type)
         {
-            new SRL.WinLogin(db, entity_name, session).ShowDialog();
+            new SRL.WinLogin(db, entity_name, session, password_type).ShowDialog();
 
             if (!session.IsLogined) Environment.Exit(0);
         }
@@ -4056,6 +4275,10 @@ namespace SRL
         }
         public static string GetHashString(string input, HashAlgoritmType algorytmType = HashAlgoritmType.Sha1)
         {
+            if(algorytmType==HashAlgoritmType.None)
+            {
+                return input;
+            }
             byte[] hash = null;
 
             switch (algorytmType)
@@ -4083,6 +4306,70 @@ namespace SRL
             return sb.ToString();
 
 
+        }
+
+        /// <summary>
+        /// تعیین معتبر بودن کد ملی
+        /// </summary>
+        /// <param name="nationalCode">کد ملی وارد شده</param>
+        /// <returns>
+        /// در صورتی که کد ملی صحیح باشد خروجی <c>true</c> و در صورتی که کد ملی اشتباه باشد خروجی <c>false</c> خواهد بود
+        /// </returns>
+        public static Boolean IsValidNationalCode(String nationalCode)
+        {
+            if (String.IsNullOrWhiteSpace(nationalCode))
+                return false;
+
+            nationalCode = SRL.Convertor.NationalId(nationalCode);
+            if (nationalCode.Length != 10)
+                return false;
+
+            if (!IsNumber(nationalCode)) return false;
+
+
+            var allDigitEqual = new[] { "0000000000", "1111111111", "2222222222", "3333333333", "4444444444", "5555555555", "6666666666", "7777777777", "8888888888", "9999999999" };
+            if (allDigitEqual.Contains(nationalCode)) return false;
+
+
+            //عملیات شرح داده شده در بالا
+            var chArray = nationalCode.ToCharArray();
+            var num0 = Convert.ToInt32(chArray[0].ToString()) * 10;
+            var num2 = Convert.ToInt32(chArray[1].ToString()) * 9;
+            var num3 = Convert.ToInt32(chArray[2].ToString()) * 8;
+            var num4 = Convert.ToInt32(chArray[3].ToString()) * 7;
+            var num5 = Convert.ToInt32(chArray[4].ToString()) * 6;
+            var num6 = Convert.ToInt32(chArray[5].ToString()) * 5;
+            var num7 = Convert.ToInt32(chArray[6].ToString()) * 4;
+            var num8 = Convert.ToInt32(chArray[7].ToString()) * 3;
+            var num9 = Convert.ToInt32(chArray[8].ToString()) * 2;
+            var a = Convert.ToInt32(chArray[9].ToString());
+
+            var b = (((((((num0 + num2) + num3) + num4) + num5) + num6) + num7) + num8) + num9;
+            var c = b % 11;
+
+            return (((c < 2) && (a == c)) || ((c >= 2) && ((11 - c) == a)));
+        }
+
+        public static Boolean IsValidMobile(String mobile)
+        {
+            if (String.IsNullOrWhiteSpace(mobile))
+                return false;
+
+            mobile = SRL.Convertor.Mobile(mobile);
+            if (mobile.Length != 11)
+                return false;
+
+            if (!IsNumber(mobile))
+                return false;
+
+            return true;
+        }
+        public static bool IsNumber(string str)
+        {
+            var regex = new Regex(@"\d{10}");
+            if (!regex.IsMatch(str))
+                return false;
+            else return true;
         }
 
     }
@@ -4325,6 +4612,11 @@ namespace SRL
     }
     public class Convertor
     {
+        public static string[] ClassToArray<TClass>()
+        {
+            string[] head = typeof(TClass).GetProperties().Select(p => p.Name).ToArray();
+            return head;
+        }
         public static List<T> ConvertDataTableToList<T>(DataTable dt)
         {
             var columnNames = dt.Columns.Cast<DataColumn>()
@@ -4339,7 +4631,13 @@ namespace SRL
                     if (columnNames.Contains(pro.Name))
                     {
                         PropertyInfo pI = objT.GetType().GetProperty(pro.Name);
-                        pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
+
+
+                        Type t = Nullable.GetUnderlyingType(pI.PropertyType) ?? pI.PropertyType;
+                        object safeValue = (row[pro.Name] == DBNull.Value) ? null : Convert.ChangeType(row[pro.Name], t);
+                        pro.SetValue(objT, safeValue, null);
+
+                        //  pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
                     }
                 }
                 return objT;
@@ -4722,6 +5020,11 @@ namespace SRL
         {
             return Decimal.TryParse(str, NumberStyles.Any, CultureInfo.CurrentCulture, out number);
         }
+        public static DateTime UnixEpochToDateTime(long unixTime)
+        {
+            DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            return epoch.AddSeconds(unixTime);
+        }
         public static DateTime EnglishToPersianDateTime(DateTime date)
         {
 
@@ -4762,6 +5065,12 @@ namespace SRL
             date_list.Add(day);
 
             return date_list;
+        }
+        public static string EnglishToPersianDate(DateTime d)
+        {
+            PersianCalendar pc = new PersianCalendar();
+            string date = string.Format("{0}/{1}/{2}", pc.GetYear(d), pc.GetMonth(d), pc.GetDayOfMonth(d));
+            return date;
         }
         public static DateTime PersianToEnglishDate(int year, int month, int day)
         {
@@ -4987,6 +5296,31 @@ namespace SRL
 
         }
 
+        public class SqlServerTableConstrain
+        {
+            public string CONSTRAIN_CATALOG { get; set; }
+            public string CONSTRAIN_SCHEMA { get; set; }
+            public string CONSTRAIN_NAME { get; set; }
+            public string TABLE_CATALOG { get; set; }
+            public string TABLE_SCHEMA { get; set; }
+            public string TABLE_NAME { get; set; }
+            public string CONSTRAIN_TYPE { get; set; }
+        }
+
+        public enum SqlServerConstrainType
+        {
+            PRIMARY_KEY,
+            FOREIGN_KEY,
+            UNIQUE,
+            All
+
+        }
+
+        public class ReportTBClass
+        {
+            public string status { get; set; }
+            public int cont { get; set; }
+        }
         public class Backup
         {
             ProgressBar progressBar1;
@@ -5082,6 +5416,21 @@ namespace SRL
             }
 
 
+        }
+        public static SRL.WinTools.Modal ReportFromSqlServerTB(DbContext db, string table, string status_column = "status", string title = "وضعیت ارسال")
+        {
+            string query = "select " + status_column + ", count(*) as cont from " + table + " group by " + status_column;
+            var dt = SRL.Database.SqlQuery<ReportTBClass>(db, query).ToList();
+            var dgv = new DataGridView();
+            dgv.DataSource = dt;
+            dgv.Click += (se, de) =>
+            {
+                dt = SRL.Database.SqlQuery<ReportTBClass>(db, query);
+                dgv.DataSource = dt;
+            };
+            var modal = new SRL.WinTools.Modal(dgv, title, dgv.Width, dgv.Height);
+            modal.ShowDialog();
+            return modal;
         }
         public static void UpdateDgvCellValueToDb<EntityT>(DataGridView dgv, int row_index, string primary_column, string update_column, DbContext db)
         {
@@ -5315,6 +5664,14 @@ namespace SRL
             return query[0] + 1;
 
         }
+        public static List<SqlServerTableConstrain> ViewTableUniqueConstrains(DbContext db, SqlServerConstrainType constrain = SqlServerConstrainType.All)
+        {
+            string query = "SELECT* FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS ";
+            if (constrain != SqlServerConstrainType.All) query += " where CONSTRAINT_TYPE = '" + constrain.ToString().Replace("_", " ") + "'";
+            var list = SRL.Database.SqlQuery<SqlServerTableConstrain>(db, query);
+            return list;
+
+        }
         public static List<OutputType> SqlQuery<OutputType>(DbContext db, string query)
         {
             try
@@ -5354,7 +5711,7 @@ namespace SRL
             System.Data.Entity.Core.EntityClient.EntityConnectionStringBuilder entityConnectionStringBuilder =
                 new System.Data.Entity.Core.EntityClient.EntityConnectionStringBuilder(genusConnectionString);
             SqlConnectionStringBuilder sqlConnectionStringBuilder = new SqlConnectionStringBuilder(entityConnectionStringBuilder.ProviderConnectionString);
-            string genusSqlServerName = sqlConnectionStringBuilder.DataSource;
+            string genusSqlServerName = sqlConnectionStringBuilder.ConnectionString;
 
             return genusSqlServerName;
         }
@@ -5434,26 +5791,37 @@ namespace SRL
         /// <param name="lblCount"></param>
         public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
         {
-            if (!System.IO.File.Exists(ofDialog.FileName))
+            try
             {
-                ofDialog.Filter = "Access files|*.accdb";
-                if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
-                lblFileName.Text = ofDialog.FileName;
-            }
-            DataTable table = GetDataTableFromAccess(ofDialog.FileName, table_name);
-            if (table == null) return null;
+                if (!System.IO.File.Exists(ofDialog.FileName))
+                {
+                    ofDialog.Filter = "Access files|*.accdb";
+                    if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
+                    lblFileName.Text = ofDialog.FileName;
+                }
+                DataTable table = GetDataTableFromAccess(ofDialog.FileName, table_name);
+                if (table == null) return null;
 
-            string header_checked = SRL.KeyValue.CheckDataTableHeaders(table, main_headers, check_type);
-            if (header_checked == "true")
+                string header_checked = SRL.KeyValue.CheckDataTableHeaders(table, main_headers, check_type);
+                if (header_checked == "true")
+                {
+                    dgv.DataSource = table;
+
+                    if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+                }
+
+                else MessageBox.Show(header_checked);
+                ofDialog.FileName = "";
+                return table;
+
+
+            }
+            catch (Exception ex)
             {
-                dgv.DataSource = table;
 
-                if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+                MessageBox.Show("LoadDGVFromAccess " + ex.Message);
+                throw;
             }
-
-            else MessageBox.Show(header_checked);
-            ofDialog.FileName = "";
-            return table;
         }
 
         public static DataTable GetDataTableFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
@@ -5518,6 +5886,22 @@ namespace SRL
 
         }
 
+        public static SRL.WinTools.Modal ReportFromAccess(string path, string status_column = "status", string table = "table1", string title = "وضعیت ارسال")
+        {
+            string query = "select " + status_column + ", count(*) as cont from " + table + " group by " + status_column;
+            var dt = SRL.AccessManagement.SqlQueryFromAccess(path, query);
+            var dgv = new DataGridView();
+            dgv.DataSource = dt;
+            dgv.Click += (se, de) =>
+            {
+                dt = SRL.AccessManagement.SqlQueryFromAccess(path, query);
+                dgv.DataSource = dt;
+            };
+            var modal = new SRL.WinTools.Modal(dgv, title, dgv.Width, dgv.Height);
+            modal.ShowDialog();
+            return modal;
+        }
+
         public static int ExecuteToAccess(string query, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
@@ -5532,7 +5916,7 @@ namespace SRL
                 {
                     con.Open();
                     cmd.CommandType = CommandType.Text;
-                    int res= cmd.ExecuteNonQuery();
+                    int res = cmd.ExecuteNonQuery();
                     return res;
                 }
                 catch (Exception ex)
@@ -5605,6 +5989,13 @@ namespace SRL
     }
     public class ExcelManagement : SRL.ControlLoad
     {
+        public enum ExcelPathType
+        {
+            NotSet,
+            DesktopDatetimeToSecond,
+            Desktop
+        }
+
         public ExcelManagement()
         {
         }
@@ -5645,6 +6036,7 @@ namespace SRL
         }
         public static void LoadDGVFromExcel(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount = null)
         {
+
 
             if (!System.IO.File.Exists(ofDialog.FileName))
             {
@@ -5688,19 +6080,20 @@ namespace SRL
             ofDialog.FileName = "";
         }
 
-        public enum ExcelPathType
-        {
-            NotSet,
-            DesktopDatetimeToSecond
-        }
-        public void ExportToExcell(DataGridView dgview, int? devider = null, string fileFullNameNoExtention = null, TextBox tbCountDynamic = null, ExcelPathType excel_naming = ExcelPathType.NotSet, string default_name = "")
+
+        public string ExportToExcell(DataGridView dgview, int? devider = null, string fileFullNameNoExtention = null, TextBox tbCountDynamic = null, ExcelPathType excel_naming = ExcelPathType.NotSet, string default_name = "")
         {
             string path = fileFullNameNoExtention + ".xls";
 
+            string file;
             switch (excel_naming)
             {
                 case ExcelPathType.DesktopDatetimeToSecond:
-                    string file = default_name + DateTime.Now.ToString("yyyyMMddHHmmss") + ".xls";
+                    file = default_name + DateTime.Now.ToString("yyyyMMddHHmmss") + ".xls";
+                    path = System.IO.Path.Combine(SRL.FileManagement.GetDesktopDirectory(), @file);
+                    break;
+                case ExcelPathType.Desktop:
+                    file = default_name + ".xls";
                     path = System.IO.Path.Combine(SRL.FileManagement.GetDesktopDirectory(), @file);
                     break;
             }
@@ -5712,10 +6105,11 @@ namespace SRL
             else
             {
                 int cont;
-                if (string.IsNullOrWhiteSpace(tbCountDynamic.Text) || !int.TryParse(tbCountDynamic.Text, out cont)) return;
+                if (string.IsNullOrWhiteSpace(tbCountDynamic.Text) || !int.TryParse(tbCountDynamic.Text, out cont)) return null;
 
                 ExportToExcellFile(dgview, cont, path);
             }
+            return path;
         }
 
         private void ExportToExcellFile(DataGridView dgview, int devider, string path)
@@ -5738,6 +6132,7 @@ namespace SRL
 
             ExcelLibrary.DataSetHelper.CreateWorkbook(@path, ds);
         }
+
 
     }
     public class ControlLoad : IDisposable
@@ -5801,13 +6196,79 @@ namespace SRL
         }
 
     }
-    public class WinReport<SubReportType>
+    public class WinReport
     {
-        public string DatasetName { get; set; }
-        List<SubReportType> SubreportList;
-        public WinReport(string dataset_name)
+
+        public static void Reporter<ReportType, SubReportType>(Assembly assembly, List<ReportType> report_data, string printer_name, string dataset, string report_path, string title, short copies,
+            string sub_path,string sub_name, List<SubReportType> sub_data = null, string sub_dataset = null,
+            DisplayMode display_mode = DisplayMode.PrintLayout, int max_width = 1000, int max_height = 700, int zoom_percent = 75)
         {
-            DatasetName = dataset_name;
+            // SRL.WinReport.Reporter<PurchaseTB, PurchaseKalaTB>(Assembly.GetExecutingAssembly(), Public.dbGlobal.PurchaseTB.Where(x => x.Id == purchase_id).ToList(),  Public.srl_setting_class.SqlQuerySettingTable("printer_name"),
+            //"DataSet1","hesabdari_app.Rep.Purchase.rdlc", "گزارش چاپی", 2, "hesabdari_app.Rep.PurchaseKala.rdlc", "PurchaseKala", Public.dbGlobal.PurchaseKalaTB.Where(x => x.purchase_id == purchase_id).ToList(),"DataSetPurchaseKala");
+
+            //rdlc files must be addded to resources
+            //report_path like "hesabdari_app.Rep.Purchase.rdlc"  starts with namespace then folders then file
+
+            ReportViewer rw = new ReportViewer();
+
+            //use: rw.LocalReport.ReportEmbeddedResource = "hesabdari_app.Rep.Purchase.rdlc" in one project instead assembly           
+            Stream stream = assembly.GetManifestResourceStream(report_path);
+            rw.LocalReport.LoadReportDefinition(stream);
+            if (sub_name !=null)
+            {
+                Stream sub_stream = assembly.GetManifestResourceStream(sub_path);
+                rw.LocalReport.LoadSubreportDefinition(sub_name, sub_stream);
+            }
+
+            var bs = new System.Windows.Forms.BindingSource();
+            bs.DataSource = report_data;
+            Microsoft.Reporting.WinForms.ReportDataSource reportDataSource1 = new Microsoft.Reporting.WinForms.ReportDataSource();
+            //in view: report data window, manage dataset. like: DataSet1
+            reportDataSource1.Name = dataset;
+            reportDataSource1.Value = bs;
+            rw.LocalReport.DataSources.Clear();
+            rw.LocalReport.DataSources.Add(reportDataSource1);
+
+            rw.ProcessingMode = ProcessingMode.Local;
+
+            if (sub_data != null)
+                 rw.LocalReport.SubreportProcessing += (s, e) => MySubreportEventHandler<SubReportType>(s, e, sub_dataset, sub_data, reportDataSource1);
+              
+            //in rdlc, report menu: report properties, first set page size(these are defaults), then consider margines, so in rdlc body, set sizes(less defaults). properties:Report , page sizes are like defaults.
+            SizeF size = SRL.WinReport.GetLocalReportRdlcSize(rw);
+            float dpi = SRL.WinTools.Media.GetScreenDpi(rw);
+            int widthPixel = SRL.Convertor.InchToPixel(size.Width, dpi);
+            int heightPixel = SRL.Convertor.InchToPixel(size.Height, dpi);
+            widthPixel = Math.Min(widthPixel, max_width);
+            heightPixel = Math.Min(heightPixel, max_height);
+            rw.Width = widthPixel;
+            rw.Height = heightPixel;
+
+            rw.PrinterSettings.PrinterName = printer_name;
+            rw.PrinterSettings.Copies = copies;
+            rw.AutoScroll = true;
+            rw.SetDisplayMode(display_mode);
+            rw.ZoomMode = ZoomMode.Percent;
+            rw.ZoomPercent = zoom_percent;
+
+            var modal = new SRL.WinTools.Modal(rw, title, widthPixel, heightPixel, Color.Yellow);
+            modal.BackColor = Color.Blue;
+            modal.AutoScroll = true;
+            modal.ShowDialog();
+
+            rw.RefreshReport();
+        }
+
+        private static void MySubreportEventHandler<SubReportType>(object sender
+            , SubreportProcessingEventArgs e, string dataset, List<SubReportType> sub_data, ReportDataSource rds)
+        {
+            var sub_bs = new System.Windows.Forms.BindingSource();
+            sub_bs.DataSource = sub_data;
+            Microsoft.Reporting.WinForms.ReportDataSource sub_data_source = new Microsoft.Reporting.WinForms.ReportDataSource();
+            sub_data_source.Name = dataset;
+            sub_data_source.Value = sub_bs;
+            e.DataSources.Add(sub_data_source);
+            e.DataSources.Add(rds);
         }
 
         public void MakePDFInDialog(Microsoft.Reporting.WinForms.ReportViewer reportViewer1)
@@ -5857,47 +6318,29 @@ namespace SRL
 
         }
 
-        public void LoadReport<ReportType>(Microsoft.Reporting.WinForms.ReportViewer reportViewer1
-            , BindingSource report_binding_source, List<ReportType> report_list, List<SubReportType> sub_report_list)
+        public static SizeF GetLocalReportRdlcSize(ReportViewer report_viewer)
         {
-            if (sub_report_list != null)
-                reportViewer1.LocalReport.SubreportProcessing +=
-               new SubreportProcessingEventHandler(MySubreportEventHandler);
-            SubreportList = sub_report_list;
-
-            report_binding_source.DataSource = report_list;
-            reportViewer1.RefreshReport();
-        }
-
-        private void MySubreportEventHandler(object sender
-            , SubreportProcessingEventArgs e)
-        {
-            e.DataSources.Add(new ReportDataSource(DatasetName, SubreportList));
-        }
-
-        public bool GetLocalReportRdlcSize(ReportViewer report_viewer, out float width, out float height)
-        {
-            System.Drawing.Printing.PaperSize paper_size = new System.Drawing.Printing.PaperSize();
+            SizeF size = new SizeF();
             var report_setting = report_viewer.LocalReport.GetDefaultPageSettings();
-
             float width_ = report_setting.PaperSize.Width / 100F;
             float height_ = report_setting.PaperSize.Height / 100F;
+            
+            size.Width = width_;
+            size.Height = height_;
 
-            width = width_;
-            height = height_;
-            if (report_setting.IsLandscape)
-            {
-                width = height_;
-                height = width_;
-
-            }
-
-            return report_setting.IsLandscape;
+            return size;
 
         }
+
+
     }
     public class FileManagement
     {
+        public enum FileType
+        {
+            Excel,
+            Access
+        }
         public FileManagement()
         {
 
@@ -6166,7 +6609,38 @@ namespace SRL
             }
         }
 
+        public static void CreateFileSample(string[] headers, string destination_name_no_extention, FileType type)
+        {
+            switch (type)
+            {
+                case FileType.Excel:
+                    DataGridView d = new DataGridView();
+                    foreach (var item in headers)
+                    {
+                        d.Columns.Add(item, item);
+                    }
+                    MessageBox.Show("file created in: " +
+                    new SRL.ExcelManagement().ExportToExcell(d, 100, null, null, SRL.ExcelManagement.ExcelPathType.Desktop, destination_name_no_extention));
+                    break;
 
+                case FileType.Access:
+                    string source = System.IO.Path.Combine(SRL.FileManagement.GetCurrentDirectory(), "sample.accdb");
+                    string name = destination_name_no_extention + ".accdb";
+                    string des = System.IO.Path.Combine(SRL.FileManagement.GetDesktopDirectory(), name);
+
+                    System.IO.File.Copy(source, des, true);
+
+                    foreach (var item in headers)
+                    {
+                        SRL.AccessManagement.ExecuteToAccess("alter table table1 add " + item + " nvarchar(50)", des, true);
+                    }
+                    SRL.AccessManagement.ExecuteToAccess("alter table table1 drop column Deleted_column", des, true);
+                    MessageBox.Show("file created in: " + des);
+                    break;
+
+            }
+
+        }
 
 
     }

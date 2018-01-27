@@ -1,11 +1,15 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace SRL
@@ -27,7 +31,61 @@ namespace SRL
                         public string status { get; set; }
                     }
 
-                    public static void CheckCoOrPersonIsCorrect(string access_file_name, string table_name)
+                    public static void StartParallelCallCoOrPerson(List<CoOrPerson> list, BackgroundWorker worker, params object[] args)
+                    {
+                        string table_name = args[0].ToString();
+                        string access_file_name = args[1].ToString();
+
+                        foreach (var item in list)
+                        {
+
+                            //try
+                            //{
+                            HttpResponseMessage response = new HttpResponseMessage();
+                            if (item.code == null) continue;
+                            if (item.code.Length > 10)
+                            {
+                                var get = SRL.Projects.Nwms.GetCompanyByCoNationalId(item.code, out response);
+
+                                if (get == null)
+                                {
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "'  where code='" + item.code + "'";
+                                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                }
+                                else if (string.IsNullOrWhiteSpace(get.error_name))
+                                {
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.name + "' where code='" + item.code + "'";
+                                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                }
+                                else
+                                {
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.error_name + "' where code='" + item.code + "'";
+                                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                }
+                            }
+                            else
+                            {
+                                var get = SRL.Projects.Nwms.GetPersonByNationalId(item.code, out response);
+                                if (string.IsNullOrWhiteSpace(get.ErrorDescription))
+                                {
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.FirstName + "', family='" + get.LastName + "' where code='" + item.code + "'";
+                                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                }
+                                else
+                                {
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.ErrorDescription + "' where code='" + item.code + "'";
+                                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
+                                }
+                            }
+                            //}
+                            //catch (Exception ex)
+                            //{
+                            //    MessageBox.Show(ex.Message);
+                            //}
+                        }
+                    }
+
+                    public static void CheckCoOrPersonIsCorrect(string access_file_name, string table_name, int paralel)
                     {
                         SRL.AccessManagement.AddColumnToAccess("name", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
                         SRL.AccessManagement.AddColumnToAccess("family", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
@@ -38,49 +96,9 @@ namespace SRL
                         var list_ = SRL.Convertor.ConvertDataTableToList<CoOrPerson>(dt);
                         var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
 
-                        int count = list.Count();
-                        foreach (var item in list)
-                        {
+                        SRL.AccessManagement.ExecuteToAccess("update " + table_name + " set code=Trim(code)", access_file_name, true);
 
-                            try
-                            {
-                                HttpResponseMessage response = new HttpResponseMessage();
-
-                                if (item.code.Length > 10)
-                                {
-                                    var get = SRL.Projects.Nwms.GetCompanyByCoNationalId(item.code, out response);
-
-                                    if (string.IsNullOrWhiteSpace(get.error_name))
-                                    {
-                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.name + "' where code='" + item.code + "'";
-                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
-                                    }
-                                    else
-                                    {
-                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.error_name + "' where code='" + item.code + "'";
-                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
-                                    }
-                                }
-                                else
-                                {
-                                    var get = SRL.Projects.Nwms.GetPersonByNationalId(item.code, out response);
-                                    if (string.IsNullOrWhiteSpace(get.ErrorDescription))
-                                    {
-                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.FirstName + "', family='" + get.LastName + "' where code='" + item.code + "'";
-                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
-                                    }
-                                    else
-                                    {
-                                        string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , error='" + get.ErrorDescription + "' where code='" + item.code + "'";
-                                        SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                MessageBox.Show(ex.Message);
-                            }
-                        }
+                        SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<CoOrPerson>(list, paralel.ToString(), StartParallelCallCoOrPerson, () => { MessageBox.Show("done"); }, null, table_name, access_file_name);
                     }
                 }
                 public class PostCodeEstelamResult
@@ -208,6 +226,85 @@ namespace SRL
                 }
             }
 
+            public static List<SearchResult.SearchWarehouseResult> SearchWarehouse(Dictionary<string, object> input_json, string api_key)
+            {
+                List<SearchResult.SearchWarehouseResult> warehouses = new List<SearchResult.SearchWarehouseResult>();
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/_search/");
+                List<SearchResult.SearchWarehouseResult> warehouse_list = new List<SearchResult.SearchWarehouseResult>();
+                int from = 0;
+                do
+                {
+
+                    HttpResponseMessage response = client.PostAsJsonAsync(from + "/10", input_json).Result;
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        return null;
+                    }
+
+                    string result = response.Content.ReadAsStringAsync().Result;
+                    Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                    string data = result_json["data"].ToString();
+                    if (string.IsNullOrWhiteSpace(data)) break;
+                    warehouse_list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchWarehouseResult>>(data);
+
+                    warehouses.AddRange(warehouse_list);
+                    from += 10;
+                } while (warehouse_list.Count ==10);
+
+                return warehouses;
+            }
+
+
+            public static List<SearchResult.SearchComplexResult> SearchComplex(Dictionary<string, object> input_json, string api_key)
+            {
+                List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/_search/");
+
+                List<SearchResult.SearchComplexResult> data_list = new List<SearchResult.SearchComplexResult>();
+                int from = 0;
+                do
+                {
+                    HttpResponseMessage response = client.PostAsJsonAsync(from + "/10", input_json).Result;
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        return null;
+                    }
+
+                    string result = response.Content.ReadAsStringAsync().Result;
+                    Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                    string data = result_json["data"].ToString();
+                    if (string.IsNullOrWhiteSpace(data)) break;
+                    data_list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchComplexResult>>(data);
+
+                    complexes.AddRange(data_list);
+
+                    from += 10;
+                } while (data_list.Any());
+
+                return complexes;
+            }
+
+            public static List<SearchResult.SearchComplexResult> GetAllWarComplexByNationalId(string api_key, string national_id)
+            {
+                List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri("https://app.nwms.ir");
+
+                HttpResponseMessage response = client.GetAsync("/v2/b2b-api-imp/" + api_key + "/" + national_id + "/complex/_all").Result;
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    return null;
+                }
+
+                string result = response.Content.ReadAsStringAsync().Result;
+                Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                string data = result_json["data"].ToString();
+                complexes = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchComplexResult>>(data);
+                return complexes;
+            }
+
             public class ComplexByPostCodeResult
             {
 
@@ -282,8 +379,40 @@ namespace SRL
                 public string Town { get; set; }
                 public string Gender { get; set; }
                 public string ErrorDescription { get; set; }
+
             }
 
+            public class AnbarPersonClass
+            {
+
+                public int create_date { get; set; }
+                public string national_id { get; set; }
+                public string modifier_national_id { get; set; }
+                public object phonenumber { get; set; }
+                public string account_status { get; set; }
+                public string alivestatus { get; set; }
+                public string password { get; set; }
+                public string creator_national_id { get; set; }
+                public string lastname { get; set; }
+                public object SSNN_serial { get; set; }
+                public object email { get; set; }
+                public object files { get; set; }
+                public string firstname { get; set; }
+                public string using_two_phase_password { get; set; }
+                public string SSNN_no { get; set; }
+                public object address { get; set; }
+                public string postalcode { get; set; }
+                public object org_creator_national_id { get; set; }
+                public string birthepoch { get; set; }
+                public object user_national_card_image { get; set; }
+                public object user_profile_image { get; set; }
+                public string mobile { get; set; }
+                public string gender { get; set; }
+                public string userid { get; set; }
+                public string fathername { get; set; }
+
+
+            }
             public class CompanyClass
             {
                 public long ID { get; set; }
@@ -291,6 +420,51 @@ namespace SRL
                 public string name { get; set; }
                 public string error_name { get; set; }
             }
+            public class CompanyListClass
+            {
+                public object website { get; set; }
+                public string register_code { get; set; }
+                public string national_id { get; set; }
+                public string commercial_code { get; set; }
+                public string register_epoch { get; set; }
+                public string account_status { get; set; }
+                public string phonenumber { get; set; }
+                public string modifier_national_id { get; set; }
+                public object roozname_rasmi_url { get; set; }
+                public string id { get; set; }
+                public string en_name { get; set; }
+                public object register_city { get; set; }
+                public object email { get; set; }
+                public object files { get; set; }
+                public string fax { get; set; }
+                public object ceo_expire_epoch { get; set; }
+                public string ceo_national_id { get; set; }
+                public object address { get; set; }
+                public object org_creator_national_id { get; set; }
+                public string name { get; set; }
+                public string creator_national_id { get; set; }
+                public string postal_code { get; set; }
+                public Ceo ceo { get; set; }
+
+                public class Ceo
+                {
+                    public object org_creator_national_id { get; set; }
+                    public string name { get; set; }
+                    public string title { get; set; }
+                    public string national_id { get; set; }
+                    public object creator_national_id { get; set; }
+                    public int start_epoch { get; set; }
+                    public string common_name { get; set; }
+                    public string account_status { get; set; }
+                    public object modifier_national_id { get; set; }
+                    public int expire_epoch { get; set; }
+                    public string id { get; set; }
+                    public string ceo_mobile { get; set; }
+                }
+
+
+            }
+
             public class PostalCodeFromPostClass
             {
                 public int ErrorCode { get; set; }
@@ -349,6 +523,26 @@ namespace SRL
 
                 }
 
+                return person;
+            }
+
+            public static AnbarPersonClass GetAnbarPersonByNationalId(string national_id, out HttpResponseMessage result)
+            {
+
+                HttpClient client1 = new HttpClient();
+                client1.BaseAddress = new Uri("https://app.nwms.ir");
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                input.Add("account_status", "1");
+                input.Add("national_id", national_id);
+                result = client1.PostAsJsonAsync("/v2/b2b-api/2050130318/admin/users/_search/0/1", input).Result;
+                string response = result.Content.ReadAsStringAsync().Result;
+                Dictionary<string, object> response_con = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(response);
+                List<object> data = Newtonsoft.Json.JsonConvert.DeserializeObject<List<object>>(response_con["data"].ToString());
+                if (data.Count < 1)
+                {
+                    return null;
+                }
+                AnbarPersonClass person = Newtonsoft.Json.JsonConvert.DeserializeObject<AnbarPersonClass>(data[0].ToString());
                 return person;
             }
             public static string ComputePostCodeHash(string password, string param1 = null, string param2 = null, string param3 = null)
@@ -412,12 +606,10 @@ namespace SRL
                     company = new CompanyClass();
                     string result = response.Content.ReadAsStringAsync().Result;
                     Dictionary<string, object> data1 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                    if (data1["Successful"].ToString() == "true")
+                    if (data1["Successful"].ToString() == "true" || data1["Successful"].ToString() == "True")
                     {
-                        string data3 = data1["data"].ToString();
-                        Dictionary<string, object> data4 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(data3);
 
-                        company.name = data4["Name"].ToString();
+                        company.name = data1["Name"].ToString();
                         company.co_national_id = co_national_id;
                     }
                     else
@@ -427,6 +619,50 @@ namespace SRL
                     }
                 }
                 return company;
+
+
+            }
+
+            public static List<CompanyListClass> GetCompanySeoByCoNationalId(string co_national_id, string api_key, out HttpResponseMessage response)
+            {
+                List<CompanyListClass> result_list = new List<CompanyListClass>();
+
+                response = null;
+
+                HttpClient client_list = new HttpClient();
+                client_list.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/company/_search/");
+
+
+                if (string.IsNullOrWhiteSpace(co_national_id)) return null;
+
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                input["national_id"] = co_national_id;
+                response = client_list.PostAsJsonAsync("0/99", input).Result;
+                if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+
+
+                    string result = response.Content.ReadAsStringAsync().Result;
+
+                    string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+
+                    List<CompanyListClass> co_list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<CompanyListClass>>(data);
+
+                    foreach (var item in co_list)
+                    {
+                        if (item.account_status == "3") continue;
+
+                        item.ceo.ceo_mobile = Nwms.GetAnbarPersonByNationalId(item.ceo.national_id, out response)?.mobile;
+                        result_list.Add(item);
+
+                    }
+                }
+                else
+                {
+                    result_list = null;
+                }
+
+                return result_list;
 
 
             }
@@ -453,6 +689,62 @@ namespace SRL
                 return estelam_result;
 
             }
+
+            public class SearchResult
+            {
+                public class Polygon
+                {
+                    public double lat { get; set; }
+                    public double lng { get; set; }
+                }
+
+                public class Person
+                {
+                    public string national_id { get; set; }
+                    public string name { get; set; }
+                    public string id { get; set; }
+                }
+                public class SearchComplexResult
+                {
+                    public int? create_date { get; set; }
+                    public string telephone_number { get; set; }
+                    public string account_status { get; set; } 
+                    public string postal_code { get; set; }
+                    public string village { get; set; }
+                    public string id { get; set; } 
+                    public string city { get; set; }
+                    public IList<Polygon> polygon { get; set; }
+                    public string zone { get; set; }
+                    public object area { get; set; }
+                    public string warehouse_usage_type { get; set; }
+                    public string province { get; set; }
+                    public object gov_wh_number { get; set; }
+                    public string complex_set_type { get; set; }
+                    public string full_address { get; set; }
+                    public object address { get; set; }
+                    public string township { get; set; }
+                    public string org_creator_national_id { get; set; }
+                    public string warehouse_ownership_type { get; set; }
+                    public IList<Person> owners { get; set; }
+                    public Person agent { get; set; }
+                    public string name { get; set; }
+                    public string country { get; set; }
+                    public string rural { get; set; }
+                }
+
+                public class SearchWarehouseResult
+                {
+                    public string postal_code { get; set; }
+                    public List<Person> contractors { get; set; }
+                    public string org_creator_national_id { get; set; }
+                    public string name { get; set; }
+                    public string id { get; set; }
+
+                }
+
+
+            }
+
 
         }
     }

@@ -48,6 +48,7 @@ namespace FormSample
         }
         private void Form1_Load(object sender, EventArgs e)
         {
+            this.WindowState = FormWindowState.Maximized;
             this.AutoScroll = true;
             this.Text = "app_name v" + SRL.Security.GetAppVersion().ToString() + " By SRL";
             SRL.ActionManagement.FormActions.ForceExitOnClose(this);
@@ -56,8 +57,6 @@ namespace FormSample
             Publics.form_progress_bar_label = progress.lbl_progress;
             Publics.form_progress_bar = progress.progress_bar;
             Publics.form_progress_bar_label.Parent.Visible = false;
-
-
         }
 
 
@@ -73,7 +72,26 @@ namespace FormSample
         public static Label form_progress_bar_label;
         public static ProgressBar form_progress_bar ;
         public static SRL.FontClass srl_font = new SRL.FontClass();
+        public static string FontFactor
+        {
+            get
+            {
+                var f = srl_setting_class.SqlQuerySettingTable("font_factor");
+                return f;
+            }
+            set
+            {
+                srl_setting_class.ExecuteUpdateSettingTable("font_factor", value);
+            }
+        }
 
+        public enum SettingKeys
+        {
+            font_factor = 0,
+            pms_key,
+            pms_base_address
+
+        }
 
         public Publics()
         {

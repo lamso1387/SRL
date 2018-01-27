@@ -30,8 +30,9 @@ namespace SRL
         long? edit_id;
         string permission_entity;
         private bool multi_admin { get; set; }
+        Security.HashAlgoritmType password_type;
 
-        public WinLoginProfile(DbContext db_, string personnel_entity_, WinSessionId session_, Color btn_color, WinLoginUser win_login_user_, ProfileMode profile_mode_, long? edit_id_, bool multi_admin_, string permission_entity_)
+        public WinLoginProfile(DbContext db_, string personnel_entity_, WinSessionId session_, Color btn_color, WinLoginUser win_login_user_, ProfileMode profile_mode_,Security.HashAlgoritmType password_type_, long? edit_id_, bool multi_admin_, string permission_entity_)
         {
             /* use:
             SRL.WinLoginProfile profile = new SRL.WinLoginProfile(Publics.dbGlobal, typeof(Personnel).Name, Publics.srl_session, Color.Blue,
@@ -49,6 +50,7 @@ namespace SRL
             multi_admin = multi_admin_;
             win_login_user = win_login_user_;
             edit_id = edit_id_;
+            password_type = password_type_;
 
             foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
             {
@@ -109,7 +111,7 @@ namespace SRL
             if (!CheckUsernameUnique(out user_id_dup)) return;
 
             string sql = "insert into " + personnel_entity + "(name,family,username,password, role)" +
-                     " values ('" + tbname.Text + "','" + tbFamily.Text + "','" + tbUsername.Text + "','" + tbPass.Text + "','" + cbRole.Text + "')";
+                     " values ('" + tbname.Text + "','" + tbFamily.Text + "','" + tbUsername.Text + "','" +SRL.Security.GetHashString(tbPass.Text,password_type) + "','" + cbRole.Text + "')";
             string err = SRL.Database.ExecuteQuery(db, sql);
             if (err != "") MessageBox.Show(err);
             win_login_user.LoadUsersInDgv();
@@ -158,7 +160,7 @@ namespace SRL
             if (!CheckUsernameUnique(out user_id_dup, edit_id)) return;
 
             string err = SRL.Database.ExecuteQuery(db, "update " + personnel_entity + " set name='" + tbname.Text +
-            "' , family='" + tbFamily.Text + "' , username='" + tbUsername.Text + "' , password='" + tbPass.Text + "' , role='" + cbRole.Text + "' " +
+            "' , family='" + tbFamily.Text + "' , username='" + tbUsername.Text + "' , password='" +SRL.Security.GetHashString(tbPass.Text,password_type) + "' , role='" + cbRole.Text + "' " +
                 " where id=" + edit_id.ToString());
             if (err != "") MessageBox.Show(err);
             if (profile_mode == ProfileMode.EditUser) win_login_user.LoadUsersInDgv();

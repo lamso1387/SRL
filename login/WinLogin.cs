@@ -27,20 +27,23 @@ namespace SRL
         DbContext db;
         string entity_name;
         WinSessionId session;
+        Security.HashAlgoritmType password_type;
 
         /// <summary>
-        /// user table must have column: id (long or bigint),username, password, name, family, role(master, user)
+        /// user table must have column: id (long or bigint),username, password, name, family, role(master,admin, user)
         /// </summary>
         /// <param name="db_"></param>
         /// <param name="entity_name_"></param>
         /// <param name="session_"></param>
-        public WinLogin(DbContext db_, string entity_name_, WinSessionId session_, Color? back_color_ = null)
+        public WinLogin(DbContext db_, string entity_name_, WinSessionId session_, Security.HashAlgoritmType password_type_, Color? back_color_ = null)
         {
+            
             InitializeComponent();
             db = db_;
             entity_name = entity_name_;
             session = session_;
             if (back_color_ != null) this.BackColor = (Color)back_color_;
+            password_type = password_type_;
 
             /*use example:
              in app before  InitializeComponent(); write:
@@ -84,6 +87,16 @@ namespace SRL
             if (label_fore_color != null) lblUsername.ForeColor = lblPass.ForeColor = (Color)label_fore_color;
             return pnlLoginForm.Location;
         }
+
+        public PictureBox SetLogoImage(Image logo, int x=100, int y=80 ,int width=130, int height=90)
+        {
+            pbLogo.Visible = true;
+            pbLogo.Location = new Point(x, y);
+            pbLogo.Image = logo;
+            pbLogo.Width = width;
+            pbLogo.Height = height;
+            return pbLogo;
+        }
         public void ChangeFootNote(string str, bool is_center_align, float font_size, int x = 0, int y = 0, Color? fore_color = null)
         {
             lblFotNote.Text = str;
@@ -107,12 +120,13 @@ namespace SRL
         {
             new SRL.WinUI.ButtonClass.StyleButton(btnEnter, Color.Blue, Color.BlueViolet);
             SRL.Security.MasterLogin.MasterKeboardLogin(lblExit, tbUsername, this, session);
+            pbLogo.Visible = false;
 
 
         }
 
         private void btnEnter_Click(object sender, EventArgs e)
-        {
+        { 
             string main_str = btnEnter.Text;
             btnEnter.Text = "درحال بررسی...";
             Application.DoEvents();
@@ -122,7 +136,7 @@ namespace SRL
             bool loged = false;
             if (userQ != null)
                 if (userQ.Any())
-                    if (tbPassword.Text == userQ.First().password)
+                    if (SRL.Security.GetHashString(tbPassword.Text,password_type) ==userQ.First().password)
                         loged = true;
 
             if (loged == false)

@@ -8,13 +8,21 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace sahmiye
+namespace SRL
 {
     public partial class ProgressControl : UserControl
     {
         public Label lbl_progress
         {
             get { return lblProgress; }
+        }
+        public Label lbl_time_left
+        {
+            get { return lblTimeWait; }
+        }
+        public Label lbl_time_elapsed
+        {
+            get { return lblTimeDone; }
         }
         public ProgressBar progress_bar
         {
@@ -42,25 +50,36 @@ namespace sahmiye
 
         private void ProgressControl_VisibleChanged(object sender, EventArgs e)
         {
-           lblCount.Visible= lblPer.Visible = lblProgress.Visible = llCancelProgess.Visible = false;
+            lblCount.Visible = lblPer.Visible = lblProgress.Visible = llCancelProgess.Visible = false;
+
         }
-        
+
 
         private async void lblProgress_TextChanged(object sender, EventArgs e)
         {
             this.Visible = true;
-            lblProgress.Enabled= lblCount.Visible = lblPer.Visible = lblProgress.Visible = llCancelProgess.Visible = true;
+            lblProgress.Enabled = lblCount.Visible = lblPer.Visible = lblProgress.Visible = llCancelProgess.Visible = true;
 
             int progress = (int)double.Parse(lblProgress.Text);
-            if (progress > 0) this.Visible = true;
+            if (progress > 0)
+            {
+                this.Visible = true;
+                
+            }
+
+            if(progress==1)
+            {
+                new SRL.DateTimeLanguageClass().StartStopWatch(lblTimeDone, DateTimeLanguageClass.TimeFormat.Custom, "T");
+            }
             progressBar1.Value = progress;
-            if(lblProgress.Tag!=null) lblCount.Text = lblProgress.Tag.ToString();
+            if (lblProgress.Tag != null) lblCount.Text = lblProgress.Tag.ToString();
             if (progress > 99)
             {
                 await SRL.DateTimeLanguageClass.SleepNotBlockUI(1000);
                 this.Visible = false;
             }
-            
+
+
         }
 
         private void progressBar1_VisibleChanged(object sender, EventArgs e)
@@ -71,7 +90,7 @@ namespace sahmiye
         private void llCancelProgess_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             lblProgress.Enabled = false;
-           
+
         }
     }
 }
