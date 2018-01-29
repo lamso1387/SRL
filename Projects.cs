@@ -131,9 +131,7 @@ namespace SRL
                     public string State { get; set; }
                     public string TownShip { get; set; }
                     public string Village { get; set; }
-
                 }
-
                 public static void Estelam(string file_full_path, string table_name, string api_key)
                 {
                     DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
@@ -190,13 +188,26 @@ namespace SRL
 
                         try
                         {
+                            string address = "";
+
+                            if (result.ErrorCode ==0)
+
+                            {
+                                address += "استان " + result.State.Trim() + "- شهرستان " + result.TownShip.Trim() + "- بخش " +result.Zone.Trim()+ "- " + result.LocationType.Trim() + " " + result.Location.Trim()
+                                + "- " + result.Parish.Trim() + "- " + result.PreAvenue.Trim() + "- " + result.Avenue.Trim();
+                                if (result.HouseNo != 0) address += "- پلاک " + result.HouseNo;
+                                if (!string.IsNullOrWhiteSpace(result.BuildingName)) address += "- ساختمان " + result.BuildingName.Trim();
+                                address += "- طبقه " + result.FloorNo.Trim();
+                                if (!string.IsNullOrWhiteSpace(result.SideFloor)) address += "- واحد " + result.SideFloor.Trim();
+                            }
+
                             string query = "update " + args[4] + " set status='OK', correct='" + (result.ErrorCode == 0 ?
                        "true" : "false") + "', ErrorCode=" + result.ErrorCode + " , ErrorMessage='" + result.ErrorMessage + "', "
                        + " Location='" + result.Location + "' , LocationCode=" + result.LocationCode + " "
                                 + " , LocationType='" + result.LocationType + "'  , State='" + result.State + "'  , TownShip='" + result.TownShip + "'"
-                                + "  , Village='" + result.Village + "'   where PostCode='" + item.PostCode + "' ;";
+                                + "  , Village='" + result.Village + "' , Address='" + address + "'  where PostCode='" + item.PostCode + "' ";
 
-                            SRL.AccessManagement.ExecuteToAccess(query, args[3].ToString(), false);
+                            var exce = SRL.AccessManagement.ExecuteToAccess(query, args[3].ToString(), false);
 
 
                         }
@@ -598,7 +609,8 @@ namespace SRL
                    (PostCodeServiceReference.PostCodeClient client, string username, string post_code, string password)
             {
                 string hash = ComputePostCodeHash(password, post_code);
-                return client.GetAddressByPostcode(username, hash, post_code, "", "", "");
+                var res = client.GetAddressByPostcode(username, hash, post_code, "", "", "");
+                return res;
             }
             public static PostalCodeFromPostClass EstelamPostalCodeFromPost(string postal_code, out HttpResponseMessage response)
             {
