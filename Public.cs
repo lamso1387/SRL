@@ -39,6 +39,9 @@ using System.Data.OleDb;
 using System.Data.Entity.Validation;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.ServiceModel.Description;
+using System.ServiceModel.Configuration;
+using System.Runtime.CompilerServices;
 
 namespace SRL
 {
@@ -1051,6 +1054,15 @@ namespace SRL
     }
     public class ActionManagement
     {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static string GetCurrentMethodName()
+        {
+            StackTrace st = new StackTrace();
+            StackFrame sf = st.GetFrame(1);
+
+            return sf.GetMethod().Name;
+        }
+
         public class FormActions
         {
 
@@ -4372,6 +4384,29 @@ namespace SRL
             else return true;
         }
 
+        public static bool IsValidCoNationalCode(string co_national_id)
+        {
+            if (String.IsNullOrWhiteSpace(co_national_id))
+                return false;
+
+            if (!IsNumber(co_national_id)) return false;
+
+            if (co_national_id.Length != 11)
+                return false;
+            else return true;
+        }
+
+        public static bool IsValidPostcode(string postal_code)
+        {
+            if (String.IsNullOrWhiteSpace(postal_code))
+                return false;
+
+            if (!IsNumber(postal_code)) return false;
+
+            if (postal_code.Length != 10)
+                return false;
+            else return true;
+        }
     }
     public class KeyValue
     {
@@ -4605,10 +4640,39 @@ namespace SRL
             ser_.ChannelFactory.Endpoint.Address = new EndpointAddress(svc_address);
             ser_.ChannelFactory.CreateChannel();
         }
+        public static void UpdateSoapAddress(ServiceEndpoint endpoint, string new_address)
+        {
+            Configuration wConfig = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            ServiceModelSectionGroup wServiceSection = ServiceModelSectionGroup.GetSectionGroup(wConfig);
+
+            ClientSection wClientSection = wServiceSection.Client;
+            bool address_change = false;
+            foreach (ChannelEndpointElement item in wClientSection.Endpoints)
+            {
+                if (item.Name == endpoint.Name)
+                {
+                    address_change = item.Address.AbsoluteUri != new_address;
+                    item.Address = new Uri(new_address);
+                }
+            }
+
+            wConfig.Save();
+            if (address_change)
+            {
+                Application.Restart();
+                Environment.Exit(0);
+            }
+        }
+
         public static string GetSoapAddress<TChannel>(System.ServiceModel.ClientBase<TChannel> ser_) where TChannel : class
         {
             return ser_.ChannelFactory.Endpoint.Address.Uri.AbsoluteUri;
         }
+        public static string GetSoapAddress(ServiceEndpoint endpoint)
+        {
+            return endpoint.Address.Uri.ToString();
+        }
+
     }
     public class Convertor
     {
@@ -5158,7 +5222,7 @@ namespace SRL
         }
         public static string Mobile(string mobile)
         {
-            mobile = mobile.Length == 10 ? "0" + mobile : mobile;
+            mobile = (mobile.Length == 10 && mobile.Substring(0,1) !="0") ? "0" + mobile : mobile;
             return mobile;
 
         }
@@ -5196,7 +5260,7 @@ namespace SRL
         {
             return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input);
         }
-        public static string ClassObjectToToJson(object obj)
+        public static string ClassObjectToJson(object obj)
         {
             try
             {
@@ -6642,7 +6706,16 @@ namespace SRL
 
         }
 
+        public static void CreateFileOverwrite(string file_path, string text, bool launch)
+        {
+            // var file_path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "json.txt");
 
+            System.IO.File.WriteAllText(file_path, "");
+            System.IO.File.WriteAllText(file_path, text);
+            if(launch)
+            System.Diagnostics.Process.Start(file_path);
+
+        }
     }
 
 

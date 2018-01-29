@@ -3,9 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Threading.Tasks;
@@ -145,7 +147,7 @@ namespace SRL
                         HttpResponseMessage response = new HttpResponseMessage();
                         string message = "";
                         SRL.Projects.Nwms.ComplexByPostCodeResult war =
-                        SRL.Projects.Nwms.GetComplexByPostalCode(item.postal_code, api_key, out response, out message);
+                        SRL.Projects.Nwms.GetComplexByPostalCode(item.postal_code, api_key,  out message);
                         if (response.StatusCode == System.Net.HttpStatusCode.OK)
                         {
                             try
@@ -215,6 +217,50 @@ namespace SRL
                 }
             }
 
+            public class ShahkarInputClass
+            {
+                public string requestId { get; set; }
+                public string serviceNumber { get; set; }
+                public int serviceType { get; set; }
+                public int identificationType { get; set; }
+                public string identificationNo { get; set; }
+            }
+
+            public class ShahkarOutputClass
+            {
+                public int response { get; set; }
+                public string requestId { get; set; }
+                public string result { get; set; }
+                public string comment { get; set; }
+            }
+
+            public static ShahkarOutputClass CallShahkar(string client_id, string national_id, string mobile, string basic_auth_value = "c2FuYXRfbWFkYW5fZ3NiOjcxc2RsdTU2")
+            {
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri("https://sr-cix.ntsw.ir/");
+                ShahkarInputClass input = new ShahkarInputClass();
+
+                input.identificationNo = national_id;
+                input.identificationType = 0;
+                var date = DateTime.Now;
+
+                string time = String.Format("{0:yyyy}{0:MM}{0:dd}{0:HH}{0:mm}{0:ss}{0:FFFFFF}", date);
+
+                string id = client_id + time;
+
+                input.requestId = id;
+                input.serviceNumber = mobile;
+                input.serviceType = 2;
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basic_auth_value);
+
+                HttpResponseMessage response = client.PostAsJsonAsync("Services/GetIDmatching-NWMS", input).Result;
+
+                string result = response.Content.ReadAsStringAsync().Result;
+                ShahkarOutputClass output = Newtonsoft.Json.JsonConvert.DeserializeObject<ShahkarOutputClass>(result);
+
+                return output;
+            }
+
             public static List<SearchResult.SearchWarehouseResult> SearchWarehouse(Dictionary<string, object> input_json, string api_key)
             {
                 List<SearchResult.SearchWarehouseResult> warehouses = new List<SearchResult.SearchWarehouseResult>();
@@ -239,7 +285,7 @@ namespace SRL
 
                     warehouses.AddRange(warehouse_list);
                     from += 10;
-                } while (warehouse_list.Count ==10);
+                } while (warehouse_list.Count == 10);
 
                 return warehouses;
             }
@@ -277,6 +323,7 @@ namespace SRL
 
             public static List<SearchResult.SearchComplexResult> GetAllWarComplexByNationalId(string api_key, string national_id)
             {
+
                 List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
                 HttpClient client = new HttpClient();
                 client.BaseAddress = new Uri("https://app.nwms.ir");
@@ -291,6 +338,8 @@ namespace SRL
                 Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
                 string data = result_json["data"].ToString();
                 complexes = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchComplexResult>>(data);
+
+
                 return complexes;
             }
 
@@ -377,9 +426,10 @@ namespace SRL
                 public int create_date { get; set; }
                 public string national_id { get; set; }
                 public string modifier_national_id { get; set; }
-                public object phonenumber { get; set; }
+                public string phonenumber { get; set; }
                 public string account_status { get; set; }
                 public string alivestatus { get; set; }
+
                 public string password { get; set; }
                 public string creator_national_id { get; set; }
                 public string lastname { get; set; }
@@ -515,23 +565,18 @@ namespace SRL
                 return person;
             }
 
-            public static AnbarPersonClass GetAnbarPersonByNationalId(string national_id, out HttpResponseMessage result)
+            public static AnbarPersonClass GetAnbarPersonByNationalId(string national_id, string api_key)
             {
 
                 HttpClient client1 = new HttpClient();
                 client1.BaseAddress = new Uri("https://app.nwms.ir");
-                Dictionary<string, object> input = new Dictionary<string, object>();
-                input.Add("account_status", "1");
-                input.Add("national_id", national_id);
-                result = client1.PostAsJsonAsync("/v2/b2b-api/2050130318/admin/users/_search/0/1", input).Result;
-                string response = result.Content.ReadAsStringAsync().Result;
-                Dictionary<string, object> response_con = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(response);
-                List<object> data = Newtonsoft.Json.JsonConvert.DeserializeObject<List<object>>(response_con["data"].ToString());
-                if (data.Count < 1)
-                {
-                    return null;
-                }
-                AnbarPersonClass person = Newtonsoft.Json.JsonConvert.DeserializeObject<AnbarPersonClass>(data[0].ToString());
+                // Dictionary<string, object> input = new Dictionary<string, object>();
+                // input.Add("account_status", "1");
+                // input.Add("national_id", national_id);
+                //result = client1.PostAsJsonAsync("/v2/b2b-api/2050130318/admin/users/_search/0/1", input).Result;
+                HttpResponseMessage response = client1.GetAsync("/v2/b2b-api-imp/" + api_key + "/" + national_id + "/user").Result;
+                string result = response.Content.ReadAsStringAsync().Result;
+                AnbarPersonClass person = Newtonsoft.Json.JsonConvert.DeserializeObject<AnbarPersonClass>(result);
                 return person;
             }
             public static string ComputePostCodeHash(string password, string param1 = null, string param2 = null, string param3 = null)
@@ -640,7 +685,7 @@ namespace SRL
                     {
                         if (item.account_status == "3") continue;
 
-                        item.ceo.ceo_mobile = Nwms.GetAnbarPersonByNationalId(item.ceo.national_id, out response)?.mobile;
+                        item.ceo.ceo_mobile = Nwms.GetAnbarPersonByNationalId(item.ceo.national_id, api_key)?.mobile;
                         result_list.Add(item);
 
                     }
@@ -655,7 +700,7 @@ namespace SRL
 
             }
 
-            public static ComplexByPostCodeResult GetComplexByPostalCode(string postal_code, string api_key, out HttpResponseMessage response, out string result)
+            public static ComplexByPostCodeResult GetComplexByPostalCode(string postal_code, string api_key, out string result)
             {
                 ComplexByPostCodeResult estelam_result = new ComplexByPostCodeResult();
                 estelam_result = null;
@@ -664,7 +709,7 @@ namespace SRL
                 client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
 
                 var call = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code);
-                response = call.Result;
+                HttpResponseMessage response = call.Result;
                 string result_ = response.Content.ReadAsStringAsync().Result;
                 result = System.Text.RegularExpressions.Regex.Unescape(result_);
 
@@ -673,7 +718,6 @@ namespace SRL
                     estelam_result = Newtonsoft.Json.JsonConvert.DeserializeObject<ComplexByPostCodeResult>(result);
 
                 }
-
                 return estelam_result;
 
             }
@@ -696,10 +740,10 @@ namespace SRL
                 {
                     public int? create_date { get; set; }
                     public string telephone_number { get; set; }
-                    public string account_status { get; set; } 
+                    public string account_status { get; set; }
                     public string postal_code { get; set; }
                     public string village { get; set; }
-                    public string id { get; set; } 
+                    public string id { get; set; }
                     public string city { get; set; }
                     public IList<Polygon> polygon { get; set; }
                     public string zone { get; set; }

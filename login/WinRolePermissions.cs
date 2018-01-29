@@ -16,22 +16,18 @@ namespace SRL
 
         DbContext db;
         string permission_entity;
-        WinSessionId session;
-        SRL.Database srl_db = new SRL.Database();
-        Color btn_color;
-        MenuStrip menu;
-        public WinRolePermissions(DbContext db_, string permission_entity_, WinSessionId session_, Color btn_color_, MenuStrip menu_)
+        public WinRolePermissions(DbContext db_, string permission_entity_, Color btn_color, MenuStrip menu, bool enable_child_parent_check)
         {
             InitializeComponent();
             db = db_;
             permission_entity = permission_entity_;
-            session = session_;
-            menu = menu_;
-            btn_color = btn_color_;
             foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
             {
-                new SRL.WinUI.ButtonClass.StyleButton(item, btn_color_, Color.Black, Color.FromKnownColor(KnownColor.Control));
+                new SRL.WinUI.ButtonClass.StyleButton(item, btn_color, Color.Black, Color.FromKnownColor(KnownColor.Control));
             }
+
+            if (enable_child_parent_check) SRL.ChildParent.CompatibleTreeChildAndParentCheck(tvPermissions);
+            SRL.Convertor.ConvertMenuToTreeView(menu, tvPermissions);
         }
 
         public void LoadRoles()
@@ -43,18 +39,17 @@ namespace SRL
                 var dt = SRL.Convertor.IEnumerableToDatatable.CopyToDataTable(users.Select(x => new { x.id, x.role, x.permission }));
                 dgvRoles.DataSource = dt;
             }
- 
         }
 
         private void WinRolePermissions_Load(object sender, EventArgs e)
         {
-            SRL.Convertor.ConvertMenuToTreeView(menu, tvPermissions);
+            
             dgvRoles.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             LoadRoles();
             dgvRoles.CellEndEdit += DgvRoles_CellEndEdit;
             dgvRoles.UserDeletingRow += DgvRoles_UserDeletingRow;
             dgvRoles.UserDeletedRow += DgvRoles_UserDeletedRow;
-            SRL.ChildParent.CompatibleTreeChildAndParentCheck(tvPermissions);
+            
         }
 
         private void DgvRoles_UserDeletingRow(object sender, DataGridViewRowCancelEventArgs e)
