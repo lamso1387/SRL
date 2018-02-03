@@ -38,6 +38,7 @@ namespace SRL
         public WinLogin(DbContext db_, string entity_name_, WinSessionId session_, Security.HashAlgoritmType password_type_, Color? back_color_ = null)
         {
             
+
             InitializeComponent();
             db = db_;
             entity_name = entity_name_;
