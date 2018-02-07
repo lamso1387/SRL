@@ -4676,6 +4676,7 @@ namespace SRL
     }
     public class Convertor
     {
+
         public static string[] ClassToArray<TClass>()
         {
             string[] head = typeof(TClass).GetProperties().Select(p => p.Name).ToArray();
@@ -5228,6 +5229,7 @@ namespace SRL
         }
         public static string NationalId(string national_id)
         {
+            if (string.IsNullOrWhiteSpace(national_id)) return national_id;
             national_id = national_id.Length == 8 ? "00" + national_id : (national_id.Length == 9 ? "0" + national_id : national_id);
             return national_id;
         }
@@ -5243,6 +5245,14 @@ namespace SRL
             {
                 return false;
             }
+        }
+
+        public static T ClassToClass<T>(Object input)
+        {
+            string input_json = SRL.Json.ClassObjectToJson(input);
+            
+            T output= Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input_json);
+            return output;
         }
     }
     public class Json : ControlLoad

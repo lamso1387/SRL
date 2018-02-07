@@ -88,6 +88,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Projects.cs" />
+    <Compile Include="Service References\CIXGetAddressByPostcode\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
     <Compile Include="Service References\PostCodeServiceReference\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -294,6 +299,19 @@
     <Content Include="script\jquery.min.js" />
     <Content Include="script\select2.min.js" />
     <Content Include="script\SRL.js" />
+    <None Include="Service References\CIXGetAddressByPostcode\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+    <None Include="Service References\CIXGetAddressByPostcode\configuration.svcinfo" />
+    <None Include="Service References\CIXGetAddressByPostcode\configuration91.svcinfo" />
+    <None Include="Service References\CIXGetAddressByPostcode\GetAddressByPostCode.wsdl" />
+    <None Include="Service References\CIXGetAddressByPostcode\SRL.CIXGetAddressByPostcode.AddressResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\CIXGetAddressByPostcode\SRL.CIXGetAddressByPostcode.GetAddressByPostcodeResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
     <None Include="Service References\PostCodeServiceReference\Reference.svcmap">
       <Generator>WCF Proxy Generator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>
@@ -447,6 +465,7 @@
     <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
+    <WCFMetadataStorage Include="Service References\CIXGetAddressByPostcode\" />
     <WCFMetadataStorage Include="Service References\PostCodeServiceReference\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

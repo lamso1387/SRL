@@ -19,11 +19,15 @@ namespace SRL
         WinLoginProfile profile;
 
         /// <summary>
-        /// user table must have column: ID (long or bigint),username, password, name, family, role(master, user)
+        /// user table must have column: ID (long or bigint),username, password, name, family, role(admin, user)
         /// </summary>
         /// <param name="db_"></param>
-        /// <param name="entity_name_"></param>
-        /// <param name="session_"></param>
+        /// <param name="personnel_entity_"></param>
+        /// <param name="btn_color"></param>
+        /// <param name="permission_entity"></param>
+        /// <param name="menu"></param>
+        /// <param name="password_type"></param>
+        /// <param name="enable_child_parent_check"></param>
         public WinLoginUser(DbContext db_, string personnel_entity_, Color btn_color, string permission_entity, MenuStrip menu, Security.HashAlgoritmType password_type, bool enable_child_parent_check)
         {
             InitializeComponent();
