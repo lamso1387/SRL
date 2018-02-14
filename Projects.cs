@@ -3,9 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,6 +20,737 @@ namespace SRL
     {
         public class Nwms
         {
+            public class Operations
+            {
+                //using System.Net.Http;
+                //using  System.Net.Http.Formatting;
+                //add referense : Newtonsoft.Json.dll , System.Net.Http.Formatting.dll
+
+                //  Nwms.WarehouseSearch();
+
+                //کدپستی و کلید امنیتی را قرار دهید
+                //Nwms.GetComplexByPostalCode("7765215520", "");
+
+                //متد ثبت موقت رسید
+                //  string id = Nwms.AnbarOperation.Receipt("2050130318", "2050130351", "4713644457","");
+                // Nwms.AnbarOperation.FinalizeReceipt(id,  "2050130318", "2050130351");
+
+                // Nwms.GetWarehousesFromSearch("2050130318", 1455926400, 1514628894);
+
+
+                public class WarehouseSearchResult
+                {
+                    public long create_date { get; set; }
+                    public List<string> supervisor_org { get; set; }
+                    public string account_status { get; set; }
+                    public string postal_code { get; set; }
+                    public string id { get; set; }
+                    public List<string> activity_sector { get; set; }
+                    public string type { get; set; }
+                    public List<Contractor> contractors { get; set; }
+                    public string org_creator_national_id { get; set; }
+                    public string name { get; set; }
+
+                    public class Contractor
+                    {
+                        public string name { get; set; }
+                        public string national_id { get; set; }
+                    }
+
+
+
+                }
+
+                public static List<WarehouseSearchResult> WarehouseSearch(string api_key,
+                     long date_from, long date_to, int start, int size)
+                {
+                    try
+                    {
+
+                        Dictionary<string, object> filter = new Dictionary<string, object>();
+                        filter["account_status"] = "1";
+                        Dictionary<string, object> date_filter = new Dictionary<string, object>();
+                        date_filter["$gte"] = date_from;
+                        date_filter["$lte"] = date_to;
+                        filter["create_date"] = date_filter;
+
+                        HttpClient client = new HttpClient();
+
+                        client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/_search/");
+                        client.Timeout = new TimeSpan(0, 30, 0);
+                        var result = client.PostAsJsonAsync(start + "/" + size, filter).Result;
+                        if (result.StatusCode != System.Net.HttpStatusCode.OK)
+                        {
+                            Console.Write(result.Content.ReadAsStringAsync().Result);
+                            return null;
+                        }
+                        else
+                        {
+                            var response = result.Content.ReadAsStringAsync().Result;
+
+                            string data =
+                                        Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(response)["data"].ToString();
+                            // data = System.Text.RegularExpressions.Regex.Unescape(data);
+                            List<WarehouseSearchResult> list =
+                                Newtonsoft.Json.JsonConvert.DeserializeObject<List<WarehouseSearchResult>>(data);
+
+                            return list;
+
+                        }
+
+
+                    }
+                    catch (Exception ex)
+                    {
+
+                        return null;
+                    }
+                }
+
+                public class EstelamResult
+                {
+
+                    public bool warehouse_server { get; set; }
+                    public bool postal_code_server { get; set; }
+                    public string province { get; set; }
+                    public string village { get; set; }
+                    public string township { get; set; }
+                    public string city { get; set; }
+                    public string full_address { get; set; }
+
+                    public string name { get; set; }
+                    public string id { get; set; }
+                    public string org_creator_national_id { get; set; }
+                    public string gov_wh_number { get; set; }
+
+                    public Agent agent { get; set; }
+                    public List<Owner> owners { get; set; }
+                    public List<Warehouse> warehouses { get; set; }
+
+                    public class Agent
+                    {
+                        public string name { get; set; }
+                        public string id { get; set; }
+                        public string national_id { get; set; }
+                        public string mobile { get; set; }
+                    }
+
+
+                    public class Warehouse
+                    {
+                        public string name { get; set; }
+                        public string id { get; set; }
+                        public string org_creator_national_id { get; set; }
+                        public string type { get; set; }
+                        public List<string> activity_sector { get; set; }
+                        public List<string> supervisor_org { get; set; }
+                        public List<Contractor> contractors { get; set; }
+                    }
+
+                    public class Owner
+                    {
+
+                        public string name { get; set; }
+                        public string national_id { get; set; }
+                        public string mobile { get; set; }
+                    }
+
+                    public class Contractor
+                    {
+
+                        public string name { get; set; }
+                        public string id { get; set; }
+                        public string national_id { get; set; }
+                        public string mobile { get; set; }
+                    }
+
+                }
+                public static void GetComplexByPostalCode(string postal_code, string api_key)
+                {
+
+                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
+
+                    HttpResponseMessage message = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code).Result;
+                    string result = message.Content.ReadAsStringAsync().Result;
+
+                    string result_encode = System.Text.RegularExpressions.Regex.Unescape(result);
+                    //  MessageBox.Show(result_encode);
+
+                    if (message.StatusCode == System.Net.HttpStatusCode.OK)
+                    {// در این حالت استعلام انجام می شود و خروجی بصورت زیر استخراج می گردد:
+
+                        //add 'Newtonsoft.Json.dll' reference:
+                        EstelamResult estelam_result = Newtonsoft.Json.JsonConvert.DeserializeObject<EstelamResult>(result_encode);
+
+                        //اگر کدپستی در سامانه انبار ثبت نام شده باشد مقدار برابر ترو در غیر اینصورت فالس است:
+                        //اگر مقدار زیر برابر ترو باشد، یعنی در سامانه انبار ثبت شده باشد، حتما در شرکت پست هم وجود دارد و صحیح است
+                        bool warehouse_server = estelam_result.warehouse_server;
+
+
+                        if (warehouse_server == false)
+                        {
+                            //اگر کدپستی در شرکت پست وجود داشته باشد مقدار برابر ترو در غیر اینصورت فالس است
+                            bool postal_code_server = estelam_result.postal_code_server;
+                        }
+
+                        //اگر کدپستی در یکی از سامانه ها (سامانه انبار یا شرکت پست) وجود داشته باشند اطلاعات آدرسی مقدار دارند
+
+                        //استان
+                        string province = estelam_result.province;
+
+                        //شهرستان
+                        string township = estelam_result.province;
+
+                        //شهر
+                        string city = estelam_result.city;
+
+                        //دهستان در صورت وجود
+                        string village = estelam_result.village;
+
+                        //ادرس کامل
+                        string full_address = estelam_result.full_address;
+
+
+                        //اگر کدپستی در سامانه انبار ثبت نام شده باشد اطلاعات واحدها و مالکین و بهره برداران قابل دریافت است:
+                        if (warehouse_server)
+                        {
+                            //نام مجتمع ثبت نام شده -مجتمع معادل کدپستی ثبت نام شده است
+                            string name = estelam_result.name;
+
+                            //کد یکتای مجتمع :
+                            string id = estelam_result.id;
+
+                            //کد سازمان ثبت کننده مجتمع بصورت وب سرویسی که میتواند نال باشد:
+                            string org_creator_national_id = estelam_result.org_creator_national_id;
+
+                            // شماره مجتمع در سازمان که می تواند نال باشد
+                            string gov_wh_number = estelam_result.gov_wh_number;
+
+                            //اگر برای مجتمع مالک یا مالکین ثبت شده باشد:
+                            if (estelam_result.agent != null)
+                            {//یکی از مالکین بعنوان مالک اصلی یا نماینده مالکین شناخته می شود
+
+                                //مالک اصلی
+                                string agent_name = estelam_result.agent.name;
+
+                                //کدیکتای نماینده
+                                string agent_id = estelam_result.agent.id;
+
+                                //کدملی نماینده
+                                string agent_national_id = estelam_result.agent.national_id;
+
+                                //موبایل نماینده:
+                                string agent_mobile = estelam_result.agent.mobile;
+
+                                //اگر مجتمع دارای بیش از یک مالک باشد می توان اطلاعات همه مالکین را دریافت کرد:
+                                foreach (var owner in estelam_result.owners)
+                                {//نماینده مالکین جز یکی از مالکان است
+
+                                    //مالک
+                                    string owner_name = owner.name;
+
+                                    //کدملی مالک
+                                    string owner_national_id = owner.national_id;
+
+                                    //موبایل مالک
+                                    string owner_mobile = owner.mobile;
+                                }
+                            }
+
+                            //در یک کدپستی یا مجتمع می تواند چندین واحد ثبت شود برای مثال در یک کدپستی دو فرد می توانند واحد جداگانه ثبت کنند.
+
+                            //اگر برای یک مجتمع یا کدپستی واحدهای زیر مجموعه ای ثبت شده باشد:
+                            if (estelam_result.warehouses != null)
+                                foreach (var warehouse in estelam_result.warehouses)
+                                {
+                                    //نام واحد:
+                                    string warehouse_name = warehouse.name;
+
+                                    //کدیکتای واحد
+                                    string warehouse_id = warehouse.id;
+
+                                    //کدسازمان ثبت کننده واحد بصورت وب سرویسی که می تواند نال باشد
+                                    string warehouse_org_creator_national_id = warehouse.org_creator_national_id;
+
+                                    //نوع واحد دارای یکی از مقادیر زیر:
+                                    //0 برای اصناف
+                                    //1 برای باغ و مزرعه
+                                    //2 برای معدن
+                                    // 3 برای تولیدی ها
+                                    //4 برای انبار و مراکز نگهداری کالا
+                                    //5 برای مراکز ارائه خدمات
+                                    string warehouse_type = warehouse.type;
+
+                                    //حوزه فعالیت واحد که دو رقم اول کد  ایسیک است و یک واحد می تواند چند حوزه فعالیت داشته باشد
+                                    foreach (string activity_sector in warehouse.activity_sector) { string warehouse_activity_sector = activity_sector; }
+
+                                    //کد دولتی یا خصوصی ناظر واحد که میتواند نال یا چند مورد باشد
+                                    //نام متناظر با کد را از پشتیبان سامانه تحویل بگیرید
+                                    if (warehouse.supervisor_org != null)
+                                        foreach (string supervisor_org in warehouse.supervisor_org) { string warehouse_supervisor_org = supervisor_org; }
+
+                                    //در سامانه انبار یک مجتمع یا کدپستی دارای مالک /مالکین است و یک واحد دارای بهره بردار (مستاجر) است 
+                                    //مالک مجتمع میتواند همان بهره بردار باشد
+                                    // یک واحد میتواند بهره بردار نداشته باشد یا چندین بهره بردار داشته باشد
+                                    if (warehouse.contractors != null)
+                                        foreach (var contractor in warehouse.contractors)
+                                        {
+                                            //بهره بردار
+                                            string contractor_name = contractor.name;
+
+                                            //کدیکتای بهره بردار
+                                            string contractor_id = contractor.id;
+
+                                            //کدملی بهره بردار
+                                            string contractor_national_id = contractor.national_id;
+
+                                            //موبایل بهره بردار
+                                            string contractor_mobile = contractor.mobile;
+                                        }
+                                }
+                        }
+
+                    }
+                    else
+                    {// در این حالت استعلام انجام نشده و خروجی خطا بصورت زیر قابل مشاهده است:
+                        Console.Write(System.Text.RegularExpressions.Regex.Unescape(result));
+                    }
+
+                }
+
+                public class AnbarOperation
+                {
+
+                    public class AdditionalData
+                    {
+                        public string good_owneragent { get; set; }
+                        public string owner_phone { get; set; }
+
+                        //public AdditionalData()
+                        //{
+                        //    good_owneragent = "";
+                        //    owner_phone = "";
+                        //}
+                    }
+
+                    public class ReceiptItem
+                    {
+                        public string category_id { get; set; }
+                        public string taxonomy_id { get; set; }
+                        public string good_id { get; set; }
+                        public string measurement_unit { get; set; }
+                        public int count { get; set; }
+                        public int total_weight { get; set; }
+                        public string package_type { get; set; }
+                        public int package_count { get; set; }
+                        public int item_value { get; set; }
+                        public string location { get; set; }
+                        public int production_date { get; set; }
+                        public int expire_date { get; set; }
+                        public string description { get; set; }
+                        public List<object> receipt_shares = new List<object>();
+                        public List<object> tracking_list = new List<object>();
+
+                        //public ReceiptItem()
+                        //{
+                        //    category_id = "";
+                        //    taxonomy_id = "";
+                        //    good_id = "";
+                        //    measurement_unit = "";
+                        //    package_type = "";
+                        //    location = "";
+                        //    description = "";
+                        //}
+
+                    }
+
+                    public class SimpleReceipt
+                    {
+                        public string number { get; set; }
+                        public string owner_name { get; set; }
+                        public string owner { get; set; }
+                        public double rcp_date { get; set; }
+                        public string warehouse_id { get; set; }
+                        public string postal_code { get; set; }
+                        public string doc_type { get; set; }
+                        public string vehicle_number { get; set; }
+                        public string driver_national_id { get; set; }
+                        public string driver { get; set; }
+                        public string insurance_name { get; set; }
+                        public int insurance_date { get; set; }
+                        public string insurance_number { get; set; }
+                        public int weight_impure { get; set; }
+                        public int weight_pure { get; set; }
+                        public AdditionalData additional_data { get; set; }
+                        public List<ReceiptItem> receipt_items = new List<ReceiptItem>();
+                    }
+
+                    public class SimpleGoodIssue
+                    {
+                        public string doc_type { get; set; }
+                        public int weight_pure { get; set; }
+                        public string vehicle_number { get; set; }
+                        public string number { get; set; }
+                        public string warehouse_id { get; set; }
+                        public string postal_code { get; set; }
+                        public string owner { get; set; }
+                        public string keeper { get; set; }
+                        public double goods_issue_date { get; set; }
+                        public int weight_impure { get; set; }
+                        public string driver_national_id { get; set; }
+                        public string driver { get; set; }
+                        public string insurance_name { get; set; }
+                        public int insurance_date { get; set; }
+                        public string insurance_number { get; set; }
+                        public string owner_name { get; set; }
+                        public List<GoodsIssueItem> goods_issue_items = new List<GoodsIssueItem>();
+
+
+                    }
+
+                    public class GoodsIssueItem
+                    {
+                        public string category_id { get; set; }
+                        public string taxonomy_id { get; set; }
+                        public string good_id { get; set; }
+                        public string measurement_unit { get; set; }
+                        public int count { get; set; }
+                        public int total_weight { get; set; }
+                        public string package_type { get; set; }
+                        public int package_count { get; set; }
+                        public int production_date { get; set; }
+                        public int expire_date { get; set; }
+                        public string location { get; set; }
+
+                        //public GoodsIssueItem()
+                        //{
+                        //    category_id = "";
+                        //    taxonomy_id = "";
+                        //}
+                    }
+
+
+                    public static bool Receipt(string api_key,string contractor_national_id, AnbarOperation.SimpleReceipt simple_receipt, out string result)
+                    {
+                        System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                        client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                        string input = JsonConvert.SerializeObject(simple_receipt, Formatting.Indented);
+                        HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/receipt/simple", simple_receipt).Result;
+
+                        result = response.Content.ReadAsStringAsync().Result;
+                        if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            //ثبت سند بصورت موقت انجام شد
+                            Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                            string id = output["id"].ToString();
+                            int version = int.Parse(output["version"].ToString());
+                            result = id;
+                            return true;
+                        }
+
+
+                    }
+
+                    public static SimpleReceipt CreateSimpleReceipt(string postal_code, string warehouse_id)
+                    {
+                        AnbarOperation.SimpleReceipt simple_receipt = new AnbarOperation.SimpleReceipt();
+                        //شماره داخلی رسید- این شماره توسط انبار وارد می شود و باید غیرتکراری باشد  *
+                        simple_receipt.number = Guid.NewGuid().ToString();
+                        //تاریخ صدور رسید از نوع epoch:*
+                        //تاریخ صدور باید به میلادی تبدیل و سپس از 1970/1/1 کم شود و تعداد ثانیه ها بدست آید
+                        simple_receipt.rcp_date = (new System.Globalization.PersianCalendar().ToDateTime(1396, 8, 15, 0, 0, 0, 0) - new DateTime(1970, 1, 1)).TotalSeconds;
+
+                        //کد پستی انبار*
+                        simple_receipt.postal_code = postal_code;
+
+
+                        //در صورتی که برای کدملی و کدپستی بیش از یک انبار وجود داشته باشد باید متغیر زیر که کدانبار می باشد
+                        //ارسال گردد. در صورتی که یک انبار ثبت شده است همان کدپستی کافی است
+                        if (!string.IsNullOrWhiteSpace(warehouse_id)) simple_receipt.warehouse_id = warehouse_id;
+
+                        //نوع رسید*
+                        //0 برای بدون مرجع
+                        //1 برای بارنامه
+                        //2 برای حواله
+                        simple_receipt.doc_type = "0";
+                        //کدملی راننده:*
+                        simple_receipt.driver_national_id = "";
+                        //نام و نام خانوادگی راننده:
+                        simple_receipt.driver = "سهیل رمضان زاده";
+                        //شماره پلاک*
+                        simple_receipt.vehicle_number = "45ب874ایران65";
+                        //تاریخ صدور بیمه
+                        simple_receipt.insurance_date = 1640118600;
+                        //نام بیمه نامه
+                        simple_receipt.insurance_name = "بیمه آسیا";
+                        //شماره بیمه نامه
+                        simple_receipt.insurance_number = "1254";
+                        //کدملی یا شناسه ملی مالک کالا:*
+                        simple_receipt.owner = "";
+                        //نام کامل مالک کالا حقیقی یا حقوقی
+                        simple_receipt.owner_name = "سهیل رمضان زاده";
+                        //وزن بار بهمراه ناوگان- وزن ناخالص به کیلوگرم*
+                        simple_receipt.weight_impure = 2500;
+                        //وزن بار بدون ناوگان-وزن خالص به کیلوگرم*
+                        simple_receipt.weight_pure = 500;
+
+                        //اقلام کالایی رسید بصورت زیر بدست می آید
+                        AnbarOperation.ReceiptItem receipt_item = new AnbarOperation.ReceiptItem();
+                        //شناسه کالا:*
+                        receipt_item.good_id = "0002";
+                        //واحد اندازگیری:
+                        // 0002	کیلوگرم	برای
+                        //0003	مثقال	برای مثقال
+                        //0004	لیتر	برای
+                        //0005	تن	برای
+                        //0001	برای عدد
+                        //؟
+                        receipt_item.measurement_unit = "0001";
+                        //مقدار برحسب واحد اندازه گیری:*
+                        receipt_item.count = 10;
+                        //نوع بسته بندی:
+                        //002	کارتن	
+                        //001	پاکت	
+                        //003	پالت	
+                        //004	قراصه	
+                        //005	گونی	
+                        //006	بدون بسته بندی	
+                        //007	فلّه
+                        receipt_item.package_type = "002";
+                        //تعداد بسته
+                        receipt_item.package_count = 2;
+
+                        receipt_item.location = "محل نگهداری";
+                        //تاریخ تولید epoch:
+                        receipt_item.production_date = 1324499400;
+                        //تاریخ انقضا epoch:*
+                        //باید بعد از زمان جاری و بعد از تاریخ تولید باشد
+                        receipt_item.expire_date = 1684771400;
+                        //وزن کل ردیف کالا به کیلوگرم
+                        receipt_item.total_weight = 5000;
+
+                        //می تواند چندین ریف کالایی در یک سند افزود
+                        simple_receipt.receipt_items.Add(receipt_item);
+
+                        //اطلاعات اختیاری:
+                        AnbarOperation.AdditionalData additional_data = new AnbarOperation.AdditionalData();
+                        additional_data.good_owneragent = "نام و نام خانوادگی نماینده مالک";
+                        additional_data.owner_phone = "تلفن مالک یا نماینده مالک";
+
+                        simple_receipt.additional_data = additional_data;
+
+                        return simple_receipt;
+
+
+                    }
+
+                    public static bool FinalizeReceipt(string id, string api_key, string contractor_national_id, out string result_final)
+                    {
+
+                        //جهت نهایی سازی سند:
+                        System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                        client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                        HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/receipt/" + id + "/finalize", null).Result;
+
+                        result_final = response_final.Content.ReadAsStringAsync().Result;
+                        if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
+                        {
+                            return false;
+                        }
+                        else
+                        {//در این صورت سند قطعی شده است
+                            Dictionary<string, object> output_final = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result_final);
+                            string status = output_final["status"].ToString(); // status == "PERMANENT"
+                            if (status == "PERMANENT") return true;
+                            else return false;
+
+                        }
+
+                    }
+
+                    private void btnHavale_Click(object sender, EventArgs e)
+                    {//متد ثبت موقت حواله
+                        HttpResponseMessage response = SendGoodIssueSimple();
+                        string result = response.Content.ReadAsStringAsync().Result;
+                        if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                        {
+                            Console.WriteLine(result);
+
+                        }
+                        else
+                        {
+                            //ثبت سند بصورت موقت انجام شد
+                            Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                            string id = output["id"].ToString();
+                            int version = int.Parse(output["version"].ToString());
+                            //جهت نهایی سازی سند:
+                            HttpResponseMessage response_final = FinalizeGoodIsuue(id);
+                            string result_final = response_final.Content.ReadAsStringAsync().Result;
+                            if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
+                            {
+                                Console.WriteLine(result_final);
+                            }
+                            else
+                            {//در این صورت سند قطعی شده است
+                                Dictionary<string, object> output_final = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result_final);
+                                string status = output_final["status"].ToString(); // status == "PERMANENT"
+                            }
+                        }
+
+                    }
+
+                    private HttpResponseMessage FinalizeGoodIsuue(string id)
+                    {
+                        System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                        client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                        return client.PostAsync("2050130000/2050130000/goods_issue/" + id + "/finalize", null).Result;
+                    }
+
+                    private HttpResponseMessage SendGoodIssueSimple()
+                    {
+                        AnbarOperation.SimpleGoodIssue simple_good_issue = new AnbarOperation.SimpleGoodIssue();
+                        //شماره داخلی حواله- این شماره توسط انبار وارد می شود و باید غیرتکراری باشد  *
+                        simple_good_issue.number = Guid.NewGuid().ToString();
+                        //تاریخ صدور رسید از نوع epoch:*
+                        //تاریخ صدور باید به میلادی تبدیل و سپس از 1970/1/1 کم شود و تعداد ثانیه ها بدست آید
+                        simple_good_issue.goods_issue_date = (new System.Globalization.PersianCalendar().ToDateTime(1395, 12, 2, 14, 12, 01, 0) - new DateTime(1970, 1, 1)).TotalSeconds;
+
+                        //کد پستی انبار*
+                        simple_good_issue.postal_code = "5691947637";
+                        //در صورتی که برای کدملی و کدپستی بیش از یک انبار وجود داشته باشد باید متغیر زیر که کدانبار می باشد
+                        //ارسال گردد. در صورتی که یک انبار ثبت شده است همان کدپستی کافی است
+                        //simple_receipt.warehouse_id = "a8647d57dd784867ba5c172eb59156f4";
+
+                        //نوع رسید*
+                        //0 برای بدون مرجع
+                        //1 برای رسید
+                        //2 برای معرفی نامه
+                        simple_good_issue.doc_type = "0";
+                        //کدملی انباردار
+                        simple_good_issue.keeper = "";
+                        //کدملی راننده:*
+                        simple_good_issue.driver_national_id = "";
+                        //نام و نام خانوادگی راننده:
+                        simple_good_issue.driver = "سهیل رمضان زاده";
+                        //شماره پلاک*
+                        simple_good_issue.vehicle_number = "45ب874ایران65";
+                        //تاریخ صدور بیمه
+                        simple_good_issue.insurance_date = 1640118600;
+                        //نام بیمه نامه
+                        simple_good_issue.insurance_name = "بیمه آسیا";
+                        //شماره بیمه نامه
+                        simple_good_issue.insurance_number = "1254";
+                        //کدملی یا شناسه ملی مالک کالا:*
+                        simple_good_issue.owner = "2050130351";
+                        //نام کامل مالک کالا حقیقی یا حقوقی
+                        simple_good_issue.owner_name = "سهیل رمضان زاده";
+                        //وزن بار بهمراه ناوگان- وزن ناخالص به کیلوگرم*
+                        simple_good_issue.weight_impure = 2500;
+                        //وزن بار بدون ناوگان-وزن خالص به کیلوگرم*
+                        simple_good_issue.weight_pure = 500;
+
+                        //اقلام کالایی حواله بصورت زیر بدست می آید
+                        AnbarOperation.GoodsIssueItem good_issue_item = new AnbarOperation.GoodsIssueItem();
+                        //شناسه کالا:*
+                        good_issue_item.good_id = "0002";
+                        //واحد اندازگیری:
+                        // 0002	کیلوگرم	برای
+                        //0003	مثقال	برای مثقال
+                        //0004	لیتر	برای
+                        //0005	تن	برای
+                        //0001	برای عدد
+                        //؟
+                        good_issue_item.measurement_unit = "0001";
+                        //مقدار برحسب واحد اندازه گیری:*
+                        good_issue_item.count = 10;
+                        //نوع بسته بندی:
+                        //002	کارتن	
+                        //001	پاکت	
+                        //003	پالت	
+                        //004	قراصه	
+                        //005	گونی	
+                        //006	بدون بسته بندی	
+                        //007	فلّه
+                        good_issue_item.package_type = "002";
+                        //تعداد بسته
+                        good_issue_item.package_count = 2;
+
+                        good_issue_item.location = "محل نگهداری";
+                        //تاریخ تولید epoch:
+                        good_issue_item.production_date = 1324499400;
+                        //تاریخ انقضا epoch:*
+                        //باید بعد از زمان جاری و بعد از تاریخ تولید باشد
+                        good_issue_item.expire_date = 1684771400;
+                        //وزن کل ردیف کالا به کیلوگرم
+                        good_issue_item.total_weight = 5000;
+
+                        //می تواند چندین ریف کالایی در یک سند افزود
+                        simple_good_issue.goods_issue_items.Add(good_issue_item);
+
+
+                        System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                        client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                        string input = JsonConvert.SerializeObject(simple_good_issue, Formatting.Indented);
+                        return client.PostAsJsonAsync("2050130000/2050130000/goods_issue/simple", simple_good_issue).Result;
+                    }
+
+                    public static bool Havale(string api_key, string contractor_national_id, AnbarOperation.SimpleGoodIssue simple_havale, out string result)
+                    {
+                        System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                        client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                        string input = JsonConvert.SerializeObject(simple_havale, Formatting.Indented);
+                        HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/goods_issue/simple", simple_havale).Result;
+
+                        result = response.Content.ReadAsStringAsync().Result;
+                        if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            //ثبت سند بصورت موقت انجام شد
+                            Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                            string id = output["id"].ToString();
+                            int version = int.Parse(output["version"].ToString());
+                            result = id;
+                            return true;
+                        }
+
+
+                    
+                }
+
+                    public static bool FinalizeGoodIssue(string id, string api_key, string contractor_national_id, out string finalization)
+                    {
+                        //جهت نهایی سازی سند:
+                        System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                        client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                        HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/goods_issue/" + id + "/finalize", null).Result;
+
+                        finalization = response_final.Content.ReadAsStringAsync().Result;
+                        if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
+                        {
+                            return false;
+                        }
+                        else
+                        {//در این صورت سند قطعی شده است
+                            Dictionary<string, object> output_final = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(finalization);
+                            string status = output_final["status"].ToString(); // status == "PERMANENT"
+                            if (status == "PERMANENT") return true;
+                            else return false;
+
+                        }
+                    }
+                }
+
+            }
+
+
             public class EstelamAccessFile
             {
                 public class CoOrPersonClass
@@ -38,11 +771,7 @@ namespace SRL
 
                         foreach (var item in list)
                         {
-
-                            //try
-                            //{
                             HttpResponseMessage response = new HttpResponseMessage();
-                            if (item.code == null) continue;
                             if (item.code.Length > 10)
                             {
                                 var get = SRL.Projects.Nwms.GetCompanyByCoNationalId(item.code, out response);
@@ -54,7 +783,7 @@ namespace SRL
                                 }
                                 else if (string.IsNullOrWhiteSpace(get.error_name))
                                 {
-                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.name + "' where code='" + item.code + "'";
+                                    string query = "update " + table_name + " set status='" + response.StatusCode.ToString() + "' , name='" + get.name + "' , CoAddress='" + get.address + "' where code='" + item.code + "'";
                                     SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
                                 }
                                 else
@@ -91,6 +820,7 @@ namespace SRL
                         SRL.AccessManagement.AddColumnToAccess("family", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
                         SRL.AccessManagement.AddColumnToAccess("error", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
                         SRL.AccessManagement.AddColumnToAccess("status", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
+                        SRL.AccessManagement.AddColumnToAccess("CoAddress", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name, true);
 
                         DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
                         var list_ = SRL.Convertor.ConvertDataTableToList<CoOrPerson>(dt);
@@ -129,9 +859,7 @@ namespace SRL
                     public string State { get; set; }
                     public string TownShip { get; set; }
                     public string Village { get; set; }
-
                 }
-
                 public static void Estelam(string file_full_path, string table_name, string api_key)
                 {
                     DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
@@ -145,7 +873,7 @@ namespace SRL
                         HttpResponseMessage response = new HttpResponseMessage();
                         string message = "";
                         SRL.Projects.Nwms.ComplexByPostCodeResult war =
-                        SRL.Projects.Nwms.GetComplexByPostalCode(item.postal_code, api_key, out response, out message);
+                        SRL.Projects.Nwms.GetComplexByPostalCode(item.postal_code, api_key, out message);
                         if (response.StatusCode == System.Net.HttpStatusCode.OK)
                         {
                             try
@@ -188,13 +916,26 @@ namespace SRL
 
                         try
                         {
+                            string address = "";
+
+                            if (result.ErrorCode == 0)
+
+                            {
+                                address += "استان " + result.State.Trim() + "- شهرستان " + result.TownShip.Trim() + "- بخش " + result.Zone.Trim() + "- " + result.LocationType.Trim() + " " + result.Location.Trim()
+                                + "- " + result.Parish.Trim() + "- " + result.PreAvenue.Trim() + "- " + result.Avenue.Trim();
+                                if (result.HouseNo != 0) address += "- پلاک " + result.HouseNo;
+                                if (!string.IsNullOrWhiteSpace(result.BuildingName)) address += "- ساختمان " + result.BuildingName.Trim();
+                                address += "- طبقه " + result.FloorNo.Trim();
+                                if (!string.IsNullOrWhiteSpace(result.SideFloor)) address += "- واحد " + result.SideFloor.Trim();
+                            }
+
                             string query = "update " + args[4] + " set status='OK', correct='" + (result.ErrorCode == 0 ?
                        "true" : "false") + "', ErrorCode=" + result.ErrorCode + " , ErrorMessage='" + result.ErrorMessage + "', "
                        + " Location='" + result.Location + "' , LocationCode=" + result.LocationCode + " "
                                 + " , LocationType='" + result.LocationType + "'  , State='" + result.State + "'  , TownShip='" + result.TownShip + "'"
-                                + "  , Village='" + result.Village + "'   where PostCode='" + item.PostCode + "' ;";
+                                + "  , Village='" + result.Village + "' , Address='" + address + "'  where PostCode='" + item.PostCode + "' ";
 
-                            SRL.AccessManagement.ExecuteToAccess(query, args[3].ToString(), false);
+                            var exce = SRL.AccessManagement.ExecuteToAccess(query, args[3].ToString(), false);
 
 
                         }
@@ -206,6 +947,65 @@ namespace SRL
                     }
                 }
 
+                public static void ParallelAddressByPostESB(List<GetAddressByPostServerResult> list, BackgroundWorker bg, params object[] args)
+                {
+                    string service_password = args[0].ToString();
+                    var client = (CIXGetAddressByPostcode.GetAddressByPostCodePortTypeClient)args[1];
+                    string file_full_path = args[2].ToString();
+                    string table_name = args[3].ToString();
+
+                    foreach (var item in list)
+                    {
+                        if (item.status == "OK") continue;
+                        var time = new System.Diagnostics.Stopwatch();
+                        time.Start();
+                        var result = EstelamFromPostESBServer(client, item.PostCode, service_password);
+                        time.Stop();
+                        var sec = time.Elapsed.TotalSeconds;
+                        time = new System.Diagnostics.Stopwatch();
+                        time.Start();
+                        try
+                        {
+                            string address = "";
+
+                            if (result.ErrorCode == 0)
+
+                            {
+                                address += "استان " + result.State.Trim() + "- شهرستان " + result.TownShip.Trim() + "- بخش " + result.Zone.Trim() + "- " + result.LocationType.Trim() + " " + result.Location.Trim()
+                                + "- " + result.Parish.Trim() + "- " + result.PreAvenue.Trim() + "- " + result.Avenue.Trim();
+                                if (result.HouseNo != 0) address += "- پلاک " + result.HouseNo;
+                                if (!string.IsNullOrWhiteSpace(result.BuildingName)) address += "- ساختمان " + result.BuildingName.Trim();
+                                address += "- طبقه " + result.FloorNo.Trim();
+                                if (!string.IsNullOrWhiteSpace(result.SideFloor)) address += "- واحد " + result.SideFloor.Trim();
+
+                                while (address.Contains("  "))
+                                {
+                                   address= address.Replace("  ", " ");
+                                }
+
+                            }
+
+                            string query = "update " + table_name + " set status='OK', correct='" + (result.ErrorCode == 0 ?
+                       "true" : "false") + "', ErrorCode=" + result.ErrorCode + " , ErrorMessage='" + result.ErrorMessage + "', "
+                       + " Location='" + result.Location + "' , LocationCode=" + result.LocationCode + " "
+                                + " , LocationType='" + result.LocationType + "'  , State='" + result.State + "'  , TownShip='" + result.TownShip + "'"
+                                + "  , Village='" + result.Village + "' , Address='" + address + "'  where PostCode='" + item.PostCode + "' ";
+
+                            var exce = SRL.AccessManagement.ExecuteToAccess(query, file_full_path, false);
+
+
+                        }
+                        catch (Exception ex)
+                        {
+                            string query = "update " + table_name + " set  status='" + ex.Message + "' where ID=" + item.ID + " ;";
+                            SRL.AccessManagement.ExecuteToAccess(query, file_full_path, true);
+                        }
+                        time.Stop();
+                        sec = time.Elapsed.TotalSeconds;
+                        time = new System.Diagnostics.Stopwatch();
+                    }
+                }
+
                 public static void EstelamFromPost(string file_full_path, string table_name, string api_key, string parallel, string password, string username)
                 {
                     DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
@@ -213,6 +1013,72 @@ namespace SRL
                     PostCodeServiceReference.PostCodeClient client = new PostCodeServiceReference.PostCodeClient();
                     SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<GetAddressByPostServerResult>(list, parallel, ParallelAddressByPostServer, null, null, password, client, username, file_full_path, table_name);
                 }
+
+                public static void EstelamFromPostESB(string file_full_path, string table_name, string api_key, string parallel, string service_password, string esb_username, string esb_pass, Action callback)
+                {
+                    SRL.AccessManagement.AddColumnToAccess("ErrorCode", "table1", SRL.AccessManagement.AccessDataType.integer, file_full_path, true);
+                    SRL.AccessManagement.AddColumnToAccess("ErrorMessage", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path, true);
+                    SRL.AccessManagement.AddColumnToAccess("Location", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path, true);
+                    SRL.AccessManagement.AddColumnToAccess("LocationCode", "table1", SRL.AccessManagement.AccessDataType.integer, file_full_path, true);
+                    SRL.AccessManagement.AddColumnToAccess("LocationType", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path, true);
+                    SRL.AccessManagement.AddColumnToAccess("State", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path, true);
+                    SRL.AccessManagement.AddColumnToAccess("TownShip", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path, true);
+                    SRL.AccessManagement.AddColumnToAccess("Village", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path, true);
+                    SRL.AccessManagement.AddColumnToAccess("Address", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path, true);
+                    SRL.AccessManagement.AddColumnToAccess("status", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path, true);
+                    SRL.AccessManagement.AddColumnToAccess("correct", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path, true);
+
+                    DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
+                    List<GetAddressByPostServerResult> list = SRL.Convertor.ConvertDataTableToList<GetAddressByPostServerResult>(table).Where(x => x.status != "OK" || x.status == null || x.status == "").ToList();
+                    CIXGetAddressByPostcode.GetAddressByPostCodePortTypeClient client = new CIXGetAddressByPostcode.GetAddressByPostCodePortTypeClient();
+                    client.ClientCredentials.UserName.UserName = esb_username;
+                    client.ClientCredentials.UserName.Password = esb_pass;
+                    SRL.ActionManagement.MethodCall.ParallelMethodCaller.ParallelCall<GetAddressByPostServerResult>(list, parallel, ParallelAddressByPostESB, callback, null, service_password, client, file_full_path, table_name);
+                }
+            }
+
+            public class ShahkarInputClass
+            {
+                public string requestId { get; set; }
+                public string serviceNumber { get; set; }
+                public int serviceType { get; set; }
+                public int identificationType { get; set; }
+                public string identificationNo { get; set; }
+            }
+
+            public class ShahkarOutputClass
+            {
+                public int response { get; set; }
+                public string requestId { get; set; }
+                public string result { get; set; }
+                public string comment { get; set; }
+            }
+
+            public static ShahkarOutputClass CallShahkar(string client_id, string national_id, string mobile, string basic_auth_value = "c2FuYXRfbWFkYW5fZ3NiOjcxc2RsdTU2")
+            {
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri("https://sr-cix.ntsw.ir/");
+                ShahkarInputClass input = new ShahkarInputClass();
+
+                input.identificationNo = national_id;
+                input.identificationType = 0;
+                var date = DateTime.Now;
+
+                string time = String.Format("{0:yyyy}{0:MM}{0:dd}{0:HH}{0:mm}{0:ss}{0:FFFFFF}", date);
+
+                string id = client_id + time;
+
+                input.requestId = id;
+                input.serviceNumber = mobile;
+                input.serviceType = 2;
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basic_auth_value);
+
+                HttpResponseMessage response = client.PostAsJsonAsync("Services/GetIDmatching-NWMS", input).Result;
+
+                string result = response.Content.ReadAsStringAsync().Result;
+                ShahkarOutputClass output = Newtonsoft.Json.JsonConvert.DeserializeObject<ShahkarOutputClass>(result);
+
+                return output;
             }
 
             public static List<SearchResult.SearchWarehouseResult> SearchWarehouse(Dictionary<string, object> input_json, string api_key)
@@ -277,6 +1143,7 @@ namespace SRL
 
             public static List<SearchResult.SearchComplexResult> GetAllWarComplexByNationalId(string api_key, string national_id)
             {
+
                 List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
                 HttpClient client = new HttpClient();
                 client.BaseAddress = new Uri("https://app.nwms.ir");
@@ -291,6 +1158,8 @@ namespace SRL
                 Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
                 string data = result_json["data"].ToString();
                 complexes = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchComplexResult>>(data);
+
+
                 return complexes;
             }
 
@@ -377,9 +1246,10 @@ namespace SRL
                 public int create_date { get; set; }
                 public string national_id { get; set; }
                 public string modifier_national_id { get; set; }
-                public object phonenumber { get; set; }
+                public string phonenumber { get; set; }
                 public string account_status { get; set; }
                 public string alivestatus { get; set; }
+
                 public string password { get; set; }
                 public string creator_national_id { get; set; }
                 public string lastname { get; set; }
@@ -408,6 +1278,7 @@ namespace SRL
                 public string co_national_id { get; set; }
                 public string name { get; set; }
                 public string error_name { get; set; }
+                public string address { get; set; }
             }
             public class CompanyListClass
             {
@@ -486,15 +1357,20 @@ namespace SRL
                 response = null;
                 HttpClient client_ = new HttpClient();
                 client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/2050130318/admin/ext-service/");
+                person = new PersonClass();
+                
                 national_id = SRL.Convertor.NationalId(national_id);
-                if (string.IsNullOrWhiteSpace(national_id)) return null;
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["national_id"] = national_id;
                 response = client_.PostAsJsonAsync("person_by_national_id", input).Result;
-
+                if (string.IsNullOrWhiteSpace(national_id))
+                {
+                    person.ErrorDescription = "کدملی خالی است";
+                    person.national_id = national_id;
+                    return person;
+                }
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
-                    person = new PersonClass();
                     string result = response.Content.ReadAsStringAsync().Result;
                     var data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
                     if (data["FirstName"] != null)
@@ -515,23 +1391,18 @@ namespace SRL
                 return person;
             }
 
-            public static AnbarPersonClass GetAnbarPersonByNationalId(string national_id, out HttpResponseMessage result)
+            public static AnbarPersonClass GetAnbarPersonByNationalId(string national_id, string api_key)
             {
 
                 HttpClient client1 = new HttpClient();
                 client1.BaseAddress = new Uri("https://app.nwms.ir");
-                Dictionary<string, object> input = new Dictionary<string, object>();
-                input.Add("account_status", "1");
-                input.Add("national_id", national_id);
-                result = client1.PostAsJsonAsync("/v2/b2b-api/2050130318/admin/users/_search/0/1", input).Result;
-                string response = result.Content.ReadAsStringAsync().Result;
-                Dictionary<string, object> response_con = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(response);
-                List<object> data = Newtonsoft.Json.JsonConvert.DeserializeObject<List<object>>(response_con["data"].ToString());
-                if (data.Count < 1)
-                {
-                    return null;
-                }
-                AnbarPersonClass person = Newtonsoft.Json.JsonConvert.DeserializeObject<AnbarPersonClass>(data[0].ToString());
+                // Dictionary<string, object> input = new Dictionary<string, object>();
+                // input.Add("account_status", "1");
+                // input.Add("national_id", national_id);
+                //result = client1.PostAsJsonAsync("/v2/b2b-api/2050130318/admin/users/_search/0/1", input).Result;
+                HttpResponseMessage response = client1.GetAsync("/v2/b2b-api-imp/" + api_key + "/" + national_id + "/user").Result;
+                string result = response.Content.ReadAsStringAsync().Result;
+                AnbarPersonClass person = Newtonsoft.Json.JsonConvert.DeserializeObject<AnbarPersonClass>(result);
                 return person;
             }
             public static string ComputePostCodeHash(string password, string param1 = null, string param2 = null, string param3 = null)
@@ -553,7 +1424,16 @@ namespace SRL
                    (PostCodeServiceReference.PostCodeClient client, string username, string post_code, string password)
             {
                 string hash = ComputePostCodeHash(password, post_code);
-                return client.GetAddressByPostcode(username, hash, post_code, "", "", "");
+                var res = client.GetAddressByPostcode(username, hash, post_code, "", "", "");
+                return res;
+            }
+
+            public static CIXGetAddressByPostcode.AddressResult EstelamFromPostESBServer
+                  (CIXGetAddressByPostcode.GetAddressByPostCodePortTypeClient client, string post_code, string service_password)
+            {
+                string hash = ComputePostCodeHash(service_password, post_code);
+                var res = client.GetAddressByPostcode(hash, post_code, "?", "?", "?");
+                return res;
             }
             public static PostalCodeFromPostClass EstelamPostalCodeFromPost(string postal_code, out HttpResponseMessage response)
             {
@@ -583,15 +1463,22 @@ namespace SRL
                 HttpClient client_ = new HttpClient();
                 client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/2050130318/admin/ext-service/");
 
+                company = new CompanyClass();
 
-                if (string.IsNullOrWhiteSpace(co_national_id)) return null;
+                
 
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["cmp_national_code"] = co_national_id;
                 response = client_.PostAsJsonAsync("co_inq", input).Result;
+                if (string.IsNullOrWhiteSpace(co_national_id))
+                {
+                    company.error_name = "شناسه ملی خالی است";
+                    company.co_national_id = co_national_id;
+                    return company;
+                }
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
-                    company = new CompanyClass();
+                    
                     string result = response.Content.ReadAsStringAsync().Result;
                     Dictionary<string, object> data1 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
                     if (data1["Successful"].ToString() == "true" || data1["Successful"].ToString() == "True")
@@ -599,6 +1486,7 @@ namespace SRL
 
                         company.name = data1["Name"].ToString();
                         company.co_national_id = co_national_id;
+                        company.address = data1["Address"].ToString();
                     }
                     else
                     {
@@ -640,7 +1528,7 @@ namespace SRL
                     {
                         if (item.account_status == "3") continue;
 
-                        item.ceo.ceo_mobile = Nwms.GetAnbarPersonByNationalId(item.ceo.national_id, out response)?.mobile;
+                        item.ceo.ceo_mobile = Nwms.GetAnbarPersonByNationalId(item.ceo.national_id, api_key)?.mobile;
                         result_list.Add(item);
 
                     }
@@ -655,7 +1543,7 @@ namespace SRL
 
             }
 
-            public static ComplexByPostCodeResult GetComplexByPostalCode(string postal_code, string api_key, out HttpResponseMessage response, out string result)
+            public static ComplexByPostCodeResult GetComplexByPostalCode(string postal_code, string api_key, out string result)
             {
                 ComplexByPostCodeResult estelam_result = new ComplexByPostCodeResult();
                 estelam_result = null;
@@ -664,7 +1552,7 @@ namespace SRL
                 client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
 
                 var call = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code);
-                response = call.Result;
+                HttpResponseMessage response = call.Result;
                 string result_ = response.Content.ReadAsStringAsync().Result;
                 result = System.Text.RegularExpressions.Regex.Unescape(result_);
 
@@ -673,7 +1561,6 @@ namespace SRL
                     estelam_result = Newtonsoft.Json.JsonConvert.DeserializeObject<ComplexByPostCodeResult>(result);
 
                 }
-
                 return estelam_result;
 
             }

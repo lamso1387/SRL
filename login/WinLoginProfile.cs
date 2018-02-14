@@ -22,16 +22,14 @@ namespace SRL
         }
         DbContext db;
         string personnel_entity;
-        WinSessionId session;
-        SRL.Database srl_db = new SRL.Database();
         SRL.WinTools.UserControlValidation srl_valid;
         private ProfileMode profile_mode { get; set; }
         WinLoginUser win_login_user;
         long? edit_id;
         string permission_entity;
-        private bool multi_admin { get; set; }
+        Security.HashAlgoritmType password_type;
 
-        public WinLoginProfile(DbContext db_, string personnel_entity_, WinSessionId session_, Color btn_color, WinLoginUser win_login_user_, ProfileMode profile_mode_, long? edit_id_, bool multi_admin_, string permission_entity_)
+        public WinLoginProfile(DbContext db_, string personnel_entity_, Color btn_color, WinLoginUser win_login_user_, ProfileMode profile_mode_, Security.HashAlgoritmType password_type_, long? edit_id_, string permission_entity_)
         {
             /* use:
             SRL.WinLoginProfile profile = new SRL.WinLoginProfile(Publics.dbGlobal, typeof(Personnel).Name, Publics.srl_session, Color.Blue,
@@ -43,12 +41,11 @@ namespace SRL
             InitializeComponent();
             db = db_;
             personnel_entity = personnel_entity_;
-            session = session_;
             permission_entity = permission_entity_;
             profile_mode = profile_mode_;
-            multi_admin = multi_admin_;
             win_login_user = win_login_user_;
             edit_id = edit_id_;
+            password_type = password_type_;
 
             foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
             {
@@ -109,7 +106,7 @@ namespace SRL
             if (!CheckUsernameUnique(out user_id_dup)) return;
 
             string sql = "insert into " + personnel_entity + "(name,family,username,password, role)" +
-                     " values ('" + tbname.Text + "','" + tbFamily.Text + "','" + tbUsername.Text + "','" + tbPass.Text + "','" + cbRole.Text + "')";
+                     " values ('" + tbname.Text + "','" + tbFamily.Text + "','" + tbUsername.Text + "','" + SRL.Security.GetHashString(tbPass.Text, password_type) + "','" + cbRole.Text + "')";
             string err = SRL.Database.ExecuteQuery(db, sql);
             if (err != "") MessageBox.Show(err);
             win_login_user.LoadUsersInDgv();
@@ -137,17 +134,9 @@ namespace SRL
             var userL = SRL.Database.SqlQuery<UserClass>(db, sql);
             var user = userL.First();
 
-            //var row = dgv.SelectedRows[0];
-            //tbname.Text = row.Cells["name"].Value.ToString();
-            //tbFamily.Text = row.Cells["family"].Value.ToString();
-            //tbUsername.Text = row.Cells["username"].Value.ToString();
-            //tbPass.Text = tbPassRep.Text = row.Cells["password"].Value.ToString();
-            //tbRole.Text = row.Cells["role"].Value.ToString();
-
             tbname.Text = user.name;
             tbFamily.Text = user.family;
             tbUsername.Text = user.username;
-            tbPass.Text = tbPassRep.Text = user.password;
             cbRole.Text = user.role;
 
         }
@@ -157,9 +146,12 @@ namespace SRL
             long? user_id_dup = null;
             if (!CheckUsernameUnique(out user_id_dup, edit_id)) return;
 
-            string err = SRL.Database.ExecuteQuery(db, "update " + personnel_entity + " set name='" + tbname.Text +
-            "' , family='" + tbFamily.Text + "' , username='" + tbUsername.Text + "' , password='" + tbPass.Text + "' , role='" + cbRole.Text + "' " +
-                " where id=" + edit_id.ToString());
+            string update_sql = "update " + personnel_entity + " set name='" + tbname.Text +
+            "' , family='" + tbFamily.Text + "' , username='" + tbUsername.Text + "' , role='" + cbRole.Text + "' ";
+            if (!string.IsNullOrWhiteSpace(tbPass.Text)) update_sql += " , password = '" + SRL.Security.GetHashString(tbPass.Text, password_type) + "'";
+            update_sql +=" where id=" + edit_id.ToString();
+
+            string err = SRL.Database.ExecuteQuery(db, update_sql);
             if (err != "") MessageBox.Show(err);
             if (profile_mode == ProfileMode.EditUser) win_login_user.LoadUsersInDgv();
         }
@@ -185,16 +177,10 @@ namespace SRL
             srl_valid = new WinTools.UserControlValidation(this, errorProvider1, false);
             foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<TextBox>())
             {
-
+                if (item==tbPass || item==tbPassRep) continue;
                 srl_valid.ControlValidation(item, WinTools.UserControlValidation.ErrorTypes.NotNull);
             }
             srl_valid.ControlValidation(cbRole, WinTools.UserControlValidation.ErrorTypes.NotNull);
-
-            foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
-            {
-                //  new SRL.WinUI.StyleButton(item, Color.Blue, Color.Black);
-            }
-
 
             ChangeMode(profile_mode, edit_id);
         }
@@ -219,7 +205,7 @@ namespace SRL
                 if (tbPass.Text != tbPassRep.Text) return;
 
                 bool res = false;
-                res = srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, tbPass, cbRole });
+                res = srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, cbRole });
                 if (res)
                 {
                     EditUser();

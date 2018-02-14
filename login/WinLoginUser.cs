@@ -16,34 +16,32 @@ namespace SRL
     {
         DbContext db;
         string personnel_entity;
-        string permission_entity;
-        WinSessionId session;
-        SRL.Database srl_db = new SRL.Database();
-        Color btn_color;
         WinLoginProfile profile;
-        bool multi_admin;
-        MenuStrip menu;
 
         /// <summary>
-        /// user table must have column: ID (long or bigint),username, password, name, family, role(master, user)
+        /// user table must have column: ID (long or bigint),username, password, name, family, role(admin, user)
         /// </summary>
         /// <param name="db_"></param>
-        /// <param name="entity_name_"></param>
-        /// <param name="session_"></param>
-        public WinLoginUser(DbContext db_, string personnel_entity_, WinSessionId session_, Color btn_color_, string permission_entity_, MenuStrip menu_, bool multi_admin_)
+        /// <param name="personnel_entity_"></param>
+        /// <param name="btn_color"></param>
+        /// <param name="permission_entity"></param>
+        /// <param name="menu"></param>
+        /// <param name="password_type"></param>
+        /// <param name="enable_child_parent_check"></param>
+        public WinLoginUser(DbContext db_, string personnel_entity_, Color btn_color, string permission_entity, MenuStrip menu, Security.HashAlgoritmType password_type, bool enable_child_parent_check)
         {
             InitializeComponent();
             db = db_;
             personnel_entity = personnel_entity_;
-            permission_entity = permission_entity_;
-            session = session_;
-            btn_color = btn_color_;
-            multi_admin = multi_admin_;
-            menu = menu_;
             foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
             {
-                new SRL.WinUI.ButtonClass.StyleButton(item, btn_color_, Color.Black, Color.FromKnownColor(KnownColor.Control));
+                new SRL.WinUI.ButtonClass.StyleButton(item, btn_color, Color.Black, Color.FromKnownColor(KnownColor.Control));
             }
+
+            if (permission_entity != null) SRL.WinTools.AddChildToParentControls(pnlRoles, new WinRolePermissions(db, permission_entity, btn_color, menu, enable_child_parent_check));
+
+            profile = new WinLoginProfile(db, personnel_entity, btn_color, this, WinLoginProfile.ProfileMode.New, password_type, null, permission_entity);
+            SRL.WinTools.AddChildToParentControls(pnlProfile, profile);
 
         }
 
@@ -67,13 +65,8 @@ namespace SRL
         }
         private void WinLoginUser_Load(object sender, EventArgs e)
         {
-            profile = new WinLoginProfile(db, personnel_entity, session, btn_color, this, WinLoginProfile.ProfileMode.New, null,multi_admin,permission_entity);
-
             LoadUsersInDgv();
-
-            SRL.WinTools.AddChildToParentControls(pnlProfile, profile);
-
-            if (permission_entity != null) SRL.WinTools.AddChildToParentControls(pnlRoles, new WinRolePermissions(db, permission_entity, session, btn_color, menu));
+           
 
         }
 

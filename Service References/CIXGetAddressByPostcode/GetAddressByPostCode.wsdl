@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:wsap="http://schemas.xmlsoap.org/ws/2004/08/addressing/policy" xmlns:wsa10="http://www.w3.org/2005/08/addressing" xmlns:tns="http://tempuri.org/" xmlns:msc="http://schemas.microsoft.com/ws/2005/12/wsdl/contract" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsx="http://schemas.xmlsoap.org/ws/2004/09/mex" xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:wsam="http://www.w3.org/2007/05/addressing/metadata" xmlns:ns0="http://schemas.microsoft.com/2003/10/Serialization/" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:ns1="http://schemas.datacontract.org/2004/07/PostCode.WebServices" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://tempuri.org/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsp:Policy wsu:Id="UTOverTransport">
+    <wsp:ExactlyOne>
+      <wsp:All>
+        <sp:TransportBinding xmlns:sp="http://schemas.xmlsoap.org/ws/2005/07/securitypolicy">
+          <wsp:Policy>
+            <sp:TransportToken>
+              <wsp:Policy>
+                <sp:HttpsToken RequireClientCertificate="false" />
+              </wsp:Policy>
+            </sp:TransportToken>
+            <sp:AlgorithmSuite>
+              <wsp:Policy>
+                <sp:Basic256 />
+              </wsp:Policy>
+            </sp:AlgorithmSuite>
+            <sp:Layout>
+              <wsp:Policy>
+                <sp:Lax />
+              </wsp:Policy>
+            </sp:Layout>
+            <sp:IncludeTimestamp />
+          </wsp:Policy>
+        </sp:TransportBinding>
+        <sp:SignedSupportingTokens xmlns:sp="http://schemas.xmlsoap.org/ws/2005/07/securitypolicy">
+          <wsp:Policy>
+            <sp:UsernameToken sp:IncludeToken="http://schemas.xmlsoap.org/ws/2005/07/securitypolicy/IncludeToken/AlwaysToRecipient" />
+          </wsp:Policy>
+        </sp:SignedSupportingTokens>
+      </wsp:All>
+    </wsp:ExactlyOne>
+  </wsp:Policy>
+  <wsdl:types>
+    <xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://tempuri.org/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:import namespace="http://schemas.datacontract.org/2004/07/PostCode.WebServices" />
+      <xs:element name="GetAddressByPostcode">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" name="messageHash" nillable="true" type="xs:string" />
+            <xs:element minOccurs="0" name="postcode" nillable="true" type="xs:string" />
+            <xs:element minOccurs="0" name="regionCode" nillable="true" type="xs:string" />
+            <xs:element minOccurs="0" name="nodeCode" nillable="true" type="xs:string" />
+            <xs:element minOccurs="0" name="clientName" nillable="true" type="xs:string" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="GetAddressByPostcodeResponse">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" name="GetAddressByPostcodeResult" nillable="true" type="ns1:AddressResult" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="GetAddressStringByPostCodeResponse">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" name="GetAddressStringByPostCodeResult" nillable="true" type="ns1:StringResult" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:schema>
+    <xs:schema xmlns:tns="http://schemas.microsoft.com/2003/10/Serialization/" attributeFormDefault="qualified" elementFormDefault="qualified" targetNamespace="http://schemas.microsoft.com/2003/10/Serialization/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:element name="anyType" nillable="true" type="xs:anyType" />
+      <xs:element name="anyURI" nillable="true" type="xs:anyURI" />
+      <xs:element name="base64Binary" nillable="true" type="xs:base64Binary" />
+      <xs:element name="boolean" nillable="true" type="xs:boolean" />
+      <xs:element name="byte" nillable="true" type="xs:byte" />
+      <xs:element name="dateTime" nillable="true" type="xs:dateTime" />
+      <xs:element name="decimal" nillable="true" type="xs:decimal" />
+      <xs:element name="double" nillable="true" type="xs:double" />
+      <xs:element name="float" nillable="true" type="xs:float" />
+      <xs:element name="int" nillable="true" type="xs:int" />
+      <xs:element name="long" nillable="true" type="xs:long" />
+      <xs:element name="QName" nillable="true" type="xs:QName" />
+      <xs:element name="short" nillable="true" type="xs:short" />
+      <xs:element name="string" nillable="true" type="xs:string" />
+      <xs:element name="unsignedByte" nillable="true" type="xs:unsignedByte" />
+      <xs:element name="unsignedInt" nillable="true" type="xs:unsignedInt" />
+      <xs:element name="unsignedLong" nillable="true" type="xs:unsignedLong" />
+      <xs:element name="unsignedShort" nillable="true" type="xs:unsignedShort" />
+      <xs:element name="char" nillable="true" type="tns:char" />
+      <xs:simpleType name="char">
+        <xs:restriction base="xs:int" />
+      </xs:simpleType>
+      <xs:element name="duration" nillable="true" type="tns:duration" />
+      <xs:simpleType name="duration">
+        <xs:restriction base="xs:duration">
+          <xs:pattern value="\-?P(\d*D)?(T(\d*H)?(\d*M)?(\d*(\.\d*)?S)?)?" />
+          <xs:minInclusive value="-P10675199DT2H48M5.4775808S" />
+          <xs:maxInclusive value="P10675199DT2H48M5.4775807S" />
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:element name="guid" nillable="true" type="tns:guid" />
+      <xs:simpleType name="guid">
+        <xs:restriction base="xs:string">
+          <xs:pattern value="[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}" />
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:attribute name="FactoryType" type="xs:QName" />
+      <xs:attribute name="Id" type="xs:ID" />
+      <xs:attribute name="Ref" type="xs:IDREF" />
+    </xs:schema>
+    <xs:schema xmlns:tns="http://schemas.datacontract.org/2004/07/PostCode.WebServices" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://schemas.datacontract.org/2004/07/PostCode.WebServices" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:complexType name="AddressResult">
+        <xs:complexContent mixed="false">
+          <xs:extension base="tns:Result">
+            <xs:sequence>
+              <xs:element minOccurs="0" name="Avenue" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="BuildingName" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="Description" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="FloorNo" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="HouseNo" type="xs:double" />
+              <xs:element minOccurs="0" name="Location" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="LocationCode" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="LocationType" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="Parish" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="PostCode" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="PreAvenue" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="SideFloor" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="State" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="TownShip" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="Village" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="Zone" nillable="true" type="xs:string" />
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+      <xs:element name="AddressResult" nillable="true" type="tns:AddressResult" />
+      <xs:complexType name="Result">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="ErrorCode" type="xs:int" />
+          <xs:element minOccurs="0" name="ErrorMessage" nillable="true" type="xs:string" />
+        </xs:sequence>
+      </xs:complexType>
+      <xs:element name="Result" nillable="true" type="tns:Result" />
+      <xs:complexType name="StringResult">
+        <xs:complexContent mixed="false">
+          <xs:extension base="tns:Result">
+            <xs:sequence>
+              <xs:element minOccurs="0" name="Value" nillable="true" type="xs:string" />
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+      <xs:element name="StringResult" nillable="true" type="tns:StringResult" />
+      <xs:complexType name="PhoneResult">
+        <xs:complexContent mixed="false">
+          <xs:extension base="tns:Result">
+            <xs:sequence>
+              <xs:element minOccurs="0" name="PhoneNo" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="PrePhoneNo" nillable="true" type="xs:string" />
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+      <xs:element name="PhoneResult" nillable="true" type="tns:PhoneResult" />
+      <xs:complexType name="PositionResult">
+        <xs:complexContent mixed="false">
+          <xs:extension base="tns:Result">
+            <xs:sequence>
+              <xs:element minOccurs="0" name="Latitude" type="xs:double" />
+              <xs:element minOccurs="0" name="Longitude" type="xs:double" />
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+      <xs:element name="PositionResult" nillable="true" type="tns:PositionResult" />
+      <xs:complexType name="PhoneAddressResult">
+        <xs:complexContent mixed="false">
+          <xs:extension base="tns:AddressResult">
+            <xs:sequence>
+              <xs:element minOccurs="0" name="PhoneNo" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="PrePhoneNo" nillable="true" type="xs:string" />
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+      <xs:element name="PhoneAddressResult" nillable="true" type="tns:PhoneAddressResult" />
+      <xs:complexType name="DataResult">
+        <xs:complexContent mixed="false">
+          <xs:extension base="tns:AddressResult">
+            <xs:sequence>
+              <xs:element minOccurs="0" name="Latitude" type="xs:double" />
+              <xs:element minOccurs="0" name="Longitude" type="xs:double" />
+              <xs:element minOccurs="0" name="PhoneNo" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="PrePhoneNo" nillable="true" type="xs:string" />
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+      <xs:element name="DataResult" nillable="true" type="tns:DataResult" />
+      <xs:complexType name="BooleanResult">
+        <xs:complexContent mixed="false">
+          <xs:extension base="tns:Result">
+            <xs:sequence>
+              <xs:element minOccurs="0" name="Value" type="xs:boolean" />
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+      <xs:element name="BooleanResult" nillable="true" type="tns:BooleanResult" />
+      <xs:complexType name="ActivityCodeResult">
+        <xs:complexContent mixed="false">
+          <xs:extension base="tns:Result">
+            <xs:sequence>
+              <xs:element minOccurs="0" name="TypeCode" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="TypeCode2" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="TypeCode3" nillable="true" type="xs:string" />
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+      <xs:element name="ActivityCodeResult" nillable="true" type="tns:ActivityCodeResult" />
+      <xs:complexType name="CertificateResult">
+        <xs:complexContent mixed="false">
+          <xs:extension base="tns:AddressResult">
+            <xs:sequence>
+              <xs:element minOccurs="0" name="CertificateNo" nillable="true" type="xs:string" />
+              <xs:element minOccurs="0" name="CertificateUrl" nillable="true" type="xs:string" />
+            </xs:sequence>
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+      <xs:element name="CertificateResult" nillable="true" type="tns:CertificateResult" />
+      <xs:complexType name="WorkshopResult">
+        <xs:complexContent mixed="false">
+          <xs:extension base="tns:Result">
+            <xs:sequence />
+          </xs:extension>
+        </xs:complexContent>
+      </xs:complexType>
+      <xs:element name="WorkshopResult" nillable="true" type="tns:WorkshopResult" />
+    </xs:schema>
+  </wsdl:types>
+  <wsdl:message name="IPostCode_GetAddressByPostcode_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetAddressByPostcode" />
+  </wsdl:message>
+  <wsdl:message name="IPostCode_GetAddressByPostcode_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetAddressByPostcodeResponse" />
+  </wsdl:message>
+  <wsdl:portType wsp:PolicyURIs="#UTOverTransport" name="GetAddressByPostCodePortType">
+    <wsdl:operation name="GetAddressByPostcode">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPostCode/GetAddressByPostcode" message="tns:IPostCode_GetAddressByPostcode_InputMessage" />
+      <wsdl:output wsaw:Action="//tempuri.org/IPostCode/GetAddressByPostcodeResponse" message="tns:IPostCode_GetAddressByPostcode_OutputMessage" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="GetAddressByPostCodeSoap11Binding" type="tns:GetAddressByPostCodePortType">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="GetAddressByPostcode">
+      <soap:operation soapAction="http://tempuri.org/IPostCode/GetAddressByPostcode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="GetAddressByPostCodeSoap12Binding" type="tns:GetAddressByPostCodePortType">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="GetAddressByPostcode">
+      <soap12:operation soapAction="http://tempuri.org/IPostCode/GetAddressByPostcode" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="GetAddressByPostCodeHttpBinding" type="tns:GetAddressByPostCodePortType">
+    <http:binding verb="POST" />
+    <wsdl:operation name="GetAddressByPostcode">
+      <http:operation location="GetAddressByPostcode" />
+      <wsdl:input>
+        <mime:content part="parameters" type="text/xml" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:content part="parameters" type="text/xml" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="GetAddressByPostCode">
+    <wsdl:port name="GetAddressByPostCodeHttpSoap11Endpoint" binding="tns:GetAddressByPostCodeSoap11Binding">
+      <soap:address location="http://sr-cix.ntsw.ir/services/GetAddressByPostCode.GetAddressByPostCodeHttpSoap11Endpoint" />
+    </wsdl:port>
+    <wsdl:port name="GetAddressByPostCodeHttpsSoap11Endpoint" binding="tns:GetAddressByPostCodeSoap11Binding">
+      <soap:address location="https://sr-cix.ntsw.ir/services/GetAddressByPostCode.GetAddressByPostCodeHttpsSoap11Endpoint" />
+    </wsdl:port>
+    <wsdl:port name="GetAddressByPostCodeHttpsSoap12Endpoint" binding="tns:GetAddressByPostCodeSoap12Binding">
+      <soap12:address location="https://sr-cix.ntsw.ir/services/GetAddressByPostCode.GetAddressByPostCodeHttpsSoap12Endpoint" />
+    </wsdl:port>
+    <wsdl:port name="GetAddressByPostCodeHttpSoap12Endpoint" binding="tns:GetAddressByPostCodeSoap12Binding">
+      <soap12:address location="http://sr-cix.ntsw.ir/services/GetAddressByPostCode.GetAddressByPostCodeHttpSoap12Endpoint" />
+    </wsdl:port>
+    <wsdl:port name="GetAddressByPostCodeHttpsEndpoint" binding="tns:GetAddressByPostCodeHttpBinding">
+      <http:address location="https://sr-cix.ntsw.ir/services/GetAddressByPostCode.GetAddressByPostCodeHttpsEndpoint" />
+    </wsdl:port>
+    <wsdl:port name="GetAddressByPostCodeHttpEndpoint" binding="tns:GetAddressByPostCodeHttpBinding">
+      <http:address location="http://sr-cix.ntsw.ir/services/GetAddressByPostCode.GetAddressByPostCodeHttpEndpoint" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
