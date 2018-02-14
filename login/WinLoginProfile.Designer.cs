@@ -60,7 +60,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(305, 54);
+            this.label5.Location = new System.Drawing.Point(284, 54);
             this.label5.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(33, 20);
@@ -70,7 +70,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(506, 61);
+            this.label4.Location = new System.Drawing.Point(475, 61);
             this.label4.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(69, 20);
@@ -80,7 +80,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(506, 21);
+            this.label3.Location = new System.Drawing.Point(475, 21);
             this.label3.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(23, 20);
@@ -90,7 +90,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(305, 17);
+            this.label2.Location = new System.Drawing.Point(284, 17);
             this.label2.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(58, 20);
@@ -109,7 +109,7 @@
             // 
             // tbPassRep
             // 
-            this.tbPassRep.Location = new System.Drawing.Point(13, 53);
+            this.tbPassRep.Location = new System.Drawing.Point(13, 54);
             this.tbPassRep.Margin = new System.Windows.Forms.Padding(2);
             this.tbPassRep.Name = "tbPassRep";
             this.tbPassRep.PasswordChar = '*';
@@ -127,7 +127,7 @@
             // 
             // tbUsername
             // 
-            this.tbUsername.Location = new System.Drawing.Point(221, 15);
+            this.tbUsername.Location = new System.Drawing.Point(200, 17);
             this.tbUsername.Margin = new System.Windows.Forms.Padding(2);
             this.tbUsername.Name = "tbUsername";
             this.tbUsername.Size = new System.Drawing.Size(81, 27);
@@ -135,7 +135,7 @@
             // 
             // tbFamily
             // 
-            this.tbFamily.Location = new System.Drawing.Point(421, 54);
+            this.tbFamily.Location = new System.Drawing.Point(390, 54);
             this.tbFamily.Margin = new System.Windows.Forms.Padding(2);
             this.tbFamily.Name = "tbFamily";
             this.tbFamily.Size = new System.Drawing.Size(81, 27);
@@ -143,7 +143,7 @@
             // 
             // tbname
             // 
-            this.tbname.Location = new System.Drawing.Point(421, 17);
+            this.tbname.Location = new System.Drawing.Point(390, 17);
             this.tbname.Margin = new System.Windows.Forms.Padding(2);
             this.tbname.Name = "tbname";
             this.tbname.Size = new System.Drawing.Size(81, 27);
@@ -151,10 +151,10 @@
             // 
             // btnEdit
             // 
-            this.btnEdit.Location = new System.Drawing.Point(13, 97);
+            this.btnEdit.Location = new System.Drawing.Point(390, 103);
             this.btnEdit.Margin = new System.Windows.Forms.Padding(2);
             this.btnEdit.Name = "btnEdit";
-            this.btnEdit.Size = new System.Drawing.Size(84, 32);
+            this.btnEdit.Size = new System.Drawing.Size(81, 32);
             this.btnEdit.TabIndex = 15;
             this.btnEdit.Text = "ویرایش";
             this.btnEdit.UseVisualStyleBackColor = true;
@@ -162,10 +162,10 @@
             // 
             // btnAdd
             // 
-            this.btnAdd.Location = new System.Drawing.Point(116, 97);
+            this.btnAdd.Location = new System.Drawing.Point(500, 103);
             this.btnAdd.Margin = new System.Windows.Forms.Padding(2);
             this.btnAdd.Name = "btnAdd";
-            this.btnAdd.Size = new System.Drawing.Size(84, 32);
+            this.btnAdd.Size = new System.Drawing.Size(81, 32);
             this.btnAdd.TabIndex = 5;
             this.btnAdd.Text = "افزودن";
             this.btnAdd.UseVisualStyleBackColor = true;
@@ -178,7 +178,7 @@
             // cbRole
             // 
             this.cbRole.FormattingEnabled = true;
-            this.cbRole.Location = new System.Drawing.Point(221, 53);
+            this.cbRole.Location = new System.Drawing.Point(200, 54);
             this.cbRole.Name = "cbRole";
             this.cbRole.Size = new System.Drawing.Size(81, 28);
             this.cbRole.TabIndex = 16;
