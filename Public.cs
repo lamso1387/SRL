@@ -601,9 +601,31 @@ namespace SRL
             setting_table_name = typeof(SettingEntity).Name;
         }
 
-        public void MigrateDatabase(Dictionary<string, string> migration_version_query)
-        {
+        /// <summary>
+        /// put is_set_key to last in kv. consider to set db_version
+        /// </summary>
+        /// <param name="is_set_key"></param>
+        /// <param name="setting_enum_type"></param>
+        /// <param name="kv"></param>
+        /// <returns></returns>
+        public bool CheckSetting(string is_set_key, Type setting_enum_type, Dictionary<string, string> kv)
+        {//put is_set_key to last in kv
+            //kv[SettingKeys.db_version.ToString()] = SRL.Security.GetAppVersion(Assembly.GetExecutingAssembly()).Major.ToString();
+            if (!CheckSettingIsSet(is_set_key, setting_enum_type))
+            {
+                InitiateSetting(kv);
+                return false;
+            }
+            else return true;
+        }
 
+        /// <summary>
+        /// check setting before migration because of db_version
+        /// </summary>
+        /// <param name="migration_version_query"></param>
+        /// <param name="assembly"></param>
+        public bool MigrateDatabase(Dictionary<string, string> migration_version_query, Assembly assembly, string db_key)
+        { 
             /* use in load form: 
               Dictionary<string, string> migration_version_query = new Dictionary<string, string>();
 
@@ -613,10 +635,14 @@ namespace SRL
 
             Publics.srlsetting.MigrateDatabase(migration_version_query);
              */
-            string db_version = GetDbVersion();
-            string app_version = SRL.Security.GetAppVersion().Major.ToString();
+            string db_version = GetDbVersion(db_key);
+            if(string.IsNullOrWhiteSpace(db_version))
+            {
+                return false;
+            }
+            string app_version = SRL.Security.GetAppVersion(assembly).Major.ToString();
 
-            if (db_version == app_version) return;
+            if (db_version == app_version) return true;
 
             string query = "";
 
@@ -625,19 +651,29 @@ namespace SRL
                     query = migration_version_query[db_version];
 
             UpdateTableSchema(query, app_version);
+            return true;
         }
 
         public void InitiateSetting(Dictionary<string, string> keyValuesetting)
         {
-
-            SRL.Database.EntityRemoveAll<SettingEntity>(db);
-
             foreach (var item in keyValuesetting)
             {
-                var instance = SRL.ClassManagement.CreateInstance<SettingEntity>();
-                SRL.ClassManagement.SetProperty("key", instance, item.Key);
-                SRL.ClassManagement.SetProperty("value", instance, item.Value);
-                SRL.Database.EntityAdd<SettingEntity>(db, instance);
+                SettingEntity instance;
+                var query = SRL.Database.EntitySelect<SettingEntity>(db, "select * from " + setting_table_name + " where [key]='" + item.Key + "'");
+                if (query.Any())
+                {
+                    instance = query.First();
+                    SRL.ClassManagement.SetProperty("value", instance, item.Value);
+                    ExecuteUpdateSettingTable(item.Key, item.Value);
+                }
+                else
+                {
+                    instance = SRL.ClassManagement.CreateInstance<SettingEntity>();
+                    SRL.ClassManagement.SetProperty("key", instance, item.Key);
+                    SRL.ClassManagement.SetProperty("value", instance, item.Value);
+                    SRL.Database.EntityAdd<SettingEntity>(db, instance);
+                }
+                
             }
 
             db.SaveChanges();
@@ -665,18 +701,18 @@ namespace SRL
             return kv;
         }
 
-        public string GetDbVersion()
+        public string GetDbVersion(string db_key)
         {
-            AddKeyToSettingTB("db_version");
-            var res = SqlQuerySettingTable("db_version", "1");
+            AddKeyToSettingTB(db_key);
+            var res = SqlQuerySettingTable(db_key);
             return res;
         }
 
-        private bool AddKeyToSettingTB(string key)
+        public bool AddKeyToSettingTB(string key)
         {
             string sql = "select * from " + setting_table_name + " where [key]='" + key + "'";
-            var get_version = SRL.Database.SqlQuery<object>(db, sql);
-            if (get_version == null ? true : !get_version.Any())
+            var get_key = SRL.Database.SqlQuery<object>(db, sql);
+            if (get_key == null ? true : !get_key.Any())
             {
                 sql = "insert into " + setting_table_name + " ([key]) values('" + key + "')";
                 SRL.Database.ExecuteQuery(db, sql);
@@ -780,10 +816,13 @@ namespace SRL
             var res = SRL.Database.ExecuteQuery(db, sql);
             return res;
         }
-        public bool CheckSettingIsSet()
+        public bool CheckSettingIsSet(string is_set_key, Type setting_enum_type)
         {
-            string query = SqlQuerySettingTable("setting_is_set", null);
-            // int row_count = db.Set<SettingEntity>().Count();
+            string query = SqlQuerySettingTable(is_set_key, null);
+            foreach (var item in Enum.GetValues(setting_enum_type))
+            {
+                AddKeyToSettingTB(item.ToString());
+            }
             return query == null || query == "false" ? false : true;
         }
 
@@ -809,9 +848,7 @@ namespace SRL
 
         }
 
-
-
-
+        
     }
 
     public class ChildParent
@@ -1089,8 +1126,8 @@ namespace SRL
 
             private static void Form_FormClosed_exit(object sender, FormClosedEventArgs e)
             {
-                if(Application.OpenForms.Count<1)
-                Environment.Exit(0);
+                if (Application.OpenForms.Count < 1)
+                    Environment.Exit(0);
             }
 
         }
@@ -1294,11 +1331,12 @@ namespace SRL
             {
                 static ProgressBar progress_bar;
                 static ProgressBarStyle main_style;
-                static public BackgroundWorker bg = new BackgroundWorker();
+                static public BackgroundWorker bg;
 
 
                 public static void Run(Action function, Action call_back, ProgressBar progress_bar_, ProgressBarStyle bar_style)
                 {
+                    bg = new BackgroundWorker();
 
                     if (progress_bar_ != null)
                     {
@@ -1752,6 +1790,7 @@ namespace SRL
 
                     new_lbl.Text = lbl_.Text;
                     new_lbl.Size = new Size(lbl_.Height + lbl_.Width, lbl_.Width + lbl_.Height);
+                    new_lbl.BackColor = lbl_.BackColor;
 
                     new_lbl.Location = new Point(
            lbl_.Location.X + lbl_.Size.Width / 2 - lbl_.Size.Height / 2,
@@ -2139,14 +2178,14 @@ namespace SRL
             }
             return Icon.FromHandle(bitmap.GetHicon());
         }
-        
+
         public static void ControlShadow(Control container, Control[] directChildsToShadow)
         {//panel.Controls.OfType<Control>()
             container.Paint += (s, e) => drop_Shadow(s, e, directChildsToShadow);
         }
         private static void drop_Shadow(object sender, PaintEventArgs e, Control[] directChildToShadow)
         {
-            
+
             Control panel = (Control)sender;
             Color[] shadow = new Color[3];
             shadow[0] = Color.FromArgb(181, 181, 181);
@@ -2155,7 +2194,7 @@ namespace SRL
             Pen pen = new Pen(shadow[0]);
             using (pen)
             {
-                
+
                 foreach (Control p in directChildToShadow)
                 {
                     Point ptBottom = p.Location;
@@ -2166,13 +2205,13 @@ namespace SRL
                         e.Graphics.DrawLine(pen, ptBottom.X, ptBottom.Y, ptBottom.X + p.Width - 1, ptBottom.Y);
                         ptBottom.Y++;
                     }
-                    
+
                     Point ptRight = p.Location;
                     ptRight.X += p.Width;
                     for (var sp = 0; sp < 3; sp++)
                     {
                         pen.Color = shadow[sp];
-                        e.Graphics.DrawLine(pen, ptRight.X, ptRight.Y, ptRight.X, ptRight.Y+p.Height - 1);
+                        e.Graphics.DrawLine(pen, ptRight.X, ptRight.Y, ptRight.X, ptRight.Y + p.Height - 1);
                         ptRight.X++;
                     }
                 }
@@ -2186,9 +2225,20 @@ namespace SRL
                 item.BackColor = color;
             }
         }
-        
+
         public class ButtonClass
         {
+            public static void StyleControlButtons(Control parent, Color? back = null, Color? active_border = null)
+            {
+                back = back ?? Color.CornflowerBlue;
+                active_border = active_border ?? Color.DarkBlue;
+
+                foreach (var item in SRL.ChildParent.GetAllChildrenControls(parent).OfType<Button>())
+                {
+                    new SRL.WinUI.ButtonClass.StyleButton(item, (Color)back, (Color)active_border);
+                }
+            }
+
             public class StyleButton : Button
             {
 
@@ -2323,7 +2373,6 @@ namespace SRL
             All
         }
 
-
         public class LoadingCircleControl
         {
             public static void StartLoading(LoadingCircle loadingCircle1)
@@ -2333,10 +2382,13 @@ namespace SRL
                     Application.DoEvents();
                     loadingCircle1.Visible = loadingCircle1.Active = true;
                     System.Windows.Forms.Cursor.Current = Cursors.WaitCursor;
-                    loadingCircle1.OuterCircleRadius = 20;
-                    loadingCircle1.InnerCircleRadius = 10;
-                    loadingCircle1.NumberSpoke = 20;
-                    loadingCircle1.RotationSpeed = 120;
+                    int size = Math.Max(loadingCircle1.Width, loadingCircle1.Height);
+                    loadingCircle1.Width = loadingCircle1.Height = size;
+                    int radius = (int)(size / 1.17) / 2;
+                    loadingCircle1.OuterCircleRadius = radius;
+                    loadingCircle1.InnerCircleRadius = radius / 2;
+                    loadingCircle1.NumberSpoke = (int)(radius * 0.8);
+                    loadingCircle1.RotationSpeed = (1 / radius) * 2000;
                 }
                 catch (Exception ex)
                 {
@@ -3403,8 +3455,6 @@ namespace SRL
 
         }
 
-
-
         public static string GetAppName(string default_app_name, string folder_containing_exe_path, List<string> file_not_searching, string app_extention_pattern = "*.exe")
         {
             string app_name = default_app_name;
@@ -3436,7 +3486,6 @@ namespace SRL
 
             return instance;
         }
-
 
         public class TextBoxTool
         {
@@ -3487,14 +3536,14 @@ namespace SRL
 
             public static void RaiseButtonClickOnEnter(TextBox tb, Button btn)
             {
-                tb.KeyDown +=(s,e)=> tb_raise_click(s,e,btn);
+                tb.KeyDown += (s, e) => tb_raise_click(s, e, btn);
             }
 
             private static void tb_raise_click(object sender, KeyEventArgs e, Button btn)
             {
                 if (e.KeyCode == Keys.Enter)
                 {
-                    btn.PerformClick();   
+                    btn.PerformClick();
                 }
             }
         }
@@ -4168,9 +4217,10 @@ namespace SRL
                 return SRL.Database.SqlQuery<string>(db, "select [role] from " + permission_entity);
             }
         }
-        public static Version GetAppVersion()
+        public static Version GetAppVersion(Assembly assembly)
         {
-            return Assembly.GetEntryAssembly().GetName().Version;
+            // return Assembly.GetEntryAssembly().GetName().Version;
+            return assembly.GetName().Version;
         }
         public static string GetComputerCurrentUsername()
         {
@@ -4702,8 +4752,8 @@ namespace SRL
                         object safeValue = (row[pro.Name] == DBNull.Value) ? null : Convert.ChangeType(row[pro.Name], t);
                         pro.SetValue(objT, safeValue, null);
 
-                        //  pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
-                    }
+                    //  pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
+                }
                 }
                 return objT;
             }).ToList();
@@ -5531,6 +5581,13 @@ namespace SRL
             db.SaveChanges();
 
         }
+        public static List<EntityType> EntitySelect<EntityType>(DbContext db, string sql) where EntityType : class
+        {
+            List<EntityType> list = db.Set<EntityType>().SqlQuery(sql).ToList();
+            return list;
+
+        }
+
         public static string ShowTableInDatagridview(string sql, DataGridView dgv, string connection_string)
         {
             string error = string.Empty;
@@ -6274,7 +6331,7 @@ namespace SRL
     {
 
         public static void Reporter<ReportType, SubReportType>(Assembly assembly, List<ReportType> report_data, string printer_name, string dataset, string report_path, string title, short copies,
-            string sub_path,string sub_name, List<SubReportType> sub_data = null, string sub_dataset = null,
+            string sub_path, string sub_name, List<SubReportType> sub_data = null, string sub_dataset = null,
             DisplayMode display_mode = DisplayMode.PrintLayout, int max_width = 1000, int max_height = 700, int zoom_percent = 75)
         {
             // SRL.WinReport.Reporter<PurchaseTB, PurchaseKalaTB>(Assembly.GetExecutingAssembly(), Public.dbGlobal.PurchaseTB.Where(x => x.Id == purchase_id).ToList(),  Public.srl_setting_class.SqlQuerySettingTable("printer_name"),
@@ -6288,7 +6345,7 @@ namespace SRL
             //use: rw.LocalReport.ReportEmbeddedResource = "hesabdari_app.Rep.Purchase.rdlc" in one project instead assembly           
             Stream stream = assembly.GetManifestResourceStream(report_path);
             rw.LocalReport.LoadReportDefinition(stream);
-            if (sub_name !=null)
+            if (sub_name != null)
             {
                 Stream sub_stream = assembly.GetManifestResourceStream(sub_path);
                 rw.LocalReport.LoadSubreportDefinition(sub_name, sub_stream);
@@ -6306,8 +6363,8 @@ namespace SRL
             rw.ProcessingMode = ProcessingMode.Local;
 
             if (sub_data != null)
-                 rw.LocalReport.SubreportProcessing += (s, e) => MySubreportEventHandler<SubReportType>(s, e, sub_dataset, sub_data, reportDataSource1);
-              
+                rw.LocalReport.SubreportProcessing += (s, e) => MySubreportEventHandler<SubReportType>(s, e, sub_dataset, sub_data, reportDataSource1);
+
             //in rdlc, report menu: report properties, first set page size(these are defaults), then consider margines, so in rdlc body, set sizes(less defaults). properties:Report , page sizes are like defaults.
             SizeF size = SRL.WinReport.GetLocalReportRdlcSize(rw);
             float dpi = SRL.WinTools.Media.GetScreenDpi(rw);
@@ -6398,7 +6455,7 @@ namespace SRL
             var report_setting = report_viewer.LocalReport.GetDefaultPageSettings();
             float width_ = report_setting.PaperSize.Width / 100F;
             float height_ = report_setting.PaperSize.Height / 100F;
-            
+
             size.Width = width_;
             size.Height = height_;
 

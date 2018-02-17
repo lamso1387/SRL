@@ -1622,5 +1622,74 @@ namespace SRL
 
 
         }
+
+        public class MeliSms
+        {
+            public string Username { get; set; }
+            public string Password { get; set; }
+            public string FromNumber { get; set; }
+            public ServiceReferenceSendSms.SendSoapClient send_client;
+
+            public MeliSms(string username, string password, string from_number)
+            {
+                //"09114452764", "2275",from_number = "500010604260"
+                Username = username;
+                Password = password;
+                FromNumber = from_number;
+                send_client = new ServiceReferenceSendSms.SendSoapClient("SendSoap12");
+            }
+
+            public Dictionary<string, string> SendSms(string text, string[] mobiles_to)
+            {
+                string[] result = send_client.SendSimpleSMS(Username, Password, mobiles_to, FromNumber, text, false);
+                Dictionary<string, string> mobile_res = new Dictionary<string, string>();
+                for (int i = 0; i < mobiles_to.Count(); i++)
+                {
+                    mobile_res[mobiles_to[i]] = GetErrorName(result[i]);
+                }
+
+                return mobile_res;
+            }
+
+            public double GetCredit()
+            {
+                double credit = send_client.GetCredit(Username, Password);
+                return Math.Ceiling(credit);
+            }
+
+            private string GetErrorName(string code)
+            {
+                Dictionary<string, string> error_name = new Dictionary<string, string>();
+                error_name["0"] = "نام کاربری یا رمز عبور اشتباه است";
+                error_name["1"] = "درخواست با موفقیت انجام شد";
+                error_name["2"] = "اعتبار کافی نمی باشد";
+                error_name["3"] = "محدودیت در ارسال روزانه";
+                error_name["4"] = "محدودیت در حجم ارسال";
+                error_name["5"] = "شماره فرستنده معتبر نمی باشد";
+                error_name["6"] = "سامانه در حال بروزرسانی می باشد";
+                error_name["7"] = "متن حاوی کلمه فیلتر شده می باشد";
+                error_name["9"] = "ارسال از خطوط عمومی از طریق وب سرویس مکانپذیر نمی باشد";
+                error_name["10"] = "کاربر مورد نظر فعال نمی باشد";
+                error_name["11"] = "ارسال نشده";
+                error_name["0"] = "مدارک کابر کامل نمی باشد";
+                if (error_name.ContainsKey(code))
+                    return error_name[code];
+                else return code;
+            }
+
+            public void ShowCreditInControl(Control control_to_show)
+            {
+                control_to_show.Text = "در حال بروزرسانی...";
+                double credit = 0;
+                SRL.ActionManagement.MethodCall.RunMethodInBack.Run(() =>
+                {
+                    credit = GetCredit();
+                }, () =>
+                {
+                    control_to_show.Text = credit.ToString();
+                }, null, ProgressBarStyle.Blocks);
+
+            }
+        }
     }
 }

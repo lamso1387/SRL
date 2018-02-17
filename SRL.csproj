@@ -45,6 +45,9 @@
       <HintPath>my_reference\ExcelLibrary.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="log4net">
+      <HintPath>my_reference\log4net.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.ReportViewer.WinForms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>my_reference\Microsoft.ReportViewer.WinForms.dll</HintPath>
@@ -88,12 +91,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Projects.cs" />
+    <Compile Include="JobSchedulerManager.cs" />
     <Compile Include="Service References\CIXGetAddressByPostcode\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.svcmap</DependentUpon>
     </Compile>
     <Compile Include="Service References\PostCodeServiceReference\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\ServiceReferenceSendSms\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.svcmap</DependentUpon>
@@ -246,6 +255,12 @@
     <Compile Include="login\WinRolePermissions.Designer.cs">
       <DependentUpon>WinRolePermissions.cs</DependentUpon>
     </Compile>
+    <Compile Include="tools\UserControls\A1Panel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="tools\UserControls\A1Panel.designer.cs">
+      <DependentUpon>A1Panel.cs</DependentUpon>
+    </Compile>
     <Compile Include="tools\UserControls\ProgressControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -299,6 +314,13 @@
     <Content Include="script\jquery.min.js" />
     <Content Include="script\select2.min.js" />
     <Content Include="script\SRL.js" />
+    <None Include="Service References\ServiceReferenceSendSms\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+    <None Include="Service References\ServiceReferenceSendSms\configuration.svcinfo" />
+    <None Include="Service References\ServiceReferenceSendSms\configuration91.svcinfo" />
+    <None Include="Service References\ServiceReferenceSendSms\Send.disco" />
     <None Include="Service References\CIXGetAddressByPostcode\Reference.svcmap">
       <Generator>WCF Proxy Generator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>
@@ -358,6 +380,16 @@
       <DependentUpon>Reference.svcmap</DependentUpon>
     </None>
     <None Include="Service References\PostCodeServiceReference\SRL.PostCodeServiceReference.WorkshopResult.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ServiceReferenceSendSms\Send.wsdl" />
+    <None Include="Service References\ServiceReferenceSendSms\SRL.ServiceReferenceSendSms.GetMultiDeliveryResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ServiceReferenceSendSms\SRL.ServiceReferenceSendSms.MessagesBL.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ServiceReferenceSendSms\SRL.ServiceReferenceSendSms.SendSmsResponse.datasource">
       <DependentUpon>Reference.svcmap</DependentUpon>
     </None>
     <None Include="tools\BPersianCalender\Resources\Calendar-1128083418.png" />
@@ -467,6 +499,7 @@
   <ItemGroup>
     <WCFMetadataStorage Include="Service References\CIXGetAddressByPostcode\" />
     <WCFMetadataStorage Include="Service References\PostCodeServiceReference\" />
+    <WCFMetadataStorage Include="Service References\ServiceReferenceSendSms\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

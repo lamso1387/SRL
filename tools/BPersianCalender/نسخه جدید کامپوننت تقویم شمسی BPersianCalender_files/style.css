@@ -1,0 +1,36 @@
+﻿a{/*Coding:Dariush Farhang - SibGraph.IR*/text-decoration:none;/*Coding:Dariush Farhang - SibGraph.IR*/}/*Coding:Dariush Farhang - SibGraph.IR*/
+@font-face{/*Coding:Dariush Farhang - SibGraph.IR*/
+	font-family:'BYekan';/*Coding:Dariush Farhang - SibGraph.IR*/
+	src:url('http://up.sibgraph.ir/up/admin-sibgraph/font/code/BYekan/BYekan.woff') format('woff'),
+	    url('http://up.sibgraph.ir/up/admin-sibgraph/font/code/BYekan/BYekan.ttf') format('trutype'),
+		url('http://up.sibgraph.ir/up/admin-sibgraph/font/code/BYekan/BYekan.svg') format('svg'),
+		url('http://up.sibgraph.ir/up/admin-sibgraph/font/code/BYekan/BYekan.eot?#') format('eot');/*Coding:Dariush Farhang - SibGraph.IR*/
+}/*Coding:Dariush Farhang - SibGraph.IR*/
+.dl-bx-sb-1{/*Coding:Dariush Farhang - SibGraph.IR*/
+background:#c5ffcc url(Downloads-Black-Folder-icon.png) no-repeat left center;/*Coding:Dariush Farhang - SibGraph.IR*/
+padding:10px;/*Coding:Dariush Farhang - SibGraph.IR*/
+margin-bottom:2px;/*Coding:Dariush Farhang - SibGraph.IR*/
+border-bottom:3px #00ff1f solid;/*Coding:Dariush Farhang - SibGraph.IR*/
+text-shadow:1px 1px 1px #fff;/*Coding:Dariush Farhang - SibGraph.IR*/
+font:13px BYekan;/*Coding:Dariush Farhang - SibGraph.IR*/
+}/*Coding:Dariush Farhang - SibGraph.IR*/
+.dl-bx-sb-2{/*Coding:Dariush Farhang - SibGraph.IR*/
+color:#333;/*Coding:Dariush Farhang - SibGraph.IR*/
+text-shadow:1px 1px 1px #fff;/*Coding:Dariush Farhang - SibGraph.IR*/
+}/*Coding:Dariush Farhang - SibGraph.IR*/
+.dl-bx-sb-3{/*Coding:Dariush Farhang - SibGraph.IR*/
+background:#ffc0c0 url(warning-icon.png) no-repeat left center;/*Coding:Dariush Farhang - SibGraph.IR*/
+padding:10px;/*Coding:Dariush Farhang - SibGraph.IR*/
+margin-bottom:2px;/*Coding:Dariush Farhang - SibGraph.IR*/
+border-bottom:3px #ff0000 solid;/*Coding:Dariush Farhang - SibGraph.IR*/
+text-shadow:1px 1px 1px #fff;/*Coding:Dariush Farhang - SibGraph.IR*/
+font:13px BYekan;/*Coding:Dariush Farhang - SibGraph.IR*/
+}/*Coding:Dariush Farhang - SibGraph.IR*/
+.dl-bx-sb-5{/*Coding:Dariush Farhang - SibGraph.IR*/
+background:#ffedc5 url(Very-Basic-Info-Filled-icon.png) no-repeat left center;/*Coding:Dariush Farhang - SibGraph.IR*/
+padding:10px;/*Coding:Dariush Farhang - SibGraph.IR*/
+margin-bottom:2px;/*Coding:Dariush Farhang - SibGraph.IR*/
+border-bottom:3px #ffae00 solid;/*Coding:Dariush Farhang - SibGraph.IR*/
+text-shadow:1px 1px 1px #fff;/*Coding:Dariush Farhang - SibGraph.IR*/
+font:13px BYekan;/*Coding:Dariush Farhang - SibGraph.IR*/
+}/*Coding:Dariush Farhang - SibGraph.IR*/

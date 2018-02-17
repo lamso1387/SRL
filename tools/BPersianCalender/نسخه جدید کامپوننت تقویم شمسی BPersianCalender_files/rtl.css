@@ -1,0 +1,300 @@
+body {
+  font-family: BYekan,'BYekan',arial,tahoma; 
+  direction: rtl;
+  overflow-x: hidden; 
+}
+#search {
+  float: left;
+  top: 10px;
+}
+header#news-header,.copyright p,.container.footer-content .row .col-md-4,.post-type-2 figure ,.head-news p , .tag-style-1 p, .tag-style-2 p,.logo , .header-adv , .social-icons , .nav-tabs > li , .mainmenu .nav-tabs{
+  float: right;
+}
+.head-news header p::after {
+  left: -12px;
+  right: auto;
+  transform: rotate(180deg);
+  -moz-transform: rotate(180deg);
+  -webkit-transform: rotate(180deg);
+  -o-transform: rotate(180deg);
+}
+.search .form-control {
+  border-left: medium none;
+  border-right: 1px solid #D7D7D7;
+}
+.search .btn {
+  border-right: medium none;
+  border-left: 1px solid #D7D7D7;
+}
+.search .dropdown-menu {
+  right: auto;
+  left: 5px;
+}
+.search .dropdown-menu {
+  min-width: 235px;
+}
+.member-area i {
+  padding-left: 5px;
+  padding-right: 0;
+}
+.social-icons {
+  margin-right: 40px;
+  margin-left: 0;
+}
+.yamm .dropdown.yamm-fw .dropdown-menu {
+  padding: 0;
+}
+.dropdown-menu.features li ul {
+  margin-right: 40px;
+}
+.mainmenu > ul > li > a , .post-content , .comment_rb,.add-comment button,.tag-style-1 p, .read-more ,.tag-style-2 p, h1, h2, h3, h4, h5, h6,.post-thumbnail-1 h3, .post-thumbnail-2 h3 {
+  font-family: BYekan,'BYekan',arial,tahoma!important; 
+}
+.nav-tabs a i {
+  padding-top: 3px;
+  padding-bottom: 0;
+}
+.post-thumbnail-1 h3 {
+  padding-right: 2%;
+}
+.meta-tags .fa {
+  margin-left: 6px;
+}
+.tag-style-1, .tag-style-2 {
+  left: auto;
+  right: 0;
+}
+#content .row .col-md-8 .col-md-12 > ul > li {
+  width: 49%!important;
+  display: inline-block;
+}
+#content .tag-style-1,#content .tag-style-2 {
+  left: 0;
+  right: auto;
+}
+.post-type-2.clearfix figure {
+  margin-left: 20px;
+  margin-right: 0;
+}
+footer .fa-envelope {
+  float: right;
+  margin-left: 10px;
+}
+.footer-menu {
+  float: left;
+}
+ul#sidebar-tabs li a {
+  font-size: 1.2em;
+}
+.sidebar-widget2 figure a img {
+  display: inline-block;
+  width: 118px;
+  height: auto;
+}
+.input-group-addon:first-child {
+  border-left : none;
+  border-right: 1px solid #CCC;
+}
+.input-group-btn .btn-default {
+  border-right : none;
+  border-left: 1px solid #CCC;
+}
+.sidebar-widget4 .fa {
+  padding-left: 20px;
+  padding-right: 0;
+}
+.sidebar-widget4 i {
+  float: right;
+}
+table#forum {
+  width: 100%;
+  border: 1px solid #444;
+}
+table#forum tr , table#forum td {
+  padding: 10px;
+  border: 1px solid #444;
+}
+table#forum tr:first-child td{
+  text-align: center;
+  font-weight: bold;
+}
+#owl-related {
+  direction: ltr;
+}
+aside.post-info .social-icons {
+  margin-right: 0;
+}
+.owl-prev {
+  left: 0;
+  right: auto!important;
+}
+.owl-next {
+  left: 20px;
+  right: auto!important;
+}
+.meta-tags {
+  direction: rtl;
+}
+.forum-rows h4 {
+  margin-bottom: 3px;
+}
+.forum{
+  font:11px tahoma;
+  width:100%;
+  text-align:center;
+  direction:rtl;
+  border-radius:5px;
+  -moz-border-radius:5px;
+  -ms-border-radius:5px;
+  -webkit-border-radius:5px;
+  -o-border-radius:5px;
+  -khtml-border-radius:5px;
+  background:#fff;
+  padding:5px;
+}
+.forum td{
+  border:1px #ccc solid;
+  border-radius:5px;
+  -moz-border-radius:5px;
+  -ms-border-radius:5px;
+  -webkit-border-radius:5px;
+  -o-border-radius:5px;
+  -khtml-border-radius:5px;
+  background:#eee;
+  transition:all 0.5s ease;
+  -moz-transition:all 0.5s ease;
+  -o-transition:all 0.5s ease;
+  -ms-transition:all 0.5s ease;
+  -khtml-transition:all 0.5s ease;
+  -webkit-transition:all 0.5s ease;
+}
+.forum-links a{
+  display:block;
+  text-align:right;
+  color:#555;
+  text-decoration:none;
+  transition:all 0.5s ease;
+  -moz-transition:all 0.5s ease;
+  -o-transition:all 0.5s ease;
+  -ms-transition:all 0.5s ease;
+  -khtml-transition:all 0.5s ease;
+  -webkit-transition:all 0.5s ease;
+  padding:3px;
+}
+.forum-links a:hover{
+  color:#000;
+  text-shadow:0px 0px 3px;
+  -moz-text-shadow:0px 0px 3px;
+  -o-text-shadow:0px 0px 3px;
+  -ms-text-shadow:0px 0px 3px;
+  -khtml-text-shadow:0px 0px 3px;
+  -webkit-text-shadow:0px 0px 3px;
+}
+.forum-links{
+  padding:0px;
+}
+.forum tr:hover td{
+  background:#ddd;
+}
+.forum thead td{
+  padding:3px;
+  background:#ccc;
+}
+.forum thead tr:hover td{
+  padding:3px;
+  background:#ccc;
+}
+
+
+.pagenf{
+  text-align:center;
+}
+.pagenf a{
+  border-radius:5px;
+  -moz-border-radius:5px;
+  -ms-border-radius:5px;
+  -webkit-border-radius:5px;
+  -o-border-radius:5px;
+  -khtml-border-radius:5px;
+  border: 1px solid #CCCCCC;
+  padding:5px;
+  margin:4px;
+  display:inline-block;
+  background:url(http://rozblog.com/temp/music3/MTForumBlock_row_over.png) repeat-x;
+  color:#999;
+  transition:all 0.5s ease;
+  -moz-transition:all 0.5s ease;
+  -o-transition:all 0.5s ease;
+  -khtml-transition:all 0.5s ease;
+  -webkit-transition:all 0.5s ease;
+  text-decoration:none;
+}
+.pagenf a:hover{
+  border-color:#666;
+  color:#666;
+}
+.pagenf .current{
+  border-radius:5px;
+  -moz-border-radius:5px;
+  -ms-border-radius:5px;
+  -webkit-border-radius:5px;
+  -o-border-radius:5px;
+  -khtml-border-radius:5px;
+  border: 1px solid #ccc;
+  padding:5px;
+  margin: 4px;
+  display:inline-block;
+  background: url(http://rozblog.com/temp/music3/MTForumBlock_row_over.png) repeat-x;
+  color:#bbb;
+}
+.forum-rows table tr td:first-child , .forum-rows table tr td:last-child {
+  width: 40%!important;
+}
+.forum-rows table tr td:nth-child(2) , .forum-rows table tr td:nth-child(3) {
+  width: 10%!important;
+}
+.post-type-2 figure {
+  width: 70px;
+}
+.post-type-2 figure img {
+  max-width: 100%;
+  max-height: 100%;
+}
+#content .row .col-md-8 .col-md-12 > ul > li {
+  display: block;
+  width: 100%!important;
+}
+.input-group-btn > .btn , .btn-defaul {
+  padding: 8px;
+}
+.post-thumbnail-3 {
+  display: block;
+  max-width: 500px;
+  margin: auto;
+}
+.post-type-1 .post-thumbnail-3 figure img {
+  max-width: 500px;
+}
+.ms-listing .post-type-1 , .post-type-1{
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.post-type-1 {
+  border-bottom:none;
+}
+@media only screen and (max-width: 1200px) {
+  .sidebar-widget2 figure > a:last-child {
+    display: none;
+  }
+  .sidebar-widget2 figure > a:nth-child(2) {
+    float: left;
+  }
+}
+@media only screen and (max-width: 990px) {
+  .footer-content .row .the-best {
+    width: 100%!important;
+  }
+  .forum-rows{
+    margin-top: 25px;
+  }
+}

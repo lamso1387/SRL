@@ -21,27 +21,30 @@ namespace FormSample
             Publics.CheckFont();
             Publics.CheckLicense();
             Publics.CheckConnection(this);
-            MigrateDatabase();
-            Publics.CheckSetting();
-            string user = Public.CheckLogin();
 
             InitializeComponent();
+
+            string user = Public.CheckLogin();//before any window, first show login. but consider migration
+            app_setting_class = new Public.AppSettingClass();
+            
             CheckAccess();
             lblStaffName.Text = user;
-
         }
 
         private void MigrateDatabase()
         {
-            // version 2 released
+            // version 1 released
             Dictionary<string, string> migration_version_query = new Dictionary<string, string>();
 
             // migration_version_query["2"] = "...";
             // migration_version_query["1"] = "ALTER TABLE WorksTB ADD progress_status nvarchar(50);"+migration_version_query["2"];
 
-
-            Publics.srlsetting.MigrateDatabase(migration_version_query);
+            if (Public.srl_setting_class.MigrateDatabase(migration_version_query, Assembly.GetExecutingAssembly(), Public.AppSettingClass.SettingKeys.db_version.ToString()) == false)
+            {
+                SRL.MessageBoxForm2.Show("نسخه پایگاه داده یافت نشد و نرم افزار ممکن است با خطا مواجه شود. با پشتیبان نرم افزار تماس بگیرید.");
+            }
         }
+
         private void CheckAccess()
         {
             SRL.TreeMenuAccess.CheckAccess(Publics.srl_session.role, Publics.dbGlobal, typeof(PermissionTB).Name, menuStrip1);
@@ -49,6 +52,11 @@ namespace FormSample
         private void Form1_Load(object sender, EventArgs e)
         {
             this.WindowState = FormWindowState.Maximized;
+
+            Public.AppSettingClass.CheckSetting(menuStrip1.Items);
+            //important: check setting before migration because of db_version
+            MigrateDatabase();
+
             this.AutoScroll = true;
             this.Text = "app_name v" + SRL.Security.GetAppVersion().ToString() + " By SRL";
             SRL.ActionManagement.FormActions.ForceExitOnClose(this);
@@ -57,6 +65,7 @@ namespace FormSample
             Publics.form_progress_bar_label = progress.lbl_progress;
             Publics.form_progress_bar = progress.progress_bar;
             Publics.form_progress_bar_label.Parent.Visible = false;
+
         }
 
 
@@ -87,7 +96,10 @@ namespace FormSample
 
         public enum SettingKeys
         {
-            font_factor = 0,
+            setting_is_set,
+            font_factor,
+            base_address,
+            api_key,
             pms_key,
             pms_base_address
 
@@ -100,7 +112,6 @@ namespace FormSample
             : base(btn)
         {
         }
-
 
         public static string CheckLogin()
         {
@@ -121,19 +132,24 @@ namespace FormSample
             return Publics.srl_session.user_name + " " + Publics.srl_session.user_family;
         }
 
-        internal static void CheckSetting()
-        {
+        internal static void CheckSetting(ToolStripItemCollection menu)
+        {// put setting_is_set to last
+            Dictionary<string, string> kv = new Dictionary<string, string>();
 
-            if (!Publics.srl_setting_class.CheckSettingIsSet())
+            kv[SettingKeys.point_factor.ToString()] = "0/1";
+            kv[SettingKeys.font_factor.ToString()] = "0/95";
+            kv[SettingKeys.printer_name.ToString()] = new PrinterSettings().PrinterName;
+            kv[SettingKeys.db_version.ToString()] = SRL.Security.GetAppVersion(Assembly.GetExecutingAssembly()).Major.ToString();
+
+            kv[SettingKeys.setting_is_set.ToString()] = "true";
+
+            if (!Public.srl_setting_class.CheckSetting(SettingKeys.setting_is_set.ToString(), typeof(SettingKeys), kv))
             {
-                Dictionary<string, string> kv = new Dictionary<string, string>();
-                kv["setting_is_set"] = "true";
-                kv["font_factor"] = "0/95";
-                kv["base_address"] = "https://app.nwms.ir/v2/b2b-api/";
-                kv["api_key"] = "2050130318";
-                srlsetting.InitiateSetting(kv);
-            }
+                SRL.MessageBoxForm2.Show("به نرم افزار حامی خوش آمدید. تنظیمات پیش فرض در نرم افزار ذخیره شد. برای تغییر به منوی تنظیمات بروید.", "تغییرات پیش فرض اعمال شد", MessageBoxForm2.Buttons.OK, MessageBoxForm2.Icon.Info, MessageBoxForm2.AnimateStyle.FadeIn);
+                menu["miSetting"].PerformClick();
 
+            }
+            else menu["miSell"].PerformClick();
         }
 
         internal static void CheckLicense()
