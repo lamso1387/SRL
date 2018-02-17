@@ -66,7 +66,6 @@ namespace SRL
         private void WinLoginUser_Load(object sender, EventArgs e)
         {
             LoadUsersInDgv();
-           
 
         }
 
