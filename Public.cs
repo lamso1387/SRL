@@ -42,6 +42,7 @@ using System.Text.RegularExpressions;
 using System.ServiceModel.Description;
 using System.ServiceModel.Configuration;
 using System.Runtime.CompilerServices;
+using System.Data.SQLite;
 
 namespace SRL
 {
@@ -5440,6 +5441,36 @@ namespace SRL
 
         }
 
+        public class SqliteEF
+        {
+            public string ConnectionStr
+            {
+                get { return Connection.ConnectionString; }
+                set { Connection.ConnectionString = value; }
+            }
+
+            public SQLiteConnection Connection { get; set; }
+            public SQLiteCommand Command { get; set; }
+            public SQLiteDataAdapter DataAdaptor { get; set; }
+            public SqliteEF(string connection_str = "Data Source=MyDatabase.sqlite;Version=3;")
+            {
+                Connection = new SQLiteConnection();
+                Command = new SQLiteCommand();
+                DataAdaptor = new SQLiteDataAdapter();
+                ConnectionStr = connection_str;
+                Connection.Open();
+            }
+
+            public List<EntityClass> Select<EntityClass>(string sql)
+            {
+                Command = new SQLiteCommand(sql, Connection);
+                DataAdaptor = new SQLiteDataAdapter(Command);
+                DataTable dt = new DataTable();
+                DataAdaptor.Fill(dt);
+                List<EntityClass> list = SRL.Convertor.ConvertDataTableToList<EntityClass>(dt);
+                return list;
+            }
+        }
         public class ReportTBClass
         {
             public string status { get; set; }
@@ -5873,6 +5904,7 @@ namespace SRL
 
         public static void UpdateConnectionStringAndRestart(string conStr, string conStrName, Control control_to_load)
         {
+           
             // example: SRL.Database.UpdateConnectionStringAndRestart(@"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=MyDatabase.sqlite;'", typeof(MyDatabaseEntities).Name, control);
             using (SRL.Database dbsrl = new SRL.Database())
             {
