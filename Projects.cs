@@ -18,6 +18,273 @@ namespace SRL
 {
     public class Projects
     {
+        public class PmsNtsm
+        {
+            static string base_address = "https://pms.ntsw.ir";
+            public class ResultClass<T>
+            {
+                public string ErrorMessage { get; set; }
+                public int Value { get; set; }
+                public T Result { get; set; } = SRL.ClassManagement.CreateInstance<T>();
+
+            }
+
+            public class Issues
+            {
+                public List<Issue> issues { get; set; }
+                public int total_count { get; set; }
+                public int offset { get; set; }
+                public int limit { get; set; }
+
+
+                public class Project
+                {
+                    public int id { get; set; }
+                    public string name { get; set; }
+                }
+
+                public class Tracker
+                {
+                    public int id { get; set; }
+                    public string name { get; set; }
+                }
+
+                public class Status
+                {
+                    public int id { get; set; }
+                    public string name { get; set; }
+                }
+
+                public class Priority
+                {
+                    public int id { get; set; }
+                    public string name { get; set; }
+                }
+
+                public class Author
+                {
+                    public int id { get; set; }
+                    public string name { get; set; }
+                }
+
+                public class AssignedTo
+                {
+                    public int id { get; set; }
+                    public string name { get; set; }
+                }
+
+                public class CustomField
+                {
+                    public int id { get; set; }
+                    public string name { get; set; }
+                    public string value { get; set; }
+                }
+
+                public class Issue
+                {
+                    public int id { get; set; }
+                    public Project project { get; set; }
+                    public Tracker tracker { get; set; }
+                    public Status status { get; set; }
+                    public Priority priority { get; set; }
+                    public Author author { get; set; }
+                    public AssignedTo assigned_to { get; set; }
+                    public string subject { get; set; }
+                    public string description { get; set; }
+                    public int done_ratio { get; set; }
+                    public List<CustomField> custom_fields { get; set; }
+                    public string created_on { get; set; }
+                    public string updated_on { get; set; }
+                    public string start_date { get; set; }
+                }
+
+
+
+
+            }
+            public class Projects
+            {
+                public List<Project> projects { get; set; }
+                public int total_count { get; set; }
+                public int offset { get; set; }
+                public int limit { get; set; }
+
+
+                public class Project
+                {
+                    public int id { get; set; }
+                    public string name { get; set; }
+                    public string identifier { get; set; }
+                    public string description { get; set; }
+                    public int status { get; set; }
+                    public string created_on { get; set; }
+                    public string updated_on { get; set; }
+                    public Parent parent { get; set; }
+                }
+                public class Parent
+                {
+                    public int id { get; set; }
+                    public string name { get; set; }
+                }
+
+            }
+
+            public class IssueStatus
+            {
+                public int id { get; set; }
+                public string name { get; set; }
+                public bool? is_closed { get; set; }
+            }
+
+            public class IssuePriority
+            {
+                public int id { get; set; }
+                public string name { get; set; }
+                public bool? is_default { get; set; }
+            }
+
+            public static ResultClass<List<Issues.Issue>> GetIssueList(string key, int? project_id = null, int? priority_id = null, string create_on = null, string updated_on = null, string filter = "&status_id=*")
+            {
+                /*
+                  To fetch issues for a date range (uncrypted filter is "><2012-03-01|2012-03-07") : created_on=%3E%3C2012-03-01|2012-03-07
+                  To fetch issues created after a certain date (uncrypted filter is ">=2012-03-01") : created_on=%3E%3D2012-03-01
+                  Or before a certain date (uncrypted filter is "<= 2012-03-07") :created_on=%3C%3D2012-03-07
+                  To fetch issues created after a certain timestamp (uncrypted filter is ">=2014-01-02T08:12:32Z") :created_on=%3E%3D2014-01-02T08:12:32Z
+                  To fetch issues updated after a certain timestamp (uncrypted filter is ">=2014-01-02T08:12:32Z") :updated_on=%3E%3D2014-01-02T08:12:32Z
+                */
+
+                ResultClass<List<Issues.Issue>> response = new ResultClass<List<Issues.Issue>>();
+
+                string method = "/issues.json?key=" + key;
+
+                if (project_id != null)
+                    method += "&project_id=" + project_id;
+                if (priority_id != null)
+                    method += "&priority_id=" + priority_id;
+                if (create_on != null)
+                    method += "&create_on=" + create_on;
+                if (updated_on != null)
+                    method += "&updated_on=" + updated_on;
+
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri(base_address);
+
+
+                int offset = 0;
+
+                Issues output = new Issues();
+                do
+                {
+                    string range = "&offset=" + offset + "&limit=100";
+                    HttpResponseMessage res = client.GetAsync(method + filter + range).Result;
+                    string result = res.Content.ReadAsStringAsync().Result;
+
+                    if (res.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        response.ErrorMessage = res.StatusCode + ". " + result;
+                        response.Result = null;
+                        break;
+                    }
+
+                    else
+                    {
+                        output = Newtonsoft.Json.JsonConvert.DeserializeObject<Issues>(result);
+                        response.Result.AddRange(output.issues);
+                        offset += 100;
+
+                    }
+
+                } while (output.issues.Any());
+
+
+
+                return response;
+            }
+
+
+
+
+
+            public static ResultClass<Projects> GetProjectList(string key, string filter = "&status_id=*")
+            {
+                ResultClass<Projects> response = new ResultClass<Projects>();
+
+                string method = "/projects.json?key=" + key;
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri(base_address);
+                HttpResponseMessage res = client.GetAsync(method + filter).Result;
+                string result = res.Content.ReadAsStringAsync().Result;
+
+                if (res.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    response.ErrorMessage = res.StatusCode + ". " + result;
+                    response.Result = null;
+                }
+                else
+                {
+                    var output = Newtonsoft.Json.JsonConvert.DeserializeObject<Projects>(result);
+                    response.Result = output;
+
+                }
+
+                return response;
+            }
+            public static ResultClass<List<IssueStatus>> GetIssueStatuses(string key)
+            {
+                ResultClass<List<IssueStatus>> response = new ResultClass<List<IssueStatus>>();
+
+                string method = "/issue_statuses.json?key=" + key;
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri(base_address);
+                HttpResponseMessage res = client.GetAsync(method).Result;
+                string result = res.Content.ReadAsStringAsync().Result;
+
+                if (res.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    response.ErrorMessage = res.StatusCode + ". " + result;
+                    response.Result = null;
+                }
+                else
+                {
+                    Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+
+                    List<IssueStatus> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<IssueStatus>>(output["issue_statuses"].ToString());
+
+                    response.Result = list;
+
+                }
+
+                return response;
+            }
+
+            public static ResultClass<List<IssuePriority>> GetIssuePriorities(string key)
+            {
+                ResultClass<List<IssuePriority>> response = new ResultClass<List<IssuePriority>>();
+
+                string method = "/issue_priorities.json?key=" + key;
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri(base_address);
+                HttpResponseMessage res = client.GetAsync(method).Result;
+                string result = res.Content.ReadAsStringAsync().Result;
+
+                if (res.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    response.ErrorMessage = res.StatusCode + ". " + result;
+                    response.Result = null;
+                }
+                else
+                {
+                    Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+
+                    List<IssuePriority> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<IssuePriority>>(output["issue_priorities"].ToString());
+
+                    response.Result = list;
+
+                }
+
+                return response;
+            }
+        }
         public class Nwms
         {
             public class Operations
@@ -431,7 +698,7 @@ namespace SRL
                     }
 
 
-                    public static bool Receipt(string api_key,string contractor_national_id, AnbarOperation.SimpleReceipt simple_receipt, out string result)
+                    public static bool Receipt(string api_key, string contractor_national_id, AnbarOperation.SimpleReceipt simple_receipt, out string result)
                     {
                         System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
                         client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
@@ -722,8 +989,8 @@ namespace SRL
                         }
 
 
-                    
-                }
+
+                    }
 
                     public static bool FinalizeGoodIssue(string id, string api_key, string contractor_national_id, out string finalization)
                     {
@@ -750,7 +1017,133 @@ namespace SRL
 
             }
 
+            public static bool SetContractors(string api_key, List<ContractorListClass> contractors, string warehouse_id)
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
+                    HttpResponseMessage response = client.GetAsync(warehouse_id).Result;
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        return true;
 
+                    }
+                    else return false;
+
+                }
+
+            }
+
+            public static NwmsResultType GetVirtualWarehouse(string api_key, string warehouse_id, string contractor_national_id, string contractor_co_national_id, out string result)
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/" + api_key + "/" + contractor_national_id + "/virt_warehouse/");
+                    HttpResponseMessage response = client.GetAsync("_all").Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+                        List<VirtClass> virt = Newtonsoft.Json.JsonConvert.DeserializeObject<List<VirtClass>>(data);
+                        string contractor = string.IsNullOrWhiteSpace(contractor_co_national_id) ? contractor_national_id : contractor_co_national_id;
+                        var query = virt.Where(x => (x.warehouse_id == warehouse_id || x.id == warehouse_id) && x.account_status == "1" && x.contractor_national_id == contractor);
+                        if (query.Any())
+                        {
+                            result = query.First().id;
+                            return NwmsResultType.OK;
+                        }
+                        else
+                        {
+                            return NwmsResultType.WarhouseNotFound;
+                        }
+
+                    }
+                    else return NwmsResultType.HttpError;
+
+                }
+
+            }
+
+            public static bool DeleteAllOwners(string api_key, string complex_id)
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
+                    Dictionary<string, object> input = new Dictionary<string, object>();
+                    List<Dictionary<string, object>> owners = new List<Dictionary<string, object>>();
+                    Dictionary<string, object> unknown = new Dictionary<string, object>();
+                    unknown["national_id"] = "0000000000";
+                    unknown["name"] = "UNKNOWN";
+                    owners.Add(unknown);
+                    input["owners"] = owners;
+                    HttpResponseMessage response = client.PutAsJsonAsync(complex_id, input).Result;
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            public static GetWarehouseClass GetWarehouse(string api_key, string warehouse_id)
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
+                    HttpResponseMessage response = client.GetAsync(warehouse_id).Result;
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        var result = response.Content.ReadAsStringAsync().Result;
+                        var output = Newtonsoft.Json.JsonConvert.DeserializeObject<GetWarehouseClass>(result);
+                        if (output.account_status == "1")
+                        {
+                            return output;
+                        }
+                        else
+                        {
+                            return null;
+                        }
+                        return output;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+
+            }
+
+            public static HttpResponseMessage EditWarehouse(string api_key, string warehouse_id, object body_json)
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
+                    HttpResponseMessage response = client.PutAsJsonAsync(warehouse_id, body_json).Result;
+                    return response;
+                }
+            }
+
+            public enum NwmsResultType
+            {
+                OK,
+                HttpError,
+                WarhouseNotFound
+            }
+
+            public class VirtClass
+            {
+                public string id { get; set; }
+                public string contractor_national_id { get; set; }
+                public string name { get; set; }
+                public string warehouse_id { get; set; }
+                public string account_status { get; set; }
+                public string postal_code { get; set; }
+                public string org_creator_national_id { get; set; }
+
+            }
             public class EstelamAccessFile
             {
                 public class CoOrPersonClass
@@ -980,7 +1373,7 @@ namespace SRL
 
                                 while (address.Contains("  "))
                                 {
-                                   address= address.Replace("  ", " ");
+                                    address = address.Replace("  ", " ");
                                 }
 
                             }
@@ -1280,6 +1673,65 @@ namespace SRL
                 public string error_name { get; set; }
                 public string address { get; set; }
             }
+
+            public class GetWarehouseClass
+            {
+                public int create_date { get; set; }
+                public IList<string> supervisor_org { get; set; }
+                public string account_status { get; set; }
+                public string postal_code { get; set; }
+                public string id { get; set; }
+                public Complex complex { get; set; }
+                public IList<string> activity_sector { get; set; }
+                public string type { get; set; }
+                public IList<Contractor> contractors { get; set; }
+                public string org_creator_national_id { get; set; }
+                public IList<Polygon> polygon { get; set; }
+                public string gov_warehouse_no { get; set; }
+                public string name { get; set; }
+                public string creator_national_id { get; set; }
+                public IList<string> st { get; set; }
+
+                public class Agent
+                {
+                    public string name { get; set; }
+                    public string national_id { get; set; }
+                }
+
+                public class Polygon
+                {
+                    public double lat { get; set; }
+                    public double lng { get; set; }
+                }
+
+                public class Complex
+                {
+                    public string province { get; set; }
+                    public string city { get; set; }
+                    public string name { get; set; }
+                    public string village { get; set; }
+                    public Agent agent { get; set; }
+                    public string full_address { get; set; }
+                    public string township { get; set; }
+                    public IList<Polygon> polygon { get; set; }
+                }
+
+                public class Contractor
+                {
+                    public object org_creator_national_id { get; set; }
+                    public string name { get; set; }
+                    public string title { get; set; }
+                    public string national_id { get; set; }
+                    public object creator_national_id { get; set; }
+                    public int start_epoch { get; set; }
+                    public string common_name { get; set; }
+                    public string account_status { get; set; }
+                    public object modifier_national_id { get; set; }
+                    public int expire_epoch { get; set; }
+                    public string id { get; set; }
+                }
+
+            }
             public class CompanyListClass
             {
                 public object website { get; set; }
@@ -1358,7 +1810,7 @@ namespace SRL
                 HttpClient client_ = new HttpClient();
                 client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/2050130318/admin/ext-service/");
                 person = new PersonClass();
-                
+
                 national_id = SRL.Convertor.NationalId(national_id);
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["national_id"] = national_id;
@@ -1465,7 +1917,7 @@ namespace SRL
 
                 company = new CompanyClass();
 
-                
+
 
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["cmp_national_code"] = co_national_id;
@@ -1478,7 +1930,7 @@ namespace SRL
                 }
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
-                    
+
                     string result = response.Content.ReadAsStringAsync().Result;
                     Dictionary<string, object> data1 = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
                     if (data1["Successful"].ToString() == "true" || data1["Successful"].ToString() == "True")
@@ -1546,22 +1998,25 @@ namespace SRL
             public static ComplexByPostCodeResult GetComplexByPostalCode(string postal_code, string api_key, out string result)
             {
                 ComplexByPostCodeResult estelam_result = new ComplexByPostCodeResult();
-                estelam_result = null;
 
-                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
-
-                var call = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code);
-                HttpResponseMessage response = call.Result;
-                string result_ = response.Content.ReadAsStringAsync().Result;
-                result = System.Text.RegularExpressions.Regex.Unescape(result_);
-
-                if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
                 {
-                    estelam_result = Newtonsoft.Json.JsonConvert.DeserializeObject<ComplexByPostCodeResult>(result);
+                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
 
+                    var call = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code);
+                    HttpResponseMessage response = call.Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        estelam_result = Newtonsoft.Json.JsonConvert.DeserializeObject<ComplexByPostCodeResult>(result);
+
+                        return estelam_result;
+                    }
+                    else
+                    {
+                        return null;
+                    }
                 }
-                return estelam_result;
 
             }
 
@@ -1620,7 +2075,13 @@ namespace SRL
 
             }
 
-
+            public class ContractorListClass
+            {
+                public string national_id { get; set; }
+                public string name { get; set; }
+                public long start_epoch { get; set; } = 1519072200;
+                public long expire_epoch { get; set; } = 1834605000;
+            }
         }
 
         public class MeliSms
@@ -1692,4 +2153,5 @@ namespace SRL
             }
         }
     }
+
 }
