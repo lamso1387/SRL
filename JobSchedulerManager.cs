@@ -303,7 +303,6 @@ namespace SRL.SchedulerManager.Sample
         }
     }
 
-
     /// <summary>
     /// A simple job which is executed only once.
     /// </summary>
