@@ -626,7 +626,7 @@ namespace SRL
         /// <param name="migration_version_query"></param>
         /// <param name="assembly"></param>
         public bool MigrateDatabase(Dictionary<string, string> migration_version_query, Assembly assembly, string db_key)
-        { 
+        {
             /* use in load form: 
               Dictionary<string, string> migration_version_query = new Dictionary<string, string>();
 
@@ -637,7 +637,7 @@ namespace SRL
             Publics.srlsetting.MigrateDatabase(migration_version_query);
              */
             string db_version = GetDbVersion(db_key);
-            if(string.IsNullOrWhiteSpace(db_version))
+            if (string.IsNullOrWhiteSpace(db_version))
             {
                 return false;
             }
@@ -674,7 +674,7 @@ namespace SRL
                     SRL.ClassManagement.SetProperty("value", instance, item.Value);
                     SRL.Database.EntityAdd<SettingEntity>(db, instance);
                 }
-                
+
             }
 
             db.SaveChanges();
@@ -849,7 +849,7 @@ namespace SRL
 
         }
 
-        
+
     }
 
     public class ChildParent
@@ -4338,7 +4338,7 @@ namespace SRL
         }
         public static string GetHashString(string input, HashAlgoritmType algorytmType = HashAlgoritmType.Sha1)
         {
-            if(algorytmType==HashAlgoritmType.None)
+            if (algorytmType == HashAlgoritmType.None)
             {
                 return input;
             }
@@ -4753,8 +4753,8 @@ namespace SRL
                         object safeValue = (row[pro.Name] == DBNull.Value) ? null : Convert.ChangeType(row[pro.Name], t);
                         pro.SetValue(objT, safeValue, null);
 
-                    //  pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
-                }
+                        //  pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
+                    }
                 }
                 return objT;
             }).ToList();
@@ -5141,6 +5141,11 @@ namespace SRL
             DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             return epoch.AddSeconds(unixTime);
         }
+        public static double EnglishDateTimeToUnixEpoch(DateTime dt)
+        {
+            var epoch = dt - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            return epoch.TotalSeconds;
+        }
         public static DateTime EnglishToPersianDateTime(DateTime date)
         {
 
@@ -5274,7 +5279,7 @@ namespace SRL
         }
         public static string Mobile(string mobile)
         {
-            mobile = (mobile.Length == 10 && mobile.Substring(0,1) !="0") ? "0" + mobile : mobile;
+            mobile = (mobile.Length == 10 && mobile.Substring(0, 1) != "0") ? "0" + mobile : mobile;
             return mobile;
 
         }
@@ -5301,9 +5306,20 @@ namespace SRL
         public static T ClassToClass<T>(Object input)
         {
             string input_json = SRL.Json.ClassObjectToJson(input);
-            
-            T output= Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input_json);
+
+            T output = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input_json);
             return output;
+        }
+
+        public static Dictionary<string, object> ClassToDictionary(object obj)
+        {
+            Dictionary<string, object> dic = obj.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public).ToDictionary(prop => prop.Name, prop => prop.GetValue(obj, null));
+            return dic;
+        }
+        public static KeyValuePair<string, object>[] ClassToArray(object obj)
+        {
+            var dic = obj.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public).ToDictionary(prop => prop.Name, prop => prop.GetValue(obj, null)).ToArray();
+            return dic;
         }
     }
     public class Json : ControlLoad
@@ -5323,14 +5339,18 @@ namespace SRL
         }
         public static string ClassObjectToJson(object obj)
         {
+            if (obj == null) return null;
             try
             {
-                return Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+                if (obj.GetType() == typeof(string)) obj = Newtonsoft.Json.JsonConvert.DeserializeObject(obj.ToString());
+                string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+                return json;
             }
             catch (Exception)
             {
 
-                return new JavaScriptSerializer().Serialize(obj);
+                string json = new JavaScriptSerializer().Serialize(obj);
+                return json;
             }
 
 
@@ -5379,6 +5399,17 @@ namespace SRL
 
             return dt;
 
+        }
+
+        internal static Newtonsoft.Json.Linq.JObject RemoveEmptyKeys(object obj)
+        {
+            //add [DefaultValue("")] to must be remved properties
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, new Newtonsoft.Json.JsonSerializerSettings()
+            {
+                DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Ignore
+            });
+            Newtonsoft.Json.Linq.JObject conv = Newtonsoft.Json.Linq.JObject.Parse(json);
+            return conv;
         }
 
     }
@@ -5904,7 +5935,7 @@ namespace SRL
 
         public static void UpdateConnectionStringAndRestart(string conStr, string conStrName, Control control_to_load)
         {
-           
+
             // example: SRL.Database.UpdateConnectionStringAndRestart(@"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=MyDatabase.sqlite;'", typeof(MyDatabaseEntities).Name, control);
             using (SRL.Database dbsrl = new SRL.Database())
             {
@@ -6811,8 +6842,8 @@ namespace SRL
 
             System.IO.File.WriteAllText(file_path, "");
             System.IO.File.WriteAllText(file_path, text);
-            if(launch)
-            System.Diagnostics.Process.Start(file_path);
+            if (launch)
+                System.Diagnostics.Process.Start(file_path);
 
         }
     }
