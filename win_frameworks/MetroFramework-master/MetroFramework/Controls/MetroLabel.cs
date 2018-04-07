@@ -43,7 +43,7 @@ namespace MetroFramework.Controls
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             UseTransparency();
             UseStyleColor();
-            UseFontStyle(); 
+            UseFontStyle();
         }
 
         protected override void OnPaintForeground(PaintEventArgs e)

@@ -2361,6 +2361,33 @@ namespace SRL
 
             }
 
+            public static void Style(MenuStrip menuStrip1, Color? menu_back = null, Color? menu_fore = null, Color? click_back = null, Color? click_fore = null)
+            {
+                Color light_black = Color.FromArgb(38, 38, 38);
+                Color gray = Color.FromArgb(165, 165, 165);
+                Color green_high = Color.FromArgb(0, 128, 129);
+
+                menuStrip1.BackColor = menu_back == null ? light_black : (Color)menu_back;
+                menuStrip1.ForeColor = menu_fore == null ? gray : (Color)gray;
+
+                click_back = click_back == null ? green_high : click_back;
+                click_fore = click_fore == null ? Color.White : click_fore;
+
+                foreach (ToolStripMenuItem item in menuStrip1.Items)
+                {
+                    item.Click += (s, e) =>
+                    {
+                        ToolStripMenuItem menu = s as ToolStripMenuItem;
+                        SRL.WinUI.MenuClass.MenuStripClickColoring(menuStrip1, menu.Name, (Color)click_back, (Color)click_fore);
+                    };
+                }
+
+                foreach (ToolStripMenuItem item in SRL.ChildParent.GetAllMenuItems(menuStrip1))
+                {
+                    item.BackColor = menu_back == null ? light_black : (Color)menu_back;
+                    item.ForeColor = menu_fore == null ? gray : (Color)gray;
+                }
+            }
         }
 
     }
