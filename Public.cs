@@ -5168,6 +5168,11 @@ namespace SRL
             DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             return epoch.AddSeconds(unixTime);
         }
+        public static double EnglishDateTimeToUnixEpoch(DateTime dt)
+        {
+            var epoch = dt - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            return epoch.TotalSeconds;
+        }
         public static DateTime EnglishToPersianDateTime(DateTime date)
         {
 
@@ -5332,6 +5337,17 @@ namespace SRL
             T output = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input_json);
             return output;
         }
+
+        public static Dictionary<string, object> ClassToDictionary(object obj)
+        {
+            Dictionary<string, object> dic = obj.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public).ToDictionary(prop => prop.Name, prop => prop.GetValue(obj, null));
+            return dic;
+        }
+        public static KeyValuePair<string, object>[] ClassToArray(object obj)
+        {
+            var dic = obj.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public).ToDictionary(prop => prop.Name, prop => prop.GetValue(obj, null)).ToArray();
+            return dic;
+        }
     }
     public class Json : ControlLoad
     {
@@ -5350,14 +5366,18 @@ namespace SRL
         }
         public static string ClassObjectToJson(object obj)
         {
+            if (obj == null) return null;
             try
             {
-                return Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+                if (obj.GetType() == typeof(string)) obj = Newtonsoft.Json.JsonConvert.DeserializeObject(obj.ToString());
+                string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+                return json;
             }
             catch (Exception)
             {
 
-                return new JavaScriptSerializer().Serialize(obj);
+                string json = new JavaScriptSerializer().Serialize(obj);
+                return json;
             }
 
 
@@ -5406,6 +5426,17 @@ namespace SRL
 
             return dt;
 
+        }
+
+        internal static Newtonsoft.Json.Linq.JObject RemoveEmptyKeys(object obj)
+        {
+            //add [DefaultValue("")] to must be remved properties
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, new Newtonsoft.Json.JsonSerializerSettings()
+            {
+                DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Ignore
+            });
+            Newtonsoft.Json.Linq.JObject conv = Newtonsoft.Json.Linq.JObject.Parse(json);
+            return conv;
         }
 
     }
