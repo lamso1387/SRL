@@ -626,7 +626,7 @@ namespace SRL
         /// <param name="migration_version_query"></param>
         /// <param name="assembly"></param>
         public bool MigrateDatabase(Dictionary<string, string> migration_version_query, Assembly assembly, string db_key)
-        { 
+        {
             /* use in load form: 
               Dictionary<string, string> migration_version_query = new Dictionary<string, string>();
 
@@ -637,7 +637,7 @@ namespace SRL
             Publics.srlsetting.MigrateDatabase(migration_version_query);
              */
             string db_version = GetDbVersion(db_key);
-            if(string.IsNullOrWhiteSpace(db_version))
+            if (string.IsNullOrWhiteSpace(db_version))
             {
                 return false;
             }
@@ -674,7 +674,7 @@ namespace SRL
                     SRL.ClassManagement.SetProperty("value", instance, item.Value);
                     SRL.Database.EntityAdd<SettingEntity>(db, instance);
                 }
-                
+
             }
 
             db.SaveChanges();
@@ -849,7 +849,7 @@ namespace SRL
 
         }
 
-        
+
     }
 
     public class ChildParent
@@ -2361,6 +2361,33 @@ namespace SRL
 
             }
 
+            public static void Style(MenuStrip menuStrip1, Color? menu_back = null, Color? menu_fore = null, Color? click_back = null, Color? click_fore = null)
+            {
+                Color light_black = Color.FromArgb(38, 38, 38);
+                Color gray = Color.FromArgb(165, 165, 165);
+                Color green_high = Color.FromArgb(0, 128, 129);
+
+                menuStrip1.BackColor = menu_back == null ? light_black : (Color)menu_back;
+                menuStrip1.ForeColor = menu_fore == null ? gray : (Color)gray;
+
+                click_back = click_back == null ? green_high : click_back;
+                click_fore = click_fore == null ? Color.White : click_fore;
+
+                foreach (ToolStripMenuItem item in menuStrip1.Items)
+                {
+                    item.Click += (s, e) =>
+                    {
+                        ToolStripMenuItem menu = s as ToolStripMenuItem;
+                        SRL.WinUI.MenuClass.MenuStripClickColoring(menuStrip1, menu.Name, (Color)click_back, (Color)click_fore);
+                    };
+                }
+
+                foreach (ToolStripMenuItem item in SRL.ChildParent.GetAllMenuItems(menuStrip1))
+                {
+                    item.BackColor = menu_back == null ? light_black : (Color)menu_back;
+                    item.ForeColor = menu_fore == null ? gray : (Color)gray;
+                }
+            }
         }
 
     }
@@ -4338,7 +4365,7 @@ namespace SRL
         }
         public static string GetHashString(string input, HashAlgoritmType algorytmType = HashAlgoritmType.Sha1)
         {
-            if(algorytmType==HashAlgoritmType.None)
+            if (algorytmType == HashAlgoritmType.None)
             {
                 return input;
             }
@@ -4753,8 +4780,8 @@ namespace SRL
                         object safeValue = (row[pro.Name] == DBNull.Value) ? null : Convert.ChangeType(row[pro.Name], t);
                         pro.SetValue(objT, safeValue, null);
 
-                    //  pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
-                }
+                        //  pro.SetValue(objT, row[pro.Name] == DBNull.Value ? null : Convert.ChangeType(row[pro.Name], pI.PropertyType));
+                    }
                 }
                 return objT;
             }).ToList();
@@ -5274,7 +5301,7 @@ namespace SRL
         }
         public static string Mobile(string mobile)
         {
-            mobile = (mobile.Length == 10 && mobile.Substring(0,1) !="0") ? "0" + mobile : mobile;
+            mobile = (mobile.Length == 10 && mobile.Substring(0, 1) != "0") ? "0" + mobile : mobile;
             return mobile;
 
         }
@@ -5301,8 +5328,8 @@ namespace SRL
         public static T ClassToClass<T>(Object input)
         {
             string input_json = SRL.Json.ClassObjectToJson(input);
-            
-            T output= Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input_json);
+
+            T output = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input_json);
             return output;
         }
     }
@@ -5904,7 +5931,7 @@ namespace SRL
 
         public static void UpdateConnectionStringAndRestart(string conStr, string conStrName, Control control_to_load)
         {
-           
+
             // example: SRL.Database.UpdateConnectionStringAndRestart(@"metadata=res://*/Model1.csdl|res://*/Model1.ssdl|res://*/Model1.msl;provider=System.Data.SQLite.EF6;provider connection string='data source=MyDatabase.sqlite;'", typeof(MyDatabaseEntities).Name, control);
             using (SRL.Database dbsrl = new SRL.Database())
             {
@@ -6811,8 +6838,8 @@ namespace SRL
 
             System.IO.File.WriteAllText(file_path, "");
             System.IO.File.WriteAllText(file_path, text);
-            if(launch)
-            System.Diagnostics.Process.Start(file_path);
+            if (launch)
+                System.Diagnostics.Process.Start(file_path);
 
         }
     }

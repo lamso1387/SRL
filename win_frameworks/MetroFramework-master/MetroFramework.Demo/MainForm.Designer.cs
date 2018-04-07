@@ -162,7 +162,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.metroProgressBar3.Location = new System.Drawing.Point(22, 159);
             this.metroProgressBar3.Name = "metroProgressBar3";
-            this.metroProgressBar3.Size = new System.Drawing.Size(0, 23);
+            this.metroProgressBar3.Size = new System.Drawing.Size(237, 23);
             this.metroProgressBar3.TabIndex = 25;
             this.metroToolTip.SetToolTip(this.metroProgressBar3, "ProgressBar Tooltip");
             this.metroProgressBar3.Value = 25;
@@ -223,7 +223,7 @@
             this.metroProgressBar.HideProgressText = false;
             this.metroProgressBar.Location = new System.Drawing.Point(28, 47);
             this.metroProgressBar.Name = "metroProgressBar";
-            this.metroProgressBar.Size = new System.Drawing.Size(0, 23);
+            this.metroProgressBar.Size = new System.Drawing.Size(237, 23);
             this.metroProgressBar.TabIndex = 2;
             this.metroToolTip.SetToolTip(this.metroProgressBar, "ProgressBar Tooltip");
             this.metroProgressBar.Value = 25;
@@ -255,7 +255,7 @@
             this.metroScrollBar1.Name = "metroScrollBar1";
             this.metroScrollBar1.Orientation = MetroFramework.Controls.MetroScrollOrientation.Horizontal;
             this.metroScrollBar1.ScrollbarSize = 23;
-            this.metroScrollBar1.Size = new System.Drawing.Size(0, 23);
+            this.metroScrollBar1.Size = new System.Drawing.Size(237, 23);
             this.metroScrollBar1.TabIndex = 5;
             this.metroToolTip.SetToolTip(this.metroScrollBar1, "Scrollbar Tooltip");
             this.metroScrollBar1.UseBarColor = true;
@@ -360,6 +360,7 @@
             this.metroStyleExtender.SetApplyMetroTheme(this.propertyGrid1, true);
             this.propertyGrid1.BackColor = System.Drawing.Color.White;
             this.propertyGrid1.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(17)))), ((int)(((byte)(17)))), ((int)(((byte)(17)))));
+            this.propertyGrid1.LineColor = System.Drawing.SystemColors.ControlDark;
             this.propertyGrid1.Location = new System.Drawing.Point(263, 23);
             this.propertyGrid1.Name = "propertyGrid1";
             this.propertyGrid1.SelectedObject = this;
@@ -408,7 +409,7 @@
             this.metroPanel2.HorizontalScrollbarSize = 10;
             this.metroPanel2.Location = new System.Drawing.Point(309, 24);
             this.metroPanel2.Name = "metroPanel2";
-            this.metroPanel2.Size = new System.Drawing.Size(0, 83);
+            this.metroPanel2.Size = new System.Drawing.Size(232, 83);
             this.metroPanel2.TabIndex = 38;
             this.metroPanel2.VerticalScrollbarBarColor = true;
             this.metroPanel2.VerticalScrollbarHighlightOnWheel = false;
@@ -445,7 +446,7 @@
             this.metroLabel26.Location = new System.Drawing.Point(8, 17);
             this.metroLabel26.Margin = new System.Windows.Forms.Padding(3);
             this.metroLabel26.Name = "metroLabel26";
-            this.metroLabel26.Size = new System.Drawing.Size(113, 19);
+            this.metroLabel26.Size = new System.Drawing.Size(111, 19);
             this.metroLabel26.TabIndex = 39;
             this.metroLabel26.Text = "Transparent Label";
             this.metroLabel26.UseStyleColors = true;
@@ -504,7 +505,7 @@
             this.metroTile3.Controls.Add(this.metroLink6);
             this.metroTile3.Location = new System.Drawing.Point(309, 117);
             this.metroTile3.Name = "metroTile3";
-            this.metroTile3.Size = new System.Drawing.Size(0, 94);
+            this.metroTile3.Size = new System.Drawing.Size(232, 94);
             this.metroTile3.TabIndex = 32;
             this.metroTile3.Text = "metroTile3";
             this.metroTile3.TileImage = global::MetroFramework.Demo.Properties.Resources.icon_bug_32x32;
@@ -514,7 +515,7 @@
             // 
             this.metroProgressSpinner7.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.metroProgressSpinner7.BackColor = System.Drawing.Color.Transparent;
-            this.metroProgressSpinner7.Location = new System.Drawing.Point(-27, 68);
+            this.metroProgressSpinner7.Location = new System.Drawing.Point(205, 68);
             this.metroProgressSpinner7.Maximum = 100;
             this.metroProgressSpinner7.Name = "metroProgressSpinner7";
             this.metroProgressSpinner7.Size = new System.Drawing.Size(23, 23);
@@ -528,7 +529,7 @@
             this.metroLink6.AutoSize = true;
             this.metroLink6.BackColor = System.Drawing.Color.Transparent;
             this.metroLink6.ForeColor = System.Drawing.Color.White;
-            this.metroLink6.Location = new System.Drawing.Point(-113, 4);
+            this.metroLink6.Location = new System.Drawing.Point(119, 4);
             this.metroLink6.Name = "metroLink6";
             this.metroLink6.Size = new System.Drawing.Size(109, 23);
             this.metroLink6.TabIndex = 32;
@@ -557,7 +558,7 @@
             this.metroProgressBar2.Location = new System.Drawing.Point(22, 188);
             this.metroProgressBar2.Name = "metroProgressBar2";
             this.metroProgressBar2.ProgressBarStyle = System.Windows.Forms.ProgressBarStyle.Marquee;
-            this.metroProgressBar2.Size = new System.Drawing.Size(0, 23);
+            this.metroProgressBar2.Size = new System.Drawing.Size(237, 23);
             this.metroProgressBar2.TabIndex = 27;
             this.metroProgressBar2.Value = 25;
             // 
@@ -588,7 +589,7 @@
             this.metroLabel25.Location = new System.Drawing.Point(22, 24);
             this.metroLabel25.Margin = new System.Windows.Forms.Padding(3);
             this.metroLabel25.Name = "metroLabel25";
-            this.metroLabel25.Size = new System.Drawing.Size(113, 19);
+            this.metroLabel25.Size = new System.Drawing.Size(111, 19);
             this.metroLabel25.TabIndex = 18;
             this.metroLabel25.Text = "Transparent Label";
             this.metroLabel25.UseStyleColors = true;
@@ -714,7 +715,7 @@
             this.metroLabel19.AutoSize = true;
             this.metroLabel19.Location = new System.Drawing.Point(297, 168);
             this.metroLabel19.Name = "metroLabel19";
-            this.metroLabel19.Size = new System.Drawing.Size(86, 19);
+            this.metroLabel19.Size = new System.Drawing.Size(84, 19);
             this.metroLabel19.TabIndex = 9;
             this.metroLabel19.Text = "MetroToggle";
             // 
@@ -811,7 +812,7 @@
             this.metroLabel5.AutoSize = true;
             this.metroLabel5.Location = new System.Drawing.Point(28, 124);
             this.metroLabel5.Name = "metroLabel5";
-            this.metroLabel5.Size = new System.Drawing.Size(96, 19);
+            this.metroLabel5.Size = new System.Drawing.Size(94, 19);
             this.metroLabel5.TabIndex = 8;
             this.metroLabel5.Text = "MetroTrackBar";
             // 
@@ -822,7 +823,7 @@
             this.metroProgressBar1.Location = new System.Drawing.Point(28, 76);
             this.metroProgressBar1.Name = "metroProgressBar1";
             this.metroProgressBar1.ProgressBarStyle = System.Windows.Forms.ProgressBarStyle.Marquee;
-            this.metroProgressBar1.Size = new System.Drawing.Size(0, 23);
+            this.metroProgressBar1.Size = new System.Drawing.Size(237, 23);
             this.metroProgressBar1.TabIndex = 7;
             this.metroProgressBar1.Value = 25;
             // 
@@ -869,7 +870,7 @@
             this.metroLabel15.Location = new System.Drawing.Point(388, 25);
             this.metroLabel15.Margin = new System.Windows.Forms.Padding(3);
             this.metroLabel15.Name = "metroLabel15";
-            this.metroLabel15.Size = new System.Drawing.Size(91, 19);
+            this.metroLabel15.Size = new System.Drawing.Size(89, 19);
             this.metroLabel15.TabIndex = 10;
             this.metroLabel15.Text = "MetroTextBox";
             // 
@@ -1140,7 +1141,7 @@
             this.metroTabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this.metroTabControl.Location = new System.Drawing.Point(20, 60);
             this.metroTabControl.Name = "metroTabControl";
-            this.metroTabControl.SelectedIndex = 3;
+            this.metroTabControl.SelectedIndex = 4;
             this.metroTabControl.Size = new System.Drawing.Size(576, 331);
             this.metroTabControl.TabIndex = 0;
             // 
