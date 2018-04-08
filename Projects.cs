@@ -1462,7 +1462,8 @@ namespace SRL
                             if (item.code.Length > 10)
                             {
                                 string result = "";
-                                var is_ok = SRL.Projects.Nwms.GetCompanyByCoNationalId("2050130318", item.code, out result);
+                                CompanyClass company = new CompanyClass();
+                                var is_ok = SRL.Projects.Nwms.GetCompanyByCoNationalId("2050130318", item.code,out company, out result);
 
                                 if (!is_ok)
                                 {
@@ -1479,7 +1480,7 @@ namespace SRL
                             {
                                 PersonClass person = new PersonClass();
                                 var get = SRL.Projects.Nwms.GetPersonByNationalId("2050130318", item.code, out person);
-                                if (get)
+                                if (get==GetPersonResult.OK)
                                 {
                                     string query = "update " + table_name + " set status='" + person.HttpCode + "' , name='" + person.FirstName + "', family='" + person.LastName + "' where code='" + item.code + "'";
                                     SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);

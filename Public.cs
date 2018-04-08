@@ -4751,6 +4751,15 @@ namespace SRL
             return endpoint.Address.Uri.ToString();
         }
 
+        public static void UpdateConString(Configuration config, string con_str_name, string new_con_str)
+        {
+            ConnectionStringsSection section = config.GetSection("connectionStrings") as ConnectionStringsSection;
+            if (section != null)
+            {
+                section.ConnectionStrings[con_str_name].ConnectionString = new_con_str;
+                config.Save();
+            }
+        }
     }
     public class Convertor
     {
@@ -5465,6 +5474,7 @@ namespace SRL
             chart.DataBind();
         }
     }
+ 
     public class Database : SRL.ControlLoad
     {
 
