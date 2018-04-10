@@ -43,6 +43,8 @@ using System.ServiceModel.Description;
 using System.ServiceModel.Configuration;
 using System.Runtime.CompilerServices;
 using System.Data.SQLite;
+using System.Data.Entity.Migrations;
+using Microsoft.Win32;
 
 namespace SRL
 {
@@ -4753,6 +4755,7 @@ namespace SRL
 
         public static void UpdateConString(Configuration config, string con_str_name, string new_con_str)
         {
+            //Configuration config = WebConfigurationManager.OpenWebConfiguration("~");
             ConnectionStringsSection section = config.GetSection("connectionStrings") as ConnectionStringsSection;
             if (section != null)
             {
@@ -5474,7 +5477,22 @@ namespace SRL
             chart.DataBind();
         }
     }
- 
+
+    public class CodeFirst
+    {
+        public static void MigrateDBToLatestVersion<TDbContext, TConfiguration>()
+            where TDbContext : DbContext
+            where TConfiguration : DbMigrationsConfiguration<TDbContext>, new()
+        {
+
+            System.Data.Entity.Database.SetInitializer(new MigrateDatabaseToLatestVersion<TDbContext, TConfiguration>());
+        }
+
+        public static void PreventPluralizingDbTable(DbModelBuilder modelBuilder)
+        {
+            modelBuilder.Conventions.Remove<System.Data.Entity.ModelConfiguration.Conventions.PluralizingTableNameConvention>();
+        }
+    }
     public class Database : SRL.ControlLoad
     {
 
@@ -5507,6 +5525,74 @@ namespace SRL
             UNIQUE,
             All
 
+        }
+
+        public enum GetSqlInstanceResult
+        {
+            OK,
+            SqlException,
+            Exception,
+            InstanceNotFound
+        }
+        public class SqlServerInstances
+        {
+            public static IEnumerable<string> ListLocalSqlInstances()
+            {
+                if (Environment.Is64BitOperatingSystem)
+                {
+                    using (var hive = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                    {
+                        foreach (string item in ListLocalSqlInstances(hive))
+                        {
+                            yield return item;
+                        }
+                    }
+
+                    using (var hive = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32))
+                    {
+                        foreach (string item in ListLocalSqlInstances(hive))
+                        {
+                            yield return item;
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (string item in ListLocalSqlInstances(Registry.LocalMachine))
+                    {
+                        yield return item;
+                    }
+                }
+            }
+
+            private static IEnumerable<string> ListLocalSqlInstances(RegistryKey hive)
+            {
+                const string keyName = @"Software\Microsoft\Microsoft SQL Server";
+                const string valueName = "InstalledInstances";
+                const string defaultName = "MSSQLSERVER";
+
+                using (var key = hive.OpenSubKey(keyName, false))
+                {
+                    if (key == null) return Enumerable.Empty<string>();
+
+                    var value = key.GetValue(valueName) as string[];
+                    if (value == null) return Enumerable.Empty<string>();
+
+                    for (int index = 0; index < value.Length; index++)
+                    {
+                        if (string.Equals(value[index], defaultName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            value[index] = ".";
+                        }
+                        else
+                        {
+                            value[index] = @".\" + value[index];
+                        }
+                    }
+
+                    return value;
+                }
+            }
         }
 
         public class SqliteEF
@@ -5985,7 +6071,62 @@ namespace SRL
 
         }
 
+        
+        public static GetSqlInstanceResult GetSqlInstance(string db_name, out string data_source, out string connection_str, out Exception ex)
+        {
+            data_source = "";
+            connection_str = "";
+            ex = new Exception();
 
+            List<string> list = SRL.Database.SqlServerInstances.ListLocalSqlInstances().ToList();
+
+            foreach (var item in SRL.Database.SqlServerInstances.ListLocalSqlInstances().ToList())
+            {
+
+                System.Data.SqlClient.SqlConnectionStringBuilder builder =
+  new System.Data.SqlClient.SqlConnectionStringBuilder();
+
+                builder.DataSource = item;
+                builder.InitialCatalog = db_name;
+                builder.IntegratedSecurity = true;
+
+                connection_str = builder.ConnectionString;
+                using (SqlConnection con = new SqlConnection(connection_str))
+                {
+
+                    try
+                    {
+                        list.Remove(item);
+                        con.Open();
+                        data_source = item;
+                        return GetSqlInstanceResult.OK;
+                    }
+                    catch (SqlException ex1)
+                    {
+                        ex = ex1;
+                        if (ex1.Number == 2 || ex1.Number == 1225)
+                            continue;
+                        else
+                        {
+                            if (list.Any()) continue;
+                            else return GetSqlInstanceResult.SqlException;
+                        }
+
+                    }
+                    catch (Exception ex2)
+                    {
+                        ex = ex2;
+                        if (list.Any()) continue;
+                        else return GetSqlInstanceResult.Exception;
+                    }
+                }
+
+            }
+
+            return GetSqlInstanceResult.InstanceNotFound;
+        }
+
+       
     }
     public class AccessManagement
     {
