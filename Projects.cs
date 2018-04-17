@@ -1585,7 +1585,7 @@ namespace SRL
 
                     }
                 }
-
+                
                 public static void ParallelAddressByPostServer(List<GetAddressByPostServerResult> list, BackgroundWorker bg, params object[] args)
                 {
                     //args0: password, args1: client, args2: username, args3: file_full_path, args4: table_name
@@ -2392,6 +2392,7 @@ namespace SRL
                     else
                     {
                         result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        if (result == "NotFound") result = @"{""postal_code"":""NotFound""}";
                         return null;
                     }
                 }
@@ -2555,7 +2556,7 @@ namespace SRL
             public string Password { get; set; }
             public string FromNumber { get; set; }
             public ServiceReferenceSendSms.SendSoapClient send_client;
-
+            
             public MeliSms(string username, string password, string from_number)
             {
                 //"09114452764", "2275",from_number = "500010604260"

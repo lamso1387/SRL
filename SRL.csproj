@@ -65,9 +65,9 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System.Data.Entity" />
-    <Reference Include="System.Data.SQLite, Version=1.0.105.2, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
+    <Reference Include="System.Data.SQLite, Version=1.0.105.2, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\NwmsInterface\NwmsInterface\System.Data.SQLite.dll</HintPath>
+      <HintPath>my_reference\SqLite 1.0.105.2\System.Data.SQLite.dll</HintPath>
     </Reference>
     <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
@@ -345,7 +345,9 @@
     <None Include="Service References\PostCodeServiceReference\configuration.svcinfo" />
     <None Include="Service References\PostCodeServiceReference\configuration91.svcinfo" />
     <None Include="Service References\PostCodeServiceReference\PostCode.disco" />
-    <None Include="app.config" />
+    <None Include="app.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="Service References\PostCodeServiceReference\PostCode.wsdl" />
     <None Include="Service References\PostCodeServiceReference\PostCode.xsd">
       <SubType>Designer</SubType>
