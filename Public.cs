@@ -45,6 +45,7 @@ using System.Runtime.CompilerServices;
 using System.Data.SQLite;
 using System.Data.Entity.Migrations;
 using Microsoft.Win32;
+using System.ComponentModel.DataAnnotations;
 
 namespace SRL
 {
@@ -567,6 +568,13 @@ namespace SRL
             await Task.Delay(milisecond);
         }
 
+        public static bool CheckStringdateFormat(string input, string format)
+        {
+            //format= "yyyy/MM/dd HH:mm:ss"
+            DateTime dt = new DateTime();
+            return DateTime.TryParseExact(input, format, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out dt);
+             
+        }
     }
     public class SettingClass<SettingEntity> where SettingEntity : class
     {
@@ -1510,6 +1518,35 @@ namespace SRL
             //             }
             DescriptionAttribute[] attributes = (DescriptionAttribute[])enum_value.GetType().GetField(enum_value.ToString()).GetCustomAttributes(typeof(DescriptionAttribute), false);
             return attributes.Length > 0 ? attributes[0].Description : string.Empty;
+        } 
+        public static IEnumerable<string> CheckValidationAttribute(object o)
+        {
+            List<string> errors = new List<string>();
+            IEnumerable<PropertyDescriptor> prop_des = TypeDescriptor.GetProperties(o.GetType()).Cast<PropertyDescriptor>();
+            var validations =
+                prop_des.SelectMany(pd => pd.Attributes.OfType<ValidationAttribute>().Where(va => !va.IsValid(pd.GetValue(o))),
+                (field, attr )=>new {field.Name, attr.ErrorMessage,attr.TypeId,
+                    Minimum = attr.GetType().GetProperty("Minimum")?.GetValue(attr) ?? null,
+                    Maximum = attr.GetType().GetProperty("Maximum")?.GetValue(attr) ?? null}).ToList();
+            foreach (var item in validations)
+            {
+                string error = item.ErrorMessage;
+                string attr_name = (item as dynamic).TypeId.Name;
+                while (error.Contains("{") && !string.IsNullOrWhiteSpace(error))
+                {
+                   error= error.Replace("{0}", item.Name);
+                    switch (attr_name)
+                    { 
+                        case nameof(RangeAttribute): 
+                           error= error.Replace("{1}",  item.Minimum.ToString());
+                           error= error.Replace("{2}",  item.Maximum.ToString() ); 
+                            break;
+                    }
+                }
+                errors.Add(error);
+            }
+             
+            return errors;
         }
     }
     public class WinUI
@@ -4777,7 +4814,7 @@ namespace SRL
             var columnNames = dt.Columns.Cast<DataColumn>()
                     .Select(c => c.ColumnName)
                     .ToList();
-            var properties = typeof(T).GetProperties();
+            var properties = typeof(T).GetProperties(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             return dt.AsEnumerable().Select(row =>
             {
                 var objT = Activator.CreateInstance<T>();
@@ -4785,8 +4822,7 @@ namespace SRL
                 {
                     if (columnNames.Contains(pro.Name))
                     {
-                        PropertyInfo pI = objT.GetType().GetProperty(pro.Name);
-
+                        PropertyInfo pI = objT.GetType().GetProperty(pro.Name, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
 
                         Type t = Nullable.GetUnderlyingType(pI.PropertyType) ?? pI.PropertyType;
                         object safeValue = (row[pro.Name] == DBNull.Value) ? null : Convert.ChangeType(row[pro.Name], t);
@@ -5624,6 +5660,29 @@ namespace SRL
                 List<EntityClass> list = SRL.Convertor.ConvertDataTableToList<EntityClass>(dt);
                 return list;
             }
+            public int Insert<EntityClass>(EntityClass obj)
+            {
+                Type objType = obj.GetType();
+                Command = new SQLiteCommand(Connection);
+                List<string> fields = new List<string>();
+                List<string> field_values = new List<string>();
+
+                foreach (PropertyInfo propertyInfo in objType.GetProperties())
+                {
+                    fields.Add(propertyInfo.Name);
+                    field_values.Add("@" + propertyInfo.Name);
+                }
+                string fields_query = string.Join(",", fields.ToArray());
+                string fields_value_query = string.Join(",", field_values.ToArray());
+                Command.CommandText = "Insert into " + objType.Name + " (" + fields_query + ") Values(" + fields_value_query + ")";
+                foreach (PropertyInfo propertyInfo in objType.GetProperties())
+                {
+                    SQLiteParameter p = new SQLiteParameter(propertyInfo.Name, propertyInfo.GetValue(obj));
+                    Command.Parameters.Add(p);
+                }
+                int insert = Command.ExecuteNonQuery();
+                return insert;
+            }
         }
         public class ReportTBClass
         {
@@ -6071,7 +6130,7 @@ namespace SRL
 
         }
 
-        
+
         public static GetSqlInstanceResult GetSqlInstance(string db_name, out string data_source, out string connection_str, out Exception ex)
         {
             data_source = "";
@@ -6126,7 +6185,7 @@ namespace SRL
             return GetSqlInstanceResult.InstanceNotFound;
         }
 
-       
+
     }
     public class AccessManagement
     {

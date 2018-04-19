@@ -1145,7 +1145,7 @@ namespace SRL
                         return RegCompanyResult.Error;
                     case SRL.Projects.Nwms.GetCompanyInAnbarResult.NotFound:
                         var company_ext = new SRL.Projects.Nwms.CompanyClass();
-                        if (SRL.Projects.Nwms.GetCompanyByCoNationalId(api_key, co_national_id,out company_ext, out error) == false)
+                        if (SRL.Projects.Nwms.GetCompanyByCoNationalId(api_key, co_national_id, out company_ext, out error) == false)
                         {
                             return RegCompanyResult.Error;
                         }
@@ -1162,7 +1162,7 @@ namespace SRL
                                     inp.name = company_ext.name;
                                     inp.national_id = co_national_id;
                                     inp.register_code = company_ext.RegisterNumber;
-                                    if (SRL.Projects.Nwms.AddNewCompany(api_key, inp,out error ) == false)
+                                    if (SRL.Projects.Nwms.AddNewCompany(api_key, inp, out error) == false)
                                     {
                                         return RegCompanyResult.Error;
                                     }
@@ -1324,10 +1324,24 @@ namespace SRL
 
             }
 
-            public static NwmsResultType GetVirtualWarehouse(string api_key, string warehouse_id, string contractor_national_id, string contractor_co_national_id, out string result)
-            {
+            public static NwmsResultType GetVirtualWarehouse(string api_key, string warehouse_id,ref string contractor_national_id, string contractor_co_national_id,
+                out string result)
+            {//if any input is empty try to find it
                 using (HttpClient client = new HttpClient())
                 {
+                    if (string.IsNullOrWhiteSpace(contractor_national_id))
+                    {
+                        if (!string.IsNullOrWhiteSpace(contractor_co_national_id))
+                        {
+                            CompanyInAnbarClass company = new CompanyInAnbarClass();
+                            string error = "";
+                            if (GetCompanyInAnbar(api_key, contractor_co_national_id, out company, out error) == GetCompanyInAnbarResult.OK)
+                            {
+                                contractor_national_id = company.ceo.national_id;
+                            }
+                        }
+                    }
+
                     client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/" + api_key + "/" + contractor_national_id + "/virt_warehouse/");
                     HttpResponseMessage response = client.GetAsync("_all").Result;
                     result = response.Content.ReadAsStringAsync().Result;
@@ -1463,7 +1477,7 @@ namespace SRL
                             {
                                 string result = "";
                                 CompanyClass company = new CompanyClass();
-                                var is_ok = SRL.Projects.Nwms.GetCompanyByCoNationalId("2050130318", item.code,out company, out result);
+                                var is_ok = SRL.Projects.Nwms.GetCompanyByCoNationalId("2050130318", item.code, out company, out result);
 
                                 if (!is_ok)
                                 {
@@ -1480,7 +1494,7 @@ namespace SRL
                             {
                                 PersonClass person = new PersonClass();
                                 var get = SRL.Projects.Nwms.GetPersonByNationalId("2050130318", item.code, out person);
-                                if (get==GetPersonResult.OK)
+                                if (get == GetPersonResult.OK)
                                 {
                                     string query = "update " + table_name + " set status='" + person.HttpCode + "' , name='" + person.FirstName + "', family='" + person.LastName + "' where code='" + item.code + "'";
                                     SRL.AccessManagement.ExecuteToAccess(query, access_file_name, true);
@@ -1585,7 +1599,7 @@ namespace SRL
 
                     }
                 }
-                
+
                 public static void ParallelAddressByPostServer(List<GetAddressByPostServerResult> list, BackgroundWorker bg, params object[] args)
                 {
                     //args0: password, args1: client, args2: username, args3: file_full_path, args4: table_name
@@ -2202,9 +2216,9 @@ namespace SRL
                 }
                 return post;
             }
-            public static bool GetCompanyByCoNationalId(string api_key, string co_national_id,out CompanyClass company,  out string result)
+            public static bool GetCompanyByCoNationalId(string api_key, string co_national_id, out CompanyClass company, out string result)
             {
-                 company = new CompanyClass();
+                company = new CompanyClass();
 
                 HttpClient client_ = new HttpClient();
                 client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/ext-service/");
@@ -2252,7 +2266,8 @@ namespace SRL
                 OK,
                 EmptyInput,
                 NotFound,
-                Error
+                Error,
+                NotActiveFound
             }
             public enum GetPersonResult
             {
@@ -2284,8 +2299,7 @@ namespace SRL
                     client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/company/_search/");
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     input["national_id"] = co_national_id;
-                    input["account_status"] = "1";
-                    HttpResponseMessage response = client_.PostAsJsonAsync("co_inq", input).Result;
+                    HttpResponseMessage response = client_.PostAsJsonAsync("0/99", input).Result;
                     string result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
@@ -2296,9 +2310,16 @@ namespace SRL
                             company_result = GetCompanyInAnbarResult.NotFound;
                             return company_result;
                         }
-                        company_result = GetCompanyInAnbarResult.OK;
-                        company = list.First();
+                        foreach (var item in list)
+                        {
+                            if (item.account_status == "3") continue;
+                            company_result = GetCompanyInAnbarResult.OK;
+                            company = item;
+                            return company_result;
+                        }
+                        company_result = GetCompanyInAnbarResult.NotActiveFound;
                         return company_result;
+
                     }
                     else
                     {
@@ -2310,27 +2331,20 @@ namespace SRL
                 }
             }
 
-            public static List<CompanyListClass> GetCompanySeoByCoNationalId(string co_national_id, string api_key, out HttpResponseMessage response)
+            public static CompanyListClass GetCompanySeoByCoNationalId(string co_national_id, string api_key, out string result)
             {
-                List<CompanyListClass> result_list = new List<CompanyListClass>();
-
-                response = null;
-
+                result = "";
                 HttpClient client_list = new HttpClient();
                 client_list.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/company/_search/");
-
 
                 if (string.IsNullOrWhiteSpace(co_national_id)) return null;
 
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["national_id"] = co_national_id;
-                response = client_list.PostAsJsonAsync("0/99", input).Result;
+                HttpResponseMessage response = client_list.PostAsJsonAsync("0/99", input).Result;
+                result = response.Content.ReadAsStringAsync().Result;
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
-
-
-                    string result = response.Content.ReadAsStringAsync().Result;
-
                     string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
 
                     List<CompanyListClass> co_list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<CompanyListClass>>(data);
@@ -2340,17 +2354,14 @@ namespace SRL
                         if (item.account_status == "3") continue;
 
                         item.ceo.ceo_mobile = Nwms.GetAnbarPersonByNationalId(item.ceo.national_id, api_key)?.mobile;
-                        result_list.Add(item);
-
+                        return item;
                     }
+                    return null;
                 }
                 else
                 {
-                    result_list = null;
+                    return null;
                 }
-
-                return result_list;
-
 
             }
 
@@ -2556,7 +2567,7 @@ namespace SRL
             public string Password { get; set; }
             public string FromNumber { get; set; }
             public ServiceReferenceSendSms.SendSoapClient send_client;
-            
+
             public MeliSms(string username, string password, string from_number)
             {
                 //"09114452764", "2275",from_number = "500010604260"
