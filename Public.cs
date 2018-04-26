@@ -573,7 +573,7 @@ namespace SRL
             //format= "yyyy/MM/dd HH:mm:ss"
             DateTime dt = new DateTime();
             return DateTime.TryParseExact(input, format, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out dt);
-             
+
         }
     }
     public class SettingClass<SettingEntity> where SettingEntity : class
@@ -1518,34 +1518,39 @@ namespace SRL
             //             }
             DescriptionAttribute[] attributes = (DescriptionAttribute[])enum_value.GetType().GetField(enum_value.ToString()).GetCustomAttributes(typeof(DescriptionAttribute), false);
             return attributes.Length > 0 ? attributes[0].Description : string.Empty;
-        } 
+        }
         public static IEnumerable<string> CheckValidationAttribute(object o)
         {
             List<string> errors = new List<string>();
             IEnumerable<PropertyDescriptor> prop_des = TypeDescriptor.GetProperties(o.GetType()).Cast<PropertyDescriptor>();
             var validations =
                 prop_des.SelectMany(pd => pd.Attributes.OfType<ValidationAttribute>().Where(va => !va.IsValid(pd.GetValue(o))),
-                (field, attr )=>new {field.Name, attr.ErrorMessage,attr.TypeId,
+                (field, attr) => new
+                {
+                    field.Name,
+                    attr.ErrorMessage,
+                    attr.TypeId,
                     Minimum = attr.GetType().GetProperty("Minimum")?.GetValue(attr) ?? null,
-                    Maximum = attr.GetType().GetProperty("Maximum")?.GetValue(attr) ?? null}).ToList();
+                    Maximum = attr.GetType().GetProperty("Maximum")?.GetValue(attr) ?? null
+                }).ToList();
             foreach (var item in validations)
             {
                 string error = item.ErrorMessage;
                 string attr_name = (item as dynamic).TypeId.Name;
                 while (error.Contains("{") && !string.IsNullOrWhiteSpace(error))
                 {
-                   error= error.Replace("{0}", item.Name);
+                    error = error.Replace("{0}", item.Name);
                     switch (attr_name)
-                    { 
-                        case nameof(RangeAttribute): 
-                           error= error.Replace("{1}",  item.Minimum.ToString());
-                           error= error.Replace("{2}",  item.Maximum.ToString() ); 
+                    {
+                        case nameof(RangeAttribute):
+                            error = error.Replace("{1}", item.Minimum.ToString());
+                            error = error.Replace("{2}", item.Maximum.ToString());
                             break;
                     }
                 }
                 errors.Add(error);
             }
-             
+
             return errors;
         }
     }
@@ -5396,6 +5401,19 @@ namespace SRL
             var dic = obj.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public).ToDictionary(prop => prop.Name, prop => prop.GetValue(obj, null)).ToArray();
             return dic;
         }
+
+        public static byte[] ImageToByteArray(string path)
+        {
+            Image img = Image.FromFile(path);
+            byte[] arr;
+            using (var ms = new MemoryStream())
+            {
+                img.Save(ms, img.RawFormat);
+                arr = ms.ToArray();
+            }
+            return arr;
+
+        }
     }
     public class Json : ControlLoad
     {
@@ -5654,13 +5672,18 @@ namespace SRL
             public List<EntityClass> Select<EntityClass>(string sql)
             {
                 Command = new SQLiteCommand(sql, Connection);
+                return Select<EntityClass>();
+            }
+
+            private List<EntityClass> Select<EntityClass>()
+            {
                 DataAdaptor = new SQLiteDataAdapter(Command);
                 DataTable dt = new DataTable();
                 DataAdaptor.Fill(dt);
                 List<EntityClass> list = SRL.Convertor.ConvertDataTableToList<EntityClass>(dt);
                 return list;
             }
-            public int Insert<EntityClass>(EntityClass obj)
+            public int Insert<EntityClass>(EntityClass obj, List<string> ignore_fields)
             {
                 Type objType = obj.GetType();
                 Command = new SQLiteCommand(Connection);
@@ -5669,19 +5692,64 @@ namespace SRL
 
                 foreach (PropertyInfo propertyInfo in objType.GetProperties())
                 {
-                    fields.Add(propertyInfo.Name);
-                    field_values.Add("@" + propertyInfo.Name);
+                    string field_name = propertyInfo.Name;
+                    if (ignore_fields.Contains(field_name)) continue;
+                    fields.Add(field_name);
+                    field_values.Add("@" + field_name);
                 }
                 string fields_query = string.Join(",", fields.ToArray());
                 string fields_value_query = string.Join(",", field_values.ToArray());
                 Command.CommandText = "Insert into " + objType.Name + " (" + fields_query + ") Values(" + fields_value_query + ")";
                 foreach (PropertyInfo propertyInfo in objType.GetProperties())
                 {
-                    SQLiteParameter p = new SQLiteParameter(propertyInfo.Name, propertyInfo.GetValue(obj));
+                    string field_name = propertyInfo.Name;
+                    if (ignore_fields.Contains(field_name)) continue;
+                    SQLiteParameter p = new SQLiteParameter(field_name, propertyInfo.GetValue(obj));
                     Command.Parameters.Add(p);
                 }
                 int insert = Command.ExecuteNonQuery();
                 return insert;
+            }
+            public class WhereClause
+            {
+                public string key { get; set; }
+                public string opt { get; set; }
+                public object value { get; set; }
+            }
+            public List<TSource> Where<TSource>(List<WhereClause> where_clause, List<string> raw_where = null)
+            {
+                Type objType = typeof(TSource);
+                Command = new SQLiteCommand(Connection);
+                List<string> fields = new List<string>();
+
+                foreach (var wc in where_clause)
+                {
+                    string field_name = wc.key + " " + wc.opt + " @" + wc.key;
+                    fields.Add(field_name);
+
+                }
+                string fields_query = " where " + string.Join(" and ", fields.ToArray());
+                Command.CommandText = "select * from " + objType.Name + fields_query;
+
+                if (raw_where != null)
+                    foreach (var item in raw_where)
+                    {
+                        Command.CommandText += " and " + item;
+                    }
+                foreach (var wc in where_clause)
+                {
+                    string field_name = wc.key;
+                    SQLiteParameter p = new SQLiteParameter(field_name, wc.value);
+                    Command.Parameters.Add(p);
+                }
+                return Select<TSource>();
+            }
+
+            public static string DatetimeAbsDiffCheck(string base_datetime, string col_name, string opt, int diffSec)
+            {
+                //sqlite standard datetime format: '2015-06-01 12:15:06'
+                string sql = "abs( strftime('%s',replace('" + base_datetime + "','/','-')) -strftime('%s', datetime(replace(substr(" + col_name + ", 1, 10), '/', '-') || ' ' || substr(" + col_name + ", 12)))) " + opt + " " + diffSec;
+                return sql;
             }
         }
         public class ReportTBClass
