@@ -70,13 +70,13 @@
 
 
 
-.loading {
+.srl-loading {
     display: none;
     -animation: loading .7s infinite linear;
     -webkit-animation: loading .7s infinite linear;
 }
 
-@keyframes loading {
+@keyframes srl-loading {
     from {
         transform: scale(1) rotate(0deg);
     }
@@ -86,7 +86,7 @@
     }
 }
 
-@-webkit-keyframes loading {
+@-webkit-keyframes srl-loading {
     from {
         -webkit-transform: rotate(0deg);
     }
