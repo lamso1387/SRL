@@ -5414,6 +5414,12 @@ namespace SRL
             return arr;
 
         }
+
+        public static T StringToEnum<T>(string enum_str)
+        {
+           return (T)Enum.Parse(typeof(T), enum_str, true); 
+                  
+        }
     }
     public class Json : ControlLoad
     {
