@@ -5497,10 +5497,12 @@ namespace SRL
         internal static Newtonsoft.Json.Linq.JObject RemoveEmptyKeys(object obj)
         {
             //add [DefaultValue("")] to must be remved properties
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, new Newtonsoft.Json.JsonSerializerSettings()
+            var serializer = new Newtonsoft.Json.JsonSerializerSettings()
             {
                 DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Ignore
-            });
+            };
+            serializer.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, serializer);
             Newtonsoft.Json.Linq.JObject conv = Newtonsoft.Json.Linq.JObject.Parse(json);
             return conv;
         }
@@ -5883,7 +5885,6 @@ namespace SRL
             {
                 db.Set<EntityType>().Remove(item);
             }
-            db.SaveChanges();
 
         }
 
@@ -6087,17 +6088,16 @@ namespace SRL
         }
         public static string ExecuteQuery(DbContext db, string query)
         {
-            string error = string.Empty;
-            int exe;
+            string error = null;
+            int exe = 0;
             try
             {
                 exe = db.Database.ExecuteSqlCommand(query);
-                exe = db.SaveChanges();
             }
             catch (Exception ex)
             {
                 error = ex.Message;
-                MessageBox.Show(error);
+                MessageBox.Show(exe + " " + error);
             }
             return error;
         }
@@ -6253,7 +6253,38 @@ namespace SRL
             return GetSqlInstanceResult.InstanceNotFound;
         }
 
+        public static bool CheckTableExists<T>(DbContext db) where T : class
+        {
+            try
+            {
+                db.Set<T>().Count();
+                return true;
 
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+        public static string CheckTableExists<T>(DbContext db, string exe_query_if_false) where T : class
+        {
+            if (CheckTableExists<T>(db) == false)
+            {
+                string exe = ExecuteQuery(db, exe_query_if_false);
+                if (exe == null)
+                {//table created
+                    return null;
+                }
+                else
+                {//error in table creating
+                    return exe;
+                }
+            }
+            else
+            {//table exists
+                return "";
+            }
+        }
     }
     public class AccessManagement
     {
@@ -6501,6 +6532,44 @@ namespace SRL
         public ExcelManagement(Button btn)
             : base(btn)
         {
+        }
+        public static DataTable GetDataTableFromExcel(OpenFileDialog ofDialog, string[] main_headers, KeyValue.DataTableHeaderCheckType check_type)
+        {
+            DataTable dt = GetDataTableFromExcel(ofDialog);
+            if (dt != null)
+            {
+                string header_checked = SRL.KeyValue.CheckDataTableHeaders(dt, main_headers, check_type);
+                if (header_checked == "true")
+                {
+                    return dt;
+                }
+                else
+                {
+                    MessageBox.Show(header_checked);
+                    return null;
+                }
+            }
+            else
+            {
+                return null;
+            }
+
+        }
+        public static DataTable GetDataTableFromExcel(OpenFileDialog ofDialog)
+        {
+            string file_full_path;
+            ofDialog.Filter = "Only 97/2003 excel with one sheet|*.xls";
+            if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
+            file_full_path = ofDialog.FileName;
+            if (!System.IO.File.Exists(file_full_path))
+            {
+                MessageBox.Show(file_full_path + " dose not exists");
+                return null;
+            }
+            return GetDataTableFromExcel(file_full_path);
+
+
+
         }
 
         public static DataTable GetDataTableFromExcel(string file_full_path)
