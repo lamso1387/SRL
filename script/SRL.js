@@ -452,6 +452,27 @@ SRL.ListActiveChange = function (liSelector) {// changes li active class on clic
     });
 };
 
+SRL.LoaderSpinNG = function (moduleName, attrName,spinerFile) {
+    moduleName.directive(attrName, ['$http', function ($http) {
+        return {
+            restrict: "A",
+            template: '<div><img src="{{spinerFileFnG}}"/></div>',
+            link: function (scope, elm, attrs) {
+                scope.spinerFileFnG = spinerFile;
+                scope.isLoading = function () {
+                    return $http.pendingRequests.length > 0;
+                };
+                scope.$watch(scope.isLoading, function (v) {
+                    if (v) {
+                        elm.show();
+                    } else {
+                        elm.hide();
+                    }
+                });
+            }
+        };
+    }]);
+};
 
 SRL.LoadPage = function (loaderId, page) {
     $('#' + loaderId).load(page);

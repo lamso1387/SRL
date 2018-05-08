@@ -5536,6 +5536,11 @@ namespace SRL
 
     public class CodeFirst
     {
+        /// <summary>
+        /// creates and then migrates
+        /// </summary>
+        /// <typeparam name="TDbContext"></typeparam>
+        /// <typeparam name="TConfiguration"></typeparam>
         public static void MigrateDBToLatestVersion<TDbContext, TConfiguration>()
             where TDbContext : DbContext
             where TConfiguration : DbMigrationsConfiguration<TDbContext>, new()
