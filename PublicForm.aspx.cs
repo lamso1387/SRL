@@ -2,19 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-//using System.Web.UI;
-//using System.Data.Entity;
-//using System.Web.UI.WebControls;
-//using System.Web.Services;
-//using System.Web.Script.Services;
 using System.Threading;
- //using System.Web.Http;
 using System.Threading.Tasks;
 using System.Net;
-//using System.Net.Http;
 using System.IO;
- //using System.Web.Mvc;
-
 
 namespace GD2
 {

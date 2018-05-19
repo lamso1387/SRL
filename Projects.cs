@@ -1375,7 +1375,7 @@ namespace SRL
                         public string taxonomy_id { get; set; }
                         public string good_id { get; set; }
                         public string measurement_unit { get; set; }
-                        public int count { get; set; }
+                        public double count { get; set; }
                         public int total_weight { get; set; }
                         public string package_type { get; set; }
                         public int package_count { get; set; }
@@ -1462,7 +1462,7 @@ namespace SRL
                     }
 
 
-                    public static bool Receipt(string api_key, string contractor_national_id, AnbarOperation.SimpleReceipt simple_receipt, out string result)
+                    public static bool Receipt(string api_key, string contractor_national_id, AnbarOperation.SimpleReceipt simple_receipt, out string id)
                     {
                         System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
                         client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
@@ -1473,19 +1473,18 @@ namespace SRL
                         }
                         HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/receipt/simple", input).Result;
 
-                        result = response.Content.ReadAsStringAsync().Result;
+                        id = response.Content.ReadAsStringAsync().Result;
                         if (response.StatusCode != System.Net.HttpStatusCode.OK)
                         {
-                            result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                            id = SRL.Json.IsJson(id) ? id : response.StatusCode.ToString();
                             return false;
                         }
                         else
                         {
                             //ثبت سند بصورت موقت انجام شد
-                            Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                            string id = output["id"].ToString();
-                            int version = int.Parse(output["version"].ToString());
-                            result = id;
+                            Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(id);
+                            id = output["id"].ToString();
+                            int version = int.Parse(output["version"].ToString()); 
                             return true;
                         }
 
@@ -2833,20 +2832,19 @@ namespace SRL
                 return complexes;
             }
 
-            public static List<SearchResult.SearchComplexResult> GetAllWarComplexByNationalId(string api_key, string national_id)
+            public static List<SearchResult.SearchComplexResult> GetAllWarComplexByNationalId(string api_key, string national_id, out string result)
             {
-
+                result = "";
                 List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
                 HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri("https://app.nwms.ir");
-
+                client.BaseAddress = new Uri("https://app.nwms.ir"); 
                 HttpResponseMessage response = client.GetAsync("/v2/b2b-api-imp/" + api_key + "/" + national_id + "/complex/_all").Result;
+                result = response.Content.ReadAsStringAsync().Result;
                 if (response.StatusCode != System.Net.HttpStatusCode.OK)
                 {
+                    result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
                     return null;
                 }
-
-                string result = response.Content.ReadAsStringAsync().Result;
                 Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
                 string data = result_json["data"].ToString();
                 complexes = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchComplexResult>>(data);

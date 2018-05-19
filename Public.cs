@@ -1102,13 +1102,67 @@ namespace SRL
     }
     public class ActionManagement
     {
+        static System.Diagnostics.EventLog eventLog1 = new System.Diagnostics.EventLog();
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static string GetCurrentMethodName()
         {
             StackTrace st = new StackTrace();
             StackFrame sf = st.GetFrame(1);
-
             return sf.GetMethod().Name;
+        }
+
+        public static void WriteEventLog(string mes, EventLogEntryType type, string eventSourceName, string logName)
+        {
+
+            if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
+            {
+                eventLog1 = new System.Diagnostics.EventLog();
+                System.Diagnostics.EventLog.CreateEventSource(
+                    eventSourceName, logName);
+
+            }
+            eventLog1.Source = eventSourceName;
+            eventLog1.Log = logName;
+
+            eventLog1.WriteEntry(mes, type);
+
+        }
+
+        public static string GetExeptionFileLine(Exception ex)
+        {
+            // Get stack trace for the exception with source file information
+            var st = new StackTrace(ex, true);
+            // Get the top stack frame
+            var frame = st.GetFrame(0);
+            // Get the line number from the stack frame
+            var file = frame.GetFileName();
+            var line = frame.GetFileLineNumber();
+
+            return file + ": " + line;
+        }
+
+        public static string CreateErrorMessage(Exception ex)
+        {
+            string error = ex.Message + " StackTrace: " + ex.StackTrace;
+            if (ex.InnerException != null)
+            {
+                var inner = ex.InnerException;
+                error += " " + inner.Message;
+                if (inner.InnerException != null)
+                {
+                    inner = inner.InnerException;
+                    error += " " + inner.Message;
+
+                }
+                if (inner.InnerException != null)
+                {
+                    inner = inner.InnerException;
+                    error += " " + inner.Message;
+
+                }
+
+            }
+            return error;
         }
 
         public class FormActions
@@ -4722,10 +4776,6 @@ namespace SRL
 
         public int SaveResult<outputType, entityType>(outputType object_to_save, entityType entity_to_update) where outputType : class where entityType : class
         {
-
-
-
-
             foreach (var prop in typeof(outputType).GetProperties())
             {
                 SRL.ClassManagement.SetProperty<entityType>(prop.Name, entity_to_update, SRL.ClassManagement.GetProperty<outputType>(prop.Name, object_to_save));
@@ -4762,7 +4812,7 @@ namespace SRL
             ser_.ChannelFactory.Endpoint.Address = new EndpointAddress(svc_address);
             ser_.ChannelFactory.CreateChannel();
         }
-        public static void UpdateSoapAddress(ServiceEndpoint endpoint, string new_address)
+        public static bool UpdateSoapAddress(ServiceEndpoint endpoint, string new_address)
         {
             Configuration wConfig = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             ServiceModelSectionGroup wServiceSection = ServiceModelSectionGroup.GetSectionGroup(wConfig);
@@ -4777,13 +4827,16 @@ namespace SRL
                     item.Address = new Uri(new_address);
                 }
             }
-
+            
             wConfig.Save();
             if (address_change)
             {
-                Application.Restart();
-                Environment.Exit(0);
+                //Application.Restart();
+                //Environment.Exit(0);
+                return true;
             }
+            else
+                return false;
         }
 
         public static string GetSoapAddress<TChannel>(System.ServiceModel.ClientBase<TChannel> ser_) where TChannel : class
@@ -4804,6 +4857,14 @@ namespace SRL
                 section.ConnectionStrings[con_str_name].ConnectionString = new_con_str;
                 config.Save();
             }
+        }
+
+        public static void SetSoapMessageSize<TChannel>(System.ServiceModel.ClientBase<TChannel> ser_, int received_Size = Int32.MaxValue) where TChannel : class
+        {
+            //call:  SRL.Web.SetSoapMessageSize(ccs_client, Int32.MaxValue);
+            dynamic binding = ser_.Endpoint.Binding;
+            binding.MaxReceivedMessageSize = received_Size;
+            ser_.Endpoint.Binding = binding;
         }
     }
     public class Convertor
@@ -5417,8 +5478,8 @@ namespace SRL
 
         public static T StringToEnum<T>(string enum_str)
         {
-           return (T)Enum.Parse(typeof(T), enum_str, true); 
-                  
+            return (T)Enum.Parse(typeof(T), enum_str, true);
+
         }
     }
     public class Json : ControlLoad
@@ -5669,22 +5730,27 @@ namespace SRL
                 get { return Connection.ConnectionString; }
                 set { Connection.ConnectionString = value; }
             }
-
             public SQLiteConnection Connection { get; set; }
             public SQLiteCommand Command { get; set; }
             public SQLiteDataAdapter DataAdaptor { get; set; }
             public SqliteEF(string connection_str = "Data Source=MyDatabase.sqlite;Version=3;")
             {
                 Connection = new SQLiteConnection();
-                Command = new SQLiteCommand();
-                DataAdaptor = new SQLiteDataAdapter();
                 ConnectionStr = connection_str;
+                Command = new SQLiteCommand();
+                Command.Connection = Connection;
+                DataAdaptor = new SQLiteDataAdapter();
                 Connection.Open();
             }
 
+            public List<EntityClass> SelectAll<EntityClass>()
+            {
+                Command.CommandText = "select * from " + typeof(EntityClass).Name;
+                return Select<EntityClass>();
+            }
             public List<EntityClass> Select<EntityClass>(string sql)
             {
-                Command = new SQLiteCommand(sql, Connection);
+                Command.CommandText = sql;
                 return Select<EntityClass>();
             }
 
@@ -5696,10 +5762,38 @@ namespace SRL
                 List<EntityClass> list = SRL.Convertor.ConvertDataTableToList<EntityClass>(dt);
                 return list;
             }
+            public int Update<EntityClassT>(EntityClassT obj, List<string> update_fields, string key_where)
+            {
+                Type objType = obj.GetType();
+                List<string> field_set = new List<string>(); 
+
+                foreach (PropertyInfo propertyInfo in objType.GetProperties())
+                {
+                    string field_name = propertyInfo.Name;
+                    if (!update_fields.Contains(field_name)) continue;
+                    field_set.Add(field_name+"= @"+ field_name); 
+                }
+                string fields_set_all = string.Join(", ", field_set.ToArray()); 
+                Command.CommandText = " update " + objType.Name + " set " + fields_set_all +  " where "+key_where+"=@"+ key_where+" ; ";
+                foreach (PropertyInfo propertyInfo in objType.GetProperties())
+                {
+                    string field_name = propertyInfo.Name;
+                    if(field_name==key_where)
+                    {
+                        SQLiteParameter p_k = new SQLiteParameter(field_name, propertyInfo.GetValue(obj));
+                        Command.Parameters.Add(p_k);
+                        continue;
+                    }
+                    if (!update_fields.Contains(field_name)) continue;
+                    SQLiteParameter p = new SQLiteParameter(field_name, propertyInfo.GetValue(obj));
+                    Command.Parameters.Add(p);
+                }  
+                int insert = SaveChange();
+                return insert;
+            }
             public int Insert<EntityClass>(EntityClass obj, List<string> ignore_fields)
             {
                 Type objType = obj.GetType();
-                Command = new SQLiteCommand(Connection);
                 List<string> fields = new List<string>();
                 List<string> field_values = new List<string>();
 
@@ -5712,7 +5806,7 @@ namespace SRL
                 }
                 string fields_query = string.Join(",", fields.ToArray());
                 string fields_value_query = string.Join(",", field_values.ToArray());
-                Command.CommandText = "Insert into " + objType.Name + " (" + fields_query + ") Values(" + fields_value_query + ")";
+                Command.CommandText = " Insert into " + objType.Name + " (" + fields_query + ") Values(" + fields_value_query + "); ";
                 foreach (PropertyInfo propertyInfo in objType.GetProperties())
                 {
                     string field_name = propertyInfo.Name;
@@ -5720,6 +5814,11 @@ namespace SRL
                     SQLiteParameter p = new SQLiteParameter(field_name, propertyInfo.GetValue(obj));
                     Command.Parameters.Add(p);
                 }
+                int insert = SaveChange();
+                return insert;
+            } 
+            public int SaveChange()
+            {
                 int insert = Command.ExecuteNonQuery();
                 return insert;
             }
@@ -5732,29 +5831,36 @@ namespace SRL
             public List<TSource> Where<TSource>(List<WhereClause> where_clause, List<string> raw_where = null)
             {
                 Type objType = typeof(TSource);
-                Command = new SQLiteCommand(Connection);
                 List<string> fields = new List<string>();
+                Command.CommandText = "select * from " + objType.Name+" where 1=1 ";
 
-                foreach (var wc in where_clause)
+                if (where_clause != null)
                 {
-                    string field_name = wc.key + " " + wc.opt + " @" + wc.key;
-                    fields.Add(field_name);
+                    foreach (var wc in where_clause)
+                    {
+                        string field_name = wc.key + " " + wc.opt + " @" + wc.key;
+                        fields.Add(field_name);
+
+                    }
+                    string fields_query = string.Join(" and ", fields.ToArray());
+
+                    Command.CommandText = Command.CommandText + " and " + fields_query;
+
+
+                    foreach (var wc in where_clause)
+                    {
+                        string field_name = wc.key;
+                        SQLiteParameter p = new SQLiteParameter(field_name, wc.value);
+                        Command.Parameters.Add(p);
+                    }
 
                 }
-                string fields_query = " where " + string.Join(" and ", fields.ToArray());
-                Command.CommandText = "select * from " + objType.Name + fields_query;
 
                 if (raw_where != null)
                     foreach (var item in raw_where)
                     {
                         Command.CommandText += " and " + item;
                     }
-                foreach (var wc in where_clause)
-                {
-                    string field_name = wc.key;
-                    SQLiteParameter p = new SQLiteParameter(field_name, wc.value);
-                    Command.Parameters.Add(p);
-                }
                 return Select<TSource>();
             }
 
@@ -5764,6 +5870,8 @@ namespace SRL
                 string sql = "abs( strftime('%s',replace('" + base_datetime + "','/','-')) -strftime('%s', datetime(replace(substr(" + col_name + ", 1, 10), '/', '-') || ' ' || substr(" + col_name + ", 12)))) " + opt + " " + diffSec;
                 return sql;
             }
+
+            
         }
         public class ReportTBClass
         {
