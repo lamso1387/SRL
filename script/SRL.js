@@ -478,6 +478,28 @@ SRL.LoadPage = function (loaderId, page) {
     $('#' + loaderId).load(page);
 };
 
+SRL.LoadScriptInline = function (scriptUrl, document_, callback, callbackParamsObj) {
+
+    var script = document_.createElement("script")
+    script.type = "text/javascript";
+
+    if (script.readyState) {  //IE
+        script.onreadystatechange = function () {
+            if (script.readyState == "loaded" ||
+                    script.readyState == "complete") {
+                script.onreadystatechange = null;
+                callback(callbackParamsObj);
+            }
+        };
+    } else {  //Others
+        script.onload = function () {
+            callback(callbackParamsObj);
+        };
+    }
+
+    script.src = scriptUrl;
+    document.getElementsByTagName("head")[0].appendChild(script);
+};
 
 SRL.LoadSelectOption = function (list, selectTarget, optionClasses) {
     var optionTag = '<option ';

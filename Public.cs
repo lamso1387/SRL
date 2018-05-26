@@ -1112,10 +1112,10 @@ namespace SRL
         }
 
         public static void WriteEventLog(string mes, EventLogEntryType type, string eventSourceName, string logName)
-        {
-
+        { 
             if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
             {
+                
                 eventLog1 = new System.Diagnostics.EventLog();
                 System.Diagnostics.EventLog.CreateEventSource(
                     eventSourceName, logName);
@@ -1483,14 +1483,8 @@ namespace SRL
 
             public static void MethodInvoker(Action function)
             {
-                try
-                {
-                    function.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    throw new InvalidOperationException("Message: " + ex.Message + ". StackTrace" + ex.StackTrace);
-                }
+                function.Invoke();
+
             }
 
             public static object MethodDynamicInvoker<T>(Func<T> function, params object[] parameters)
@@ -1498,6 +1492,11 @@ namespace SRL
                 return function.DynamicInvoke(parameters);
             }
 
+            public static void RunAsynch(Action act)
+            {
+                //p= () => {function(p1,p2); })
+                new Task(act).Start();
+            }
         }
         public class DB
         {
@@ -4827,7 +4826,7 @@ namespace SRL
                     item.Address = new Uri(new_address);
                 }
             }
-            
+
             wConfig.Save();
             if (address_change)
             {
@@ -5565,8 +5564,8 @@ namespace SRL
         {
             //add [DefaultValue("")] to must be remved properties
             var serializer = new Newtonsoft.Json.JsonSerializerSettings()
-            {
-                DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Ignore
+            { 
+                DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Ignore,NullValueHandling=Newtonsoft.Json.NullValueHandling.Ignore
             };
             serializer.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, serializer);
@@ -5765,20 +5764,20 @@ namespace SRL
             public int Update<EntityClassT>(EntityClassT obj, List<string> update_fields, string key_where)
             {
                 Type objType = obj.GetType();
-                List<string> field_set = new List<string>(); 
+                List<string> field_set = new List<string>();
 
                 foreach (PropertyInfo propertyInfo in objType.GetProperties())
                 {
                     string field_name = propertyInfo.Name;
                     if (!update_fields.Contains(field_name)) continue;
-                    field_set.Add(field_name+"= @"+ field_name); 
+                    field_set.Add(field_name + "= @" + field_name);
                 }
-                string fields_set_all = string.Join(", ", field_set.ToArray()); 
-                Command.CommandText = " update " + objType.Name + " set " + fields_set_all +  " where "+key_where+"=@"+ key_where+" ; ";
+                string fields_set_all = string.Join(", ", field_set.ToArray());
+                Command.CommandText = " update " + objType.Name + " set " + fields_set_all + " where " + key_where + "=@" + key_where + " ; ";
                 foreach (PropertyInfo propertyInfo in objType.GetProperties())
                 {
                     string field_name = propertyInfo.Name;
-                    if(field_name==key_where)
+                    if (field_name == key_where)
                     {
                         SQLiteParameter p_k = new SQLiteParameter(field_name, propertyInfo.GetValue(obj));
                         Command.Parameters.Add(p_k);
@@ -5787,7 +5786,7 @@ namespace SRL
                     if (!update_fields.Contains(field_name)) continue;
                     SQLiteParameter p = new SQLiteParameter(field_name, propertyInfo.GetValue(obj));
                     Command.Parameters.Add(p);
-                }  
+                }
                 int insert = SaveChange();
                 return insert;
             }
@@ -5816,7 +5815,7 @@ namespace SRL
                 }
                 int insert = SaveChange();
                 return insert;
-            } 
+            }
             public int SaveChange()
             {
                 int insert = Command.ExecuteNonQuery();
@@ -5832,7 +5831,7 @@ namespace SRL
             {
                 Type objType = typeof(TSource);
                 List<string> fields = new List<string>();
-                Command.CommandText = "select * from " + objType.Name+" where 1=1 ";
+                Command.CommandText = "select * from " + objType.Name + " where 1=1 ";
 
                 if (where_clause != null)
                 {
@@ -5871,7 +5870,12 @@ namespace SRL
                 return sql;
             }
 
-            
+            public int DeleteAll<T>()
+            {
+                Command.CommandText = " delete from " + typeof(T).Name;
+                int insert = SaveChange();
+                return insert;
+            }
         }
         public class ReportTBClass
         {

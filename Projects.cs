@@ -285,6 +285,36 @@ namespace SRL
 
                 return response;
             }
+
+            public static ResultClass<int?> CreateIssue(object issue, string key)
+            {
+
+                ResultClass<int?> response = new ResultClass<int?>();
+                string method = "/issues.json?key=" + key;
+
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri(base_address);
+
+                HttpResponseMessage res = client.PostAsJsonAsync(method, issue).Result;
+                string result = res.Content.ReadAsStringAsync().Result;
+
+                if (res.StatusCode != System.Net.HttpStatusCode.Created)
+                {
+                    response.ErrorMessage = res.StatusCode + ". " + result;
+                    response.Result = null;
+                }
+
+                else
+                {
+                    dynamic issue_res = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(result);
+                    response.Value = issue_res.issue.id;
+                    response.Result = response.Value;
+
+                }
+                return response;
+
+
+            }
         }
         public class Nwms
         {
@@ -311,6 +341,20 @@ namespace SRL
                 OK,
                 EmptyInput,
                 Error
+            }
+            
+            public class BaseValueTypes
+            {
+                public enum Base
+                {
+                    activity_sectors,
+                    supervisor_orgs,
+                    warehouse_types,
+                }
+
+                //public const Base activity_sectors = Base.activity_sectors;
+                //public const Base supervisor_orgs = Base.supervisor_orgs;
+                //public const Base warehouse_types = Base.warehouse_types;
             }
             public enum RegCompanyResult
             {
@@ -1484,7 +1528,7 @@ namespace SRL
                             //ثبت سند بصورت موقت انجام شد
                             Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(id);
                             id = output["id"].ToString();
-                            int version = int.Parse(output["version"].ToString()); 
+                            int version = int.Parse(output["version"].ToString());
                             return true;
                         }
 
@@ -2030,6 +2074,7 @@ namespace SRL
                 public string mobile { get; set; }
                 [Required]
                 public string name { get; set; }
+                [DefaultValue("")]
                 public string co_national_id { get; set; }
                 [Required]
                 public string postal_code { get; set; }
@@ -2043,6 +2088,7 @@ namespace SRL
                 public List<string> activity_sector { get; set; } = new List<string>();
                 [Required]
                 public List<string> supervisor_org { get; set; } = new List<string>();
+                [DefaultValue("")]
                 public string gov_warehouse_no { get; set; }
                 public bool on_error_data_send_sms_to_user { get; set; } = false;
 
@@ -2060,8 +2106,6 @@ namespace SRL
                 public string user_last_name { get; set; }
                 public string complex_id { get; set; }
                 public string company_name { get; set; }
-
-
             }
             public static RegWarehouseOut RegWarehouse(string api_key, RegWarehouseInput input_, ref string result)
             {
@@ -2086,7 +2130,7 @@ namespace SRL
             }
 
             public static bool PutComplex(string api_key, string complex_id, object body_json, out string result)
-            { 
+            {
                 using (HttpClient client = new HttpClient())
                 {
                     client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
@@ -2140,7 +2184,7 @@ namespace SRL
                                     inp.national_id = co_national_id;
                                     inp.register_code = company_ext.RegisterNumber;
                                     ceo_name = person.FirstName + " " + person.LastName;
-                                    if (SRL.Projects.Nwms.AddNewCompany(api_key, inp,out company, out co_error) == false)
+                                    if (SRL.Projects.Nwms.AddNewCompany(api_key, inp, out company, out co_error) == false)
                                     {
                                         return RegCompanyResult.Error;
                                     }
@@ -2295,7 +2339,7 @@ namespace SRL
                     }
                 }
             }
-            public static bool AddNewCompany(string api_key, RegCoInput inp,out CompanyInAnbarClass company, out string result)
+            public static bool AddNewCompany(string api_key, RegCoInput inp, out CompanyInAnbarClass company, out string result)
             {
                 company = null;
                 using (HttpClient client = new HttpClient())
@@ -2751,10 +2795,10 @@ namespace SRL
 
                 return goods;
             }
-            public static string DeleteGood(string api_key, string good_id )
+            public static string DeleteGood(string api_key, string good_id)
             {
                 HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/"); 
+                client.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/");
                 HttpResponseMessage response = client.DeleteAsync(good_id).Result;
                 string result = response.Content.ReadAsStringAsync().Result;
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -2766,7 +2810,7 @@ namespace SRL
                     result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
                     return result;
 
-                } 
+                }
             }
 
             public static List<SearchResult.SearchUserResult> SearchUser(Dictionary<string, object> input_json, string api_key, out string result)
@@ -2837,7 +2881,7 @@ namespace SRL
                 result = "";
                 List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
                 HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri("https://app.nwms.ir"); 
+                client.BaseAddress = new Uri("https://app.nwms.ir");
                 HttpResponseMessage response = client.GetAsync("/v2/b2b-api-imp/" + api_key + "/" + national_id + "/complex/_all").Result;
                 result = response.Content.ReadAsStringAsync().Result;
                 if (response.StatusCode != System.Net.HttpStatusCode.OK)
@@ -2946,8 +2990,41 @@ namespace SRL
                     }
                 }
             }
-            public static string ComputePostCodeHash(string password, string param1 = null, string param2 = null, string param3 = null)
+            public class BaseValueData
             {
+                public string key { get; set; }
+                public string value { get; set; }
+
+                public string GetTitle()
+                {
+                   return Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(value)["title"].ToString();
+                }
+                
+                
+            }
+
+            public static List<BaseValueData> GetBaseValue(string api_key, BaseValueTypes.Base base_type, out string result)
+            { 
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/"+api_key+"/admin/setting_keyvalue/");
+                    HttpResponseMessage response = client.GetAsync(base_type.ToString()).Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        Dictionary<string, object> data_status = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                        List<BaseValueData> data = Newtonsoft.Json.JsonConvert.DeserializeObject<List<BaseValueData>>( data_status["data"].ToString());
+                        return data;
+                    }
+                    else
+                    {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        return null;
+                    }
+                }
+            }
+            public static string ComputePostCodeHash(string password, string param1 = null, string param2 = null, string param3 = null)
+            { 
                 StringBuilder sb = new StringBuilder(password + "#");
                 if (!string.IsNullOrEmpty(param1))
                     sb.Append(param1 + "#");
