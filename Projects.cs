@@ -4,11 +4,13 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
+using System.Data.Entity;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Threading.Tasks;
@@ -342,7 +344,7 @@ namespace SRL
                 EmptyInput,
                 Error
             }
-            
+
             public class BaseValueTypes
             {
                 public enum Base
@@ -352,9 +354,6 @@ namespace SRL
                     warehouse_types,
                 }
 
-                //public const Base activity_sectors = Base.activity_sectors;
-                //public const Base supervisor_orgs = Base.supervisor_orgs;
-                //public const Base warehouse_types = Base.warehouse_types;
             }
             public enum RegCompanyResult
             {
@@ -461,6 +460,46 @@ namespace SRL
                         public string title { get; set; }
                     }
 
+                }
+            }
+
+            public static GetComplexResult GetComplex(string api_key, string postal_code, ref string result)
+            { 
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/complex/by-postal-code/");
+                    HttpResponseMessage response = client.GetAsync(postal_code).Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        GetComplexResult complex = Newtonsoft.Json.JsonConvert.DeserializeObject<GetComplexResult>(result);
+                        return complex;
+                    }
+                    else
+                    {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        return null;
+                    }
+                }
+            }
+
+            public static string GetUserMobile(string api_key, string national_id, ref string error)
+            {
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                input["national_id"] = national_id;
+                List<SearchResult.SearchUserResult> list = SearchUser(input, api_key, out error);
+                if (list == null)
+                {
+                    return null;
+                }
+                else if (list.Count < 1)
+                {
+                    error = @"{""user"":""not_found""}";
+                    return "";
+                }
+                else
+                {
+                    return list[0].mobile;
                 }
             }
 
@@ -888,6 +927,65 @@ namespace SRL
                     public string national_id { get; set; }
                     public string mobile { get; set; }
                 }
+
+            }
+
+            public class GetComplexResult
+            {
+                public object create_date { get; set; }
+                public string telephone_number { get; set; }
+                public Agent agent { get; set; }
+                public string account_status { get; set; }
+                public string id { get; set; }
+                public string city { get; set; }
+                public List<Warehouse> warehouses { get; set; }
+                public string province { get; set; }
+                public string full_address { get; set; }
+                public string township { get; set; }
+                public string org_creator_national_id { get; set; }
+                public List<Owner> owners { get; set; }
+                public string name { get; set; }
+                public string creator_national_id { get; set; }
+                public List<string> st { get; set; }
+
+                public class Agent
+                { 
+                    public string name { get; set; } 
+                    public string national_id { get; set; }  
+                    public string id { get; set; }
+                }
+
+                public class Contractor
+                {
+                    public string name { get; set; }
+                    public string national_id { get; set; }
+                    public int start_epoch { get; set; }
+                    public string account_status { get; set; }
+                    public int expire_epoch { get; set; }
+                    public string id { get; set; }
+                }
+
+                public class Warehouse
+                {
+                    public int create_date { get; set; }
+                    public List<string> supervisor_org { get; set; }
+                    public string account_status { get; set; }
+                    public string id { get; set; }
+                    public List<string> activity_sector { get; set; }
+                    public string type { get; set; }
+                    public List<Contractor> contractors { get; set; }
+                    public string org_creator_national_id { get; set; }
+                    public object gov_warehouse_no { get; set; }
+                    public string name { get; set; }
+                    public string creator_national_id { get; set; }
+                }
+
+                public class Owner
+                {
+                    public string national_id { get; set; }
+                    public string name { get; set; }
+                    public string id { get; set; }
+                } 
 
             }
             public class PersonClass
@@ -2990,6 +3088,13 @@ namespace SRL
                     }
                 }
             }
+            public partial class BaseValueTB
+            {
+                public long ID { get; set; }
+                public string title { get; set; }
+                public string code { get; set; }
+                public string type { get; set; }
+            }
             public class BaseValueData
             {
                 public string key { get; set; }
@@ -2997,23 +3102,23 @@ namespace SRL
 
                 public string GetTitle()
                 {
-                   return Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(value)["title"].ToString();
+                    return Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(value)["title"].ToString();
                 }
-                
-                
+
+
             }
 
             public static List<BaseValueData> GetBaseValue(string api_key, BaseValueTypes.Base base_type, out string result)
-            { 
+            {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/"+api_key+"/admin/setting_keyvalue/");
+                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/setting_keyvalue/");
                     HttpResponseMessage response = client.GetAsync(base_type.ToString()).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
                         Dictionary<string, object> data_status = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                        List<BaseValueData> data = Newtonsoft.Json.JsonConvert.DeserializeObject<List<BaseValueData>>( data_status["data"].ToString());
+                        List<BaseValueData> data = Newtonsoft.Json.JsonConvert.DeserializeObject<List<BaseValueData>>(data_status["data"].ToString());
                         return data;
                     }
                     else
@@ -3024,7 +3129,7 @@ namespace SRL
                 }
             }
             public static string ComputePostCodeHash(string password, string param1 = null, string param2 = null, string param3 = null)
-            { 
+            {
                 StringBuilder sb = new StringBuilder(password + "#");
                 if (!string.IsNullOrEmpty(param1))
                     sb.Append(param1 + "#");
@@ -3268,7 +3373,99 @@ namespace SRL
 
             }
 
+            public static DataTable GetListFromNWMSByFilter(Dictionary<string, object> filter, string api, int? from = null, int? len = null, string org_creator_oposite = null)
+            {
+                DataTable dt = new DataTable();
+                int from_api = 0;
+                if (from != null) from_api = (int)from;
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri(api + from_api + "/");
+                int? len_api = len == null ? 100 : (len < 100 ? len : 100);
+                var response_ = client.PostAsJsonAsync(len_api.ToString(), filter).Result;
+                var response = response_.Content.ReadAsStringAsync().Result;
 
+                string data =
+                    Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(response)["data"].ToString();
+                List<Dictionary<string, object>> list =
+                    Newtonsoft.Json.JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(data);
+
+                int all_ = list.Count;
+                while (list.Count > 0)
+                {
+
+                    DataTable dt_ = SRL.Json.ConvertJsonToDataTable(list);
+
+                    if (!string.IsNullOrWhiteSpace(org_creator_oposite))
+                    {
+                        var query = dt_.AsEnumerable().Where(x => x.Field<string>("org_creator_national_id") != org_creator_oposite);
+                        if (query.Any())
+                        {
+                            dt_ = query.CopyToDataTable<DataRow>();
+                            SRL.Convertor.CopyDataTableToDataTable(dt_, dt);
+                        }
+
+                    }
+                    else
+                    {
+                        SRL.Convertor.CopyDataTableToDataTable(dt_, dt);
+                    }
+
+                    from_api += 100;
+                    client = new HttpClient();
+                    client.BaseAddress = new Uri(api + from_api + "/");
+                    list = new List<Dictionary<string, object>>();
+                    if (all_ == len_api && (len == null ? true : from_api < len+from))
+                    {
+                        len_api = (len+from - from_api) > 100 ? 100 : len+from - from_api;
+                        response_ = client.PostAsJsonAsync((len_api).ToString(), filter).Result;
+                        response = response_.Content.ReadAsStringAsync().Result;
+                        data =
+                            Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(response)["data"].ToString();
+                        list =
+                           Newtonsoft.Json.JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(data);
+                        all_ = list.Count;
+                    }
+                }
+                return dt;
+            }
+
+
+            public static int? UpdateBaseValueTable<T>(DbContext db, string api_key, ref string error) where T : class
+            {
+                SRL.Database.EntityRemoveAll<T>(db);
+
+                foreach (BaseValueTypes.Base base_type in Enum.GetValues(typeof(BaseValueTypes.Base)))
+                {
+                    if (InsertBaseValue<T>(api_key, db, base_type, ref error) == false)
+                    {
+                        return null;
+                    }
+                }
+
+                int exe = db.SaveChanges();
+                return exe;
+            }
+
+            public static bool InsertBaseValue<T>(string api_key, DbContext db, BaseValueTypes.Base base_type, ref string error) where T : class
+            {
+                List<SRL.Projects.Nwms.BaseValueData> list = SRL.Projects.Nwms.GetBaseValue(api_key, base_type, out error);
+                if (list == null)
+                {
+                    return false;
+                }
+                else
+                {
+                    foreach (var item in list)
+                    {
+                        T b = SRL.ClassManagement.CreateInstance<T>();
+                        SRL.ClassManagement.SetProperty<T>("code", b, item.key);
+                        SRL.ClassManagement.SetProperty<T>("title", b, item.GetTitle());
+                        SRL.ClassManagement.SetProperty<T>("type", b, base_type.ToString());
+                        db.Set<T>().Add(b);
+                    }
+                    return true;
+                }
+            }
         }
 
         public class MeliSms

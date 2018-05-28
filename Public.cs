@@ -1112,10 +1112,10 @@ namespace SRL
         }
 
         public static void WriteEventLog(string mes, EventLogEntryType type, string eventSourceName, string logName)
-        { 
+        {
             if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
             {
-                
+
                 eventLog1 = new System.Diagnostics.EventLog();
                 System.Diagnostics.EventLog.CreateEventSource(
                     eventSourceName, logName);
@@ -1494,8 +1494,8 @@ namespace SRL
 
             public static void RunAsynch(Action act)
             {
-                //p= () => {function(p1,p2); })
-                new Task(act).Start();
+                act.DynamicInvoke();
+
             }
         }
         public class DB
@@ -4656,6 +4656,19 @@ namespace SRL
             return "true";
 
         }
+
+        public static void AddRowToDataTable(DataTable dt, Dictionary<string, object> item)
+        {
+            DataRow row = dt.NewRow();
+
+            foreach (var i in item)
+            {
+                row[i.Key] = i.Value;
+            }
+
+            dt.Rows.Add(row);
+            //dt.Rows.Add( item.Values.ToArray());
+        }
     }
     public class HttpSend
     {
@@ -5522,7 +5535,7 @@ namespace SRL
                    || input.StartsWith("[") && input.EndsWith("]");
         }
 
-        public DataTable ConvertJsonToDataTable(List<Dictionary<string, object>> list)
+        public static DataTable ConvertJsonToDataTable(List<Dictionary<string, object>> list)
         {
             DataTable dt = new DataTable();
 
@@ -5532,12 +5545,10 @@ namespace SRL
 
             foreach (var item in list)
             {
-                ButtonLoader(all_);
                 Dictionary<string, object> item_to_show = new Dictionary<string, object>();
 
                 foreach (var item_ in item)
                 {
-
                     if (item_.Value != null) item_to_show[item_.Key.ToString()] = item_.Value.ToString();
                     else item_to_show[item_.Key.ToString()] = null;
                 }
@@ -5548,12 +5559,18 @@ namespace SRL
                         dt.Columns.Add(col);
                         create_columns = true;
                     }
-                int col_add = item_to_show.Values.Count - dt.Columns.Count;
-                for (int i = 0; i < col_add; i++)
+                List<string> columns = new List<string>();
+                foreach (DataColumn col in dt.Columns)
                 {
-                    dt.Columns.Add("added" + i);
+                    columns.Add(col.ColumnName);
                 }
-                dt.Rows.Add(item_to_show.Values.ToArray());
+                List<string> new_col = item_to_show.Keys.Where(x => !columns.Contains(x)).ToList();
+                foreach (var i in new_col)
+                {
+                    dt.Columns.Add(i.ToString());
+                }
+
+                SRL.KeyValue.AddRowToDataTable(dt, item_to_show);
             }
 
             return dt;
@@ -5564,8 +5581,9 @@ namespace SRL
         {
             //add [DefaultValue("")] to must be remved properties
             var serializer = new Newtonsoft.Json.JsonSerializerSettings()
-            { 
-                DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Ignore,NullValueHandling=Newtonsoft.Json.NullValueHandling.Ignore
+            {
+                DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Ignore,
+                NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore
             };
             serializer.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, serializer);
@@ -6089,10 +6107,14 @@ namespace SRL
             }
             return error;
         }
-        public static List<string> AddTableToDB(DbContext db, string table_name, DataGridView dataGridView1)
+        public static List<string> AddTableToDB(DbContext db, string table_name, DataGridView dataGridView1, bool overwrite, string key_col)
         {
             string tb_name = table_name;
-            string sql = "CREATE TABLE " + tb_name + " ( ID bigint IDENTITY(1,1) PRIMARY KEY)";
+            if (overwrite)
+            {
+                SRL.Database.DropSQlObjIfExists(db, table_name);
+            }
+            string sql = "CREATE TABLE " + tb_name + " ( " + key_col + " bigint IDENTITY(1,1) PRIMARY KEY)";
             db.Database.ExecuteSqlCommand(sql);
 
             List<string> columns = new List<string>();
@@ -6106,7 +6128,7 @@ namespace SRL
 
             foreach (var cola in columns)
             {
-                columns_add.Add(cola + " nvarchar(255) ");
+                columns_add.Add(cola + " nvarchar(max) ");
             }
 
             string columns_add_sql = string.Join(" ,", columns_add);
@@ -6119,10 +6141,15 @@ namespace SRL
             return columns;
         }
 
-        public string InserRowToTable(DbContext db, string table_name, DataGridView dataGridView1, Dictionary<string, string> other_value, string encoder = "N")
-        {
-            string error = string.Empty;
+        public static int DropSQlObjIfExists(DbContext db, string obj_name)
+        {//like a table
+            string sql = $" IF OBJECT_ID('{obj_name}', 'U') IS NOT NULL DROP TABLE {obj_name}; ";
+            int exe = db.Database.ExecuteSqlCommand(sql);
+            return exe;
+        }
 
+        public static int InserRowToTable(DbContext db, string table_name, DataGridView dataGridView1, Dictionary<string, string> other_value, string encoder = "N")
+        {
             List<string> columns = new List<string>();
 
             foreach (DataGridViewColumn col in dataGridView1.Columns)
@@ -6139,7 +6166,6 @@ namespace SRL
             int all_ = dataGridView1.Rows.Count;
             foreach (DataGridViewRow row in dataGridView1.Rows)
             {
-                ButtonLoader(all_);
                 List<string> cells = new List<string>();
 
                 foreach (DataGridViewCell cell in row.Cells)
@@ -6154,19 +6180,13 @@ namespace SRL
                 string cells_sql = string.Join(" ,", cells) + other_sql;
 
                 sql = "insert into " + table_name + " (" + columns_sql + ") values (" + cells_sql + ")";
-                try
-                {
-                    i += db.Database.ExecuteSqlCommand(sql);
-                }
-                catch (Exception ex)
-                {
-                    error += ex.Message + " ";
-                }
+
+                i += db.Database.ExecuteSqlCommand(sql);
+
+
             }
 
-            db.SaveChanges();
-
-            return i.ToString() + (string.IsNullOrWhiteSpace(error) ? "" : " inserted correctly. other row errors: " + error);
+            return i;
 
         }
 
