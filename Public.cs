@@ -46,6 +46,9 @@ using System.Data.SQLite;
 using System.Data.Entity.Migrations;
 using Microsoft.Win32;
 using System.ComponentModel.DataAnnotations;
+using System.ServiceModel.Security;
+using System.Drawing.Imaging;
+using System.ServiceProcess;
 
 namespace SRL
 {
@@ -574,6 +577,15 @@ namespace SRL
             DateTime dt = new DateTime();
             return DateTime.TryParseExact(input, format, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out dt);
 
+
+        }
+
+        public static DateTime SetDateTimeFormat(DateTime? date, string format)
+        {
+            //format= "yyyy/MM/dd HH:mm:ss" 
+            string d = ((DateTime)date).ToString(format);
+            DateTime dt2 = DateTime.Parse(d);
+            return dt2;
         }
     }
     public class SettingClass<SettingEntity> where SettingEntity : class
@@ -1102,7 +1114,27 @@ namespace SRL
     }
     public class ActionManagement
     {
-        static System.Diagnostics.EventLog eventLog1 = new System.Diagnostics.EventLog();
+        public class EventLogs
+        {
+            static System.Diagnostics.EventLog eventLog1 = new System.Diagnostics.EventLog();
+            public static void WriteEventLog(string mes, EventLogEntryType type, string eventSourceName, string logName)
+            {
+                if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
+                {
+
+                    eventLog1 = new System.Diagnostics.EventLog();
+                    System.Diagnostics.EventLog.CreateEventSource(
+                        eventSourceName, logName);
+
+                }
+                eventLog1.Source = eventSourceName;
+                eventLog1.Log = logName;
+
+                eventLog1.WriteEntry(mes, type);
+
+            }
+
+        }
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static string GetCurrentMethodName()
         {
@@ -1110,61 +1142,134 @@ namespace SRL
             StackFrame sf = st.GetFrame(1);
             return sf.GetMethod().Name;
         }
-
-        public static void WriteEventLog(string mes, EventLogEntryType type, string eventSourceName, string logName)
+         
+        public static void StopWinService(string service_name)
         {
-            if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
+            ServiceController service = new ServiceController();
+            service.Stop();
+            service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromMilliseconds(60000));
+
+        }
+        public class Exceptions
+        {
+            public static string GetExeptionFileLine(Exception ex)
             {
+                // Get stack trace for the exception with source file information
+                var st = new StackTrace(ex, true);
+                // Get the top stack frame 
+                StackFrame frame = st?.GetFrame(0);
+                // Get the line number from the stack frame
+                string file = frame?.GetFileName();
+                int? line = frame?.GetFileLineNumber();
 
-                eventLog1 = new System.Diagnostics.EventLog();
-                System.Diagnostics.EventLog.CreateEventSource(
-                    eventSourceName, logName);
-
+                return file + ": " + line;
             }
-            eventLog1.Source = eventSourceName;
-            eventLog1.Log = logName;
-
-            eventLog1.WriteEntry(mes, type);
-
-        }
-
-        public static string GetExeptionFileLine(Exception ex)
-        {
-            // Get stack trace for the exception with source file information
-            var st = new StackTrace(ex, true);
-            // Get the top stack frame
-            var frame = st.GetFrame(0);
-            // Get the line number from the stack frame
-            var file = frame.GetFileName();
-            var line = frame.GetFileLineNumber();
-
-            return file + ": " + line;
-        }
-
-        public static string CreateErrorMessage(Exception ex)
-        {
-            string error = ex.Message + " StackTrace: " + ex.StackTrace;
-            if (ex.InnerException != null)
+            public static string CreateErrorMessage(Exception ex)
             {
-                var inner = ex.InnerException;
-                error += " " + inner.Message;
-                if (inner.InnerException != null)
+                string error = $"'{SRL.ActionManagement.Exceptions.GetExeptionFileLine(ex)}' ({ex.GetType().FullName}): {ex.Message} \n StackTrace:  {ex.StackTrace}";
+                if (ex.InnerException != null)
                 {
-                    inner = inner.InnerException;
-                    error += " " + inner.Message;
+                    var inner = ex.InnerException;
+                    error += "\n " + inner.Message;
+                    if (inner.InnerException != null)
+                    {
+                        inner = inner.InnerException;
+                        error += "\n " + inner.Message;
+                        if (inner.InnerException != null)
+                        {
+                            inner = inner.InnerException;
+                            error += "\n " + inner.Message;
+
+                        }
+
+                    }
 
                 }
-                if (inner.InnerException != null)
-                {
-                    inner = inner.InnerException;
-                    error += " " + inner.Message;
+                return error;
+            }
 
+            public static string CreateDbEntityExceptionMessage(DbEntityValidationException ee)
+            {
+                string error = "";
+                foreach (var eve in ee.EntityValidationErrors)
+                {
+                    error += $"Entity of type '{eve.Entry.Entity.GetType().Name}' in state '{ eve.Entry.State}' has the following validation errors: ";
+                    foreach (var ve in eve.ValidationErrors)
+                    {
+                        error += $"\n Property: {ve.PropertyName} , Error: {ve.ErrorMessage}";
+                    }
+                    error += "\n";
+                }
+                return error;
+            }
+        }
+        public class Captcha
+        {
+            public static Bitmap CreateCaptchaImage(ref string code)
+            {
+                Random rand = new Random();
+                code = GetRandomText();
+
+                Bitmap bitmap = new Bitmap(200, 50, PixelFormat.Format32bppArgb);
+
+                using (Graphics g = Graphics.FromImage(bitmap))
+                {
+
+                    Pen pen = new Pen(Color.Yellow);
+                    Rectangle rect = new Rectangle(0, 0, 200, 50);
+
+                    SolidBrush b = new SolidBrush(Color.Black);
+                    SolidBrush White = new SolidBrush(Color.White);
+
+                    int counter = 0;
+
+                    g.DrawRectangle(pen, rect);
+                    g.FillRectangle(b, rect);
+
+                    for (int i = 0; i < code.Length; i++)
+                    {
+                        g.DrawString(code[i].ToString(), new Font("Georgia", 10 + rand.Next(14, 18)), White, new PointF(10 + counter, 10));
+                        counter += 20;
+                    }
+
+                    DrawRandomLines(g, rand);
+
+                    return bitmap;
                 }
 
             }
-            return error;
-        }
+            private static void DrawRandomLines(Graphics g, Random rand)
+            {
+                SolidBrush green = new SolidBrush(Color.Green);
+                //For Creating Lines on The Captcha
+                for (int i = 0; i < 20; i++)
+                {
+                    g.DrawLines(new Pen(green, 2), GetRandomPoints(rand));
+                }
 
+            }
+            private static Point[] GetRandomPoints(Random rand)
+            {
+                Point[] points = { new Point(rand.Next(10, 150), rand.Next(10, 150)), new Point(rand.Next(10, 100), rand.Next(10, 100)) };
+                return points;
+            }
+
+            private static string GetRandomText()
+            {
+                StringBuilder randomText = new StringBuilder();
+
+                string alphabets = "abcdefghijklmnopqrstuvwxyz1234567890";
+
+                Random r = new Random();
+                for (int j = 0; j <= 5; j++)
+                {
+                    randomText.Append(alphabets[r.Next(alphabets.Length)]);
+                }
+
+                return randomText.ToString();
+            }
+
+        }
         public class FormActions
         {
 
@@ -1277,6 +1382,11 @@ namespace SRL
 
 
 
+                }
+
+                public static void ParallelCall<T>(List<T> DBitems, string parallel, MethodDelegateListParams<T> function, Action call_back_, params object[] parameters)
+                {
+                    ParallelCall<T>(DBitems, parallel, function, call_back_, null, parameters);
                 }
 
                 private async static void Progress_bar_lbl_EnabledChanged(object sender, EventArgs e)
@@ -1492,10 +1602,37 @@ namespace SRL
                 return function.DynamicInvoke(parameters);
             }
 
-            public static void RunAsynch(Action act)
+            public static void RunAsynch(Action act, Action call_back_ = null)
             {
-                act.DynamicInvoke();
+                act.BeginInvoke((ar) => RunAsynchCallBack(ar, call_back_), null);
+            }
+            private static void RunAsynchCallBack(IAsyncResult ar, Action call_back)
+            {
+                if (call_back != null) call_back();
+            }
+            public static void CallInterval(double interval, System.Timers.Timer timer, Action<object, System.Timers.ElapsedEventArgs> OnTimer)
+            {
+                bool called_once = false;
+                System.Timers.Timer timer_once = new System.Timers.Timer();
+                timer_once.Interval = 500;
+                timer_once.Elapsed += (so, eo) =>
+                {
+                    if (called_once)
+                    {
+                        timer_once.Stop();
+                        return;
+                    }
+                    else
+                    {
+                        called_once = true;
+                        OnTimer(so, eo);
+                    }
+                };
+                timer_once.Start();
 
+                timer.Interval = interval;
+                timer.Elapsed += (s, e) => OnTimer(s, e);
+                timer.Start();
             }
         }
         public class DB
@@ -4416,11 +4553,8 @@ namespace SRL
             }
         }
 
-        public static string SendEmail(string username, string toMail, string subject, string body, string fromMail, string password, string attach_text_file_content = null, string attach_text_file_name = null)
+        public static void SendEmail(string toMail, string subject, string body, string fromMail, string password, string attach_text_file_content = null, string attach_text_file_name = null)
         {
-            string error = "";
-            try
-            {
                 System.Net.Mail.MailMessage mailMessage = new System.Net.Mail.MailMessage();
                 System.Net.Mail.MailAddress from = new System.Net.Mail.MailAddress(fromMail);
                 mailMessage.To.Add(toMail);
@@ -4437,12 +4571,7 @@ namespace SRL
                 smtpClient.Credentials = new System.Net.NetworkCredential(fromMail, password);
                 smtpClient.EnableSsl = true;
                 smtpClient.Send(mailMessage);
-            }
-            catch (Exception ex)
-            {
-                error = ex.Message;
-            }
-            return error;
+            
         }
 
 
@@ -4877,6 +5006,33 @@ namespace SRL
             dynamic binding = ser_.Endpoint.Binding;
             binding.MaxReceivedMessageSize = received_Size;
             ser_.Endpoint.Binding = binding;
+        }
+        public static void SetSoapTimeOut<TChannel>(System.ServiceModel.ClientBase<TChannel> ser_, TimeSpan time) where TChannel : class
+        {
+            //call:  SRL.Web.SetSoapMessageSize(ccs_client, Int32.MaxValue);
+            dynamic binding = ser_.Endpoint.Binding;
+            binding.SendTimeout = binding.ReceiveTimeout = time;
+            ser_.Endpoint.Binding = binding;
+        }
+
+        public static void AddBasicAuthToSoapHeader<TChannel>(System.ServiceModel.ClientBase<TChannel> soap_client, string username, string password) where TChannel : class
+        {
+            soap_client.ClientCredentials.UserName.UserName = username;
+            soap_client.ClientCredentials.UserName.Password = password;
+
+            BasicHttpBinding binding = new System.ServiceModel.BasicHttpBinding()
+            {
+                Name = soap_client.Endpoint.Binding.Name,
+                Namespace = soap_client.Endpoint.Binding.Namespace
+            };
+
+            binding.Security.Mode = BasicHttpSecurityMode.TransportWithMessageCredential;
+            binding.Security.Transport.ProxyCredentialType = HttpProxyCredentialType.None;
+            binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.None;
+            binding.Security.Transport.Realm = "";
+            binding.Security.Message.ClientCredentialType = BasicHttpMessageCredentialType.UserName;
+            binding.Security.Message.AlgorithmSuite = SecurityAlgorithmSuite.Default;
+            soap_client.Endpoint.Binding = binding;
         }
     }
     public class Convertor
@@ -5817,7 +5973,8 @@ namespace SRL
                 foreach (PropertyInfo propertyInfo in objType.GetProperties())
                 {
                     string field_name = propertyInfo.Name;
-                    if (ignore_fields.Contains(field_name)) continue;
+                    if (ignore_fields != null)
+                        if (ignore_fields.Contains(field_name)) continue;
                     fields.Add(field_name);
                     field_values.Add("@" + field_name);
                 }
@@ -5827,7 +5984,8 @@ namespace SRL
                 foreach (PropertyInfo propertyInfo in objType.GetProperties())
                 {
                     string field_name = propertyInfo.Name;
-                    if (ignore_fields.Contains(field_name)) continue;
+                    if (ignore_fields != null)
+                        if (ignore_fields.Contains(field_name)) continue;
                     SQLiteParameter p = new SQLiteParameter(field_name, propertyInfo.GetValue(obj));
                     Command.Parameters.Add(p);
                 }
@@ -5876,7 +6034,7 @@ namespace SRL
                 if (raw_where != null)
                     foreach (var item in raw_where)
                     {
-                        Command.CommandText += " and " + item;
+                        Command.CommandText += " and (" + item + ")";
                     }
                 return Select<TSource>();
             }
@@ -5885,6 +6043,12 @@ namespace SRL
             {
                 //sqlite standard datetime format: '2015-06-01 12:15:06'
                 string sql = "abs( strftime('%s',replace('" + base_datetime + "','/','-')) -strftime('%s', datetime(replace(substr(" + col_name + ", 1, 10), '/', '-') || ' ' || substr(" + col_name + ", 12)))) " + opt + " " + diffSec;
+                return sql;
+            }
+            public static string DatetimeWhere(string base_datetime, string opt, string col_name)
+            {
+                //sqlite standard datetime format: '2015-06-01 12:15:06'
+                string sql = "strftime('%s',replace('" + base_datetime + "','/','-')) " + opt + " strftime('%s', datetime(replace(substr(" + col_name + ", 1, 10), '/', '-') || ' ' || substr(" + col_name + ", 12))) ";
                 return sql;
             }
 
@@ -6427,6 +6591,13 @@ namespace SRL
             {//table exists
                 return "";
             }
+        }
+
+        public static bool IsDatetimeDefault(DateTime? date)
+        {
+            if (date == DateTime.MinValue || date == new DateTime() || date == default(DateTime))
+                return true;
+            else return false;
         }
     }
     public class AccessManagement
@@ -7293,6 +7464,35 @@ namespace SRL
             }
             arrLine[line - 1] = content;
             System.IO.File.WriteAllLines(path, arrLine);
+
+        }
+        public static void SaveFileOverwrite(string fileFullName, Action file_action)
+        {
+            if (System.IO.File.Exists(fileFullName))
+            {
+                System.IO.File.Delete(fileFullName);
+                file_action();
+            }
+            else
+            {
+                file_action();
+
+            }
+
+        }
+
+        public static void SaveImageOverwrite(string fileFullName, Bitmap bitmap)
+        {
+            if (System.IO.File.Exists(fileFullName))
+            {
+                System.IO.File.Delete(fileFullName);
+                bitmap.Save(fileFullName);
+            }
+            else
+            {
+                bitmap.Save(fileFullName);
+
+            }
 
         }
         /// <summary>

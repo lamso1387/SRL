@@ -71,7 +71,15 @@ namespace SRL
             SRL.FileManagement.MakeShortcut(app_display_name, SRL.FileManagement.GetDesktopDirectory(), tbDestination.Text, app_exe_name + ".exe", icon_full_path_from_source_directory);
             progressBar1.Value = 100;
             clicker.Text = end_string;
-            button1.Enabled = false;
+            button1.Enabled =false;
+            if(update_file_list==null)
+            {
+                btnUpdate.Enabled = false;
+            }
+            else
+            {
+                btnCopy.Enabled = false;
+            }
 
 
 

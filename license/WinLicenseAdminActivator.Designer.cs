@@ -49,6 +49,10 @@
             this.tbsubject = new System.Windows.Forms.TextBox();
             this.label7 = new System.Windows.Forms.Label();
             this.tbFileName = new System.Windows.Forms.TextBox();
+            this.label8 = new System.Windows.Forms.Label();
+            this.tbEmailSender = new System.Windows.Forms.TextBox();
+            this.label9 = new System.Windows.Forms.Label();
+            this.tbSenderPass = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // propertyGrid1
@@ -276,11 +280,59 @@
             this.tbFileName.Text = "license.lic";
             this.tbFileName.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(866, 601);
+            this.label8.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(72, 26);
+            this.label8.TabIndex = 27;
+            this.label8.Text = "ارسال کننده";
+            // 
+            // tbEmailSender
+            // 
+            this.tbEmailSender.Font = new System.Drawing.Font("Times New Roman", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
+            this.tbEmailSender.Location = new System.Drawing.Point(721, 600);
+            this.tbEmailSender.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            this.tbEmailSender.Multiline = true;
+            this.tbEmailSender.Name = "tbEmailSender";
+            this.tbEmailSender.Size = new System.Drawing.Size(148, 27);
+            this.tbEmailSender.TabIndex = 26;
+            this.tbEmailSender.Text = "khanebazaar@gmail.com";
+            this.tbEmailSender.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.Location = new System.Drawing.Point(1033, 600);
+            this.label9.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(31, 26);
+            this.label9.TabIndex = 29;
+            this.label9.Text = "رمز";
+            // 
+            // tbSenderPass
+            // 
+            this.tbSenderPass.Font = new System.Drawing.Font("Times New Roman", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(178)));
+            this.tbSenderPass.Location = new System.Drawing.Point(941, 600);
+            this.tbSenderPass.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            this.tbSenderPass.Multiline = true;
+            this.tbSenderPass.Name = "tbSenderPass";
+            this.tbSenderPass.PasswordChar = '*';
+            this.tbSenderPass.Size = new System.Drawing.Size(97, 27);
+            this.tbSenderPass.TabIndex = 28;
+            this.tbSenderPass.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            // 
             // WinLicenseAdminActivator
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 26F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1073, 605);
+            this.ClientSize = new System.Drawing.Size(1123, 642);
+            this.Controls.Add(this.label9);
+            this.Controls.Add(this.tbSenderPass);
+            this.Controls.Add(this.label8);
+            this.Controls.Add(this.tbEmailSender);
             this.Controls.Add(this.label7);
             this.Controls.Add(this.tbFileName);
             this.Controls.Add(this.label6);
@@ -336,5 +388,9 @@
         private System.Windows.Forms.TextBox tbsubject;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.TextBox tbFileName;
+        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.TextBox tbEmailSender;
+        private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.TextBox tbSenderPass;
     }
 }
