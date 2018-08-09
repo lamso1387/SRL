@@ -5721,26 +5721,7 @@ namespace SRL
                     return arr;
 
                 }
-            }
-
-
-
-
-            //Image img = Image.FromFile(path);
-            //MemoryStream ms = new MemoryStream();
-            //byte[] arr;
-            //try
-            //{
-            //    img.Save(ms, img.RawFormat);
-            //    arr = ms.ToArray();
-
-            //}
-            //finally
-            //{
-            //    ms.Close();
-            //    img.Dispose();
-            //}
-            //return arr;
+            } 
 
         }
 
