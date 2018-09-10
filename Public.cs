@@ -640,9 +640,9 @@ namespace SRL
             /* use in load form: 
               Dictionary<string, string> migration_version_query = new Dictionary<string, string>();
 
-            migration_version_query["1"] = "ALTER TABLE WorksTB ADD progress_status nvarchar(50);";
-            migration_version_query["2"] =migration_version_query["1"]+ " ...";
-            migration_version_query["3"] =migration_version_query["2"] + " ...";
+            migration_version_query["3"] = " ...";
+            migration_version_query["2"] = " ..."+migration_version_query["3"];
+            migration_version_query["1"] = "ALTER TABLE WorksTB ADD progress_status nvarchar(50); "+migration_version_query["2"];
 
             Publics.srlsetting.MigrateDatabase(migration_version_query);
              */
@@ -5492,6 +5492,19 @@ namespace SRL
         {
             return (T)Enum.Parse(typeof(T), enum_str, true);
 
+        }
+
+        public static object NullIfWhiteSpace(object value)
+        {
+            if (value == null) return null;
+            if (String.IsNullOrWhiteSpace(value.ToString())) { return null; }
+            return value;
+        }
+
+        public static object IfNull(object value, object default_value)
+        {
+            if (value == null) return default_value;
+            return value;
         }
     }
     public class Json : ControlLoad
