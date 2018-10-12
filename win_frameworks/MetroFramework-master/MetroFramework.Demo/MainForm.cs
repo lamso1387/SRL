@@ -73,5 +73,14 @@ namespace MetroFramework.Demo
             timer.Change(0, interval);
         }
 
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void metroTabControl_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
     }
 }

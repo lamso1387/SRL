@@ -46,6 +46,7 @@ using System.Data.SQLite;
 using System.Data.Entity.Migrations;
 using Microsoft.Win32;
 using System.ComponentModel.DataAnnotations;
+using Bunifu.Framework.UI;
 
 namespace SRL
 {
@@ -2487,6 +2488,32 @@ namespace SRL
             }
         }
 
+    }
+    public class Bunifu
+    {
+        public class Win
+        {
+            public static void MenuResizer(BunifuGradientPanel gp, BunifuAnimatorNS.BunifuTransition t, int from,int to, Control container)
+            {
+                if (gp.Width == to)
+                {
+                    if (container != null) container.Width = from;
+                    gp.Visible = false;
+
+                    gp.Width = from;
+                    t.ShowSync(gp);
+                    
+                }
+                else
+                {
+                    if (container != null) container.Width = to;
+                    gp.Visible = false;
+                    gp.Width = to;
+
+                    t.ShowSync(gp);
+                }
+            }
+        }
     }
     public class WinTools
     {
