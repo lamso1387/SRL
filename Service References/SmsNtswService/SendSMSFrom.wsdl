@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:wsap="http://schemas.xmlsoap.org/ws/2004/08/addressing/policy" xmlns:wsa10="http://www.w3.org/2005/08/addressing" xmlns:tns="http://tempuri.org/" xmlns:msc="http://schemas.microsoft.com/ws/2005/12/wsdl/contract" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsx="http://schemas.xmlsoap.org/ws/2004/09/mex" xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:ns2="http://schemas.microsoft.com/2003/10/Serialization/Arrays" xmlns:wsam="http://www.w3.org/2007/05/addressing/metadata" xmlns:ns0="http://schemas.microsoft.com/2003/10/Serialization/" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:ns1="http://schemas.datacontract.org/2004/07/DataAccessLayer" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://tempuri.org/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsp:Policy wsu:Id="UTOverTransport">
+    <wsp:ExactlyOne>
+      <wsp:All>
+        <sp:TransportBinding xmlns:sp="http://schemas.xmlsoap.org/ws/2005/07/securitypolicy">
+          <wsp:Policy>
+            <sp:TransportToken>
+              <wsp:Policy>
+                <sp:HttpsToken RequireClientCertificate="false" />
+              </wsp:Policy>
+            </sp:TransportToken>
+            <sp:AlgorithmSuite>
+              <wsp:Policy>
+                <sp:Basic256 />
+              </wsp:Policy>
+            </sp:AlgorithmSuite>
+            <sp:Layout>
+              <wsp:Policy>
+                <sp:Lax />
+              </wsp:Policy>
+            </sp:Layout>
+            <sp:IncludeTimestamp />
+          </wsp:Policy>
+        </sp:TransportBinding>
+        <sp:SignedSupportingTokens xmlns:sp="http://schemas.xmlsoap.org/ws/2005/07/securitypolicy">
+          <wsp:Policy>
+            <sp:UsernameToken sp:IncludeToken="http://schemas.xmlsoap.org/ws/2005/07/securitypolicy/IncludeToken/AlwaysToRecipient" />
+          </wsp:Policy>
+        </sp:SignedSupportingTokens>
+      </wsp:All>
+    </wsp:ExactlyOne>
+  </wsp:Policy>
+  <wsdl:types>
+    <xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://tempuri.org/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:import namespace="http://schemas.datacontract.org/2004/07/DataAccessLayer" />
+      <xs:element name="SendSMSFrom">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" name="UserName" nillable="true" type="xs:string" />
+            <xs:element minOccurs="0" name="Password" nillable="true" type="xs:string" />
+            <xs:element minOccurs="0" name="SmsFromInfo" type="ns1:CsOperationManagment.SendSMSFromInfo" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="SendSMSFromResponse">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" name="SendSMSFromResult" type="ns1:CsOperationManagment.RequestAnswer" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:schema>
+    <xs:schema xmlns:tns="http://schemas.microsoft.com/2003/10/Serialization/" attributeFormDefault="qualified" elementFormDefault="qualified" targetNamespace="http://schemas.microsoft.com/2003/10/Serialization/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:element name="anyType" nillable="true" type="xs:anyType" />
+      <xs:element name="anyURI" nillable="true" type="xs:anyURI" />
+      <xs:element name="base64Binary" nillable="true" type="xs:base64Binary" />
+      <xs:element name="boolean" nillable="true" type="xs:boolean" />
+      <xs:element name="byte" nillable="true" type="xs:byte" />
+      <xs:element name="dateTime" nillable="true" type="xs:dateTime" />
+      <xs:element name="decimal" nillable="true" type="xs:decimal" />
+      <xs:element name="double" nillable="true" type="xs:double" />
+      <xs:element name="float" nillable="true" type="xs:float" />
+      <xs:element name="int" nillable="true" type="xs:int" />
+      <xs:element name="long" nillable="true" type="xs:long" />
+      <xs:element name="QName" nillable="true" type="xs:QName" />
+      <xs:element name="short" nillable="true" type="xs:short" />
+      <xs:element name="string" nillable="true" type="xs:string" />
+      <xs:element name="unsignedByte" nillable="true" type="xs:unsignedByte" />
+      <xs:element name="unsignedInt" nillable="true" type="xs:unsignedInt" />
+      <xs:element name="unsignedLong" nillable="true" type="xs:unsignedLong" />
+      <xs:element name="unsignedShort" nillable="true" type="xs:unsignedShort" />
+      <xs:element name="char" nillable="true" type="tns:char" />
+      <xs:simpleType name="char">
+        <xs:restriction base="xs:int" />
+      </xs:simpleType>
+      <xs:element name="duration" nillable="true" type="tns:duration" />
+      <xs:simpleType name="duration">
+        <xs:restriction base="xs:duration">
+          <xs:pattern value="\-?P(\d*D)?(T(\d*H)?(\d*M)?(\d*(\.\d*)?S)?)?" />
+          <xs:minInclusive value="-P10675199DT2H48M5.4775808S" />
+          <xs:maxInclusive value="P10675199DT2H48M5.4775807S" />
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:element name="guid" nillable="true" type="tns:guid" />
+      <xs:simpleType name="guid">
+        <xs:restriction base="xs:string">
+          <xs:pattern value="[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}" />
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:attribute name="FactoryType" type="xs:QName" />
+      <xs:attribute name="Id" type="xs:ID" />
+      <xs:attribute name="Ref" type="xs:IDREF" />
+    </xs:schema>
+    <xs:schema xmlns:tns="http://schemas.datacontract.org/2004/07/DataAccessLayer" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://schemas.datacontract.org/2004/07/DataAccessLayer" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:import namespace="http://schemas.microsoft.com/2003/10/Serialization/" />
+      <xs:import namespace="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+      <xs:complexType name="CsOperationManagment.SmsInfo">
+        <xs:annotation>
+          <xs:appinfo>
+            <IsValueType xmlns="http://schemas.microsoft.com/2003/10/Serialization/">true</IsValueType>
+          </xs:appinfo>
+        </xs:annotation>
+        <xs:sequence>
+          <xs:element minOccurs="0" name="Message" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="to" nillable="true" type="xs:string" />
+        </xs:sequence>
+      </xs:complexType>
+      <xs:element name="CsOperationManagment.SmsInfo" nillable="true" type="tns:CsOperationManagment.SmsInfo" />
+      <xs:complexType name="CsOperationManagment.RequestAnswer">
+        <xs:annotation>
+          <xs:appinfo>
+            <IsValueType xmlns="http://schemas.microsoft.com/2003/10/Serialization/">true</IsValueType>
+          </xs:appinfo>
+        </xs:annotation>
+        <xs:sequence>
+          <xs:element minOccurs="0" name="ErrorCode" type="xs:long" />
+          <xs:element minOccurs="0" name="ErrorMessage" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="RecID" type="xs:long" />
+        </xs:sequence>
+      </xs:complexType>
+      <xs:element name="CsOperationManagment.RequestAnswer" nillable="true" type="tns:CsOperationManagment.RequestAnswer" />
+      <xs:complexType name="CsOperationManagment.SendSMSFromInfo">
+        <xs:annotation>
+          <xs:appinfo>
+            <IsValueType xmlns="http://schemas.microsoft.com/2003/10/Serialization/">true</IsValueType>
+          </xs:appinfo>
+        </xs:annotation>
+        <xs:sequence>
+          <xs:element minOccurs="0" name="From" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="IsResend" type="xs:boolean" />
+          <xs:element minOccurs="0" name="IsSwitch" type="xs:boolean" />
+          <xs:element minOccurs="0" name="Message" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="ResendDuration" type="xs:dateTime" />
+          <xs:element minOccurs="0" name="To" nillable="true" type="xs:string" />
+        </xs:sequence>
+      </xs:complexType>
+      <xs:element name="CsOperationManagment.SendSMSFromInfo" nillable="true" type="tns:CsOperationManagment.SendSMSFromInfo" />
+      <xs:complexType name="CsOperationManagment.SendFromWithTypeInfo">
+        <xs:annotation>
+          <xs:appinfo>
+            <IsValueType xmlns="http://schemas.microsoft.com/2003/10/Serialization/">true</IsValueType>
+          </xs:appinfo>
+        </xs:annotation>
+        <xs:sequence>
+          <xs:element minOccurs="0" name="From" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="Message" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="To" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="TypeID" type="xs:int" />
+        </xs:sequence>
+      </xs:complexType>
+    </xs:schema>
+    <xs:schema xmlns:tns="http://schemas.microsoft.com/2003/10/Serialization/Arrays" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://schemas.microsoft.com/2003/10/Serialization/Arrays" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:complexType name="ArrayOfstring">
+        <xs:sequence>
+          <xs:element minOccurs="0" maxOccurs="unbounded" name="string" nillable="true" type="xs:string" />
+        </xs:sequence>
+      </xs:complexType>
+      <xs:element name="ArrayOfstring" nillable="true" type="tns:ArrayOfstring" />
+    </xs:schema>
+  </wsdl:types>
+  <wsdl:message name="INTSWWebService_SendSMSFrom_InputMessage">
+    <wsdl:part name="parameters" element="tns:SendSMSFrom" />
+  </wsdl:message>
+  <wsdl:message name="INTSWWebService_SendSMSFrom_OutputMessage">
+    <wsdl:part name="parameters" element="tns:SendSMSFromResponse" />
+  </wsdl:message>
+  <wsdl:portType wsp:PolicyURIs="#UTOverTransport" name="SendSMSFromPortType">
+    <wsdl:operation name="SendSMSFrom">
+      <wsdl:input wsaw:Action="http://tempuri.org/INTSWWebService/SendSMSFrom" message="tns:INTSWWebService_SendSMSFrom_InputMessage" />
+      <wsdl:output wsaw:Action="//tempuri.org/INTSWWebService/SendSMSFromResponse" message="tns:INTSWWebService_SendSMSFrom_OutputMessage" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="SendSMSFromSoap11Binding" type="tns:SendSMSFromPortType">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="SendSMSFrom">
+      <soap:operation soapAction="http://tempuri.org/INTSWWebService/SendSMSFrom" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="SendSMSFromSoap12Binding" type="tns:SendSMSFromPortType">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="SendSMSFrom">
+      <soap12:operation soapAction="http://tempuri.org/INTSWWebService/SendSMSFrom" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="SendSMSFromHttpBinding" type="tns:SendSMSFromPortType">
+    <http:binding verb="POST" />
+    <wsdl:operation name="SendSMSFrom">
+      <http:operation location="SendSMSFrom" />
+      <wsdl:input>
+        <mime:content part="parameters" type="text/xml" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:content part="parameters" type="text/xml" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="SendSMSFrom">
+    <wsdl:port name="SendSMSFromHttpsSoap11Endpoint" binding="tns:SendSMSFromSoap11Binding">
+      <soap:address location="https://sr-cix.ntsw.ir/services/SendSMSFrom.SendSMSFromHttpsSoap11Endpoint" />
+    </wsdl:port>
+    <wsdl:port name="SendSMSFromHttpSoap11Endpoint" binding="tns:SendSMSFromSoap11Binding">
+      <soap:address location="http://sr-cix.ntsw.ir/services/SendSMSFrom.SendSMSFromHttpSoap11Endpoint" />
+    </wsdl:port>
+    <wsdl:port name="SendSMSFromHttpsSoap12Endpoint" binding="tns:SendSMSFromSoap12Binding">
+      <soap12:address location="https://sr-cix.ntsw.ir/services/SendSMSFrom.SendSMSFromHttpsSoap12Endpoint" />
+    </wsdl:port>
+    <wsdl:port name="SendSMSFromHttpSoap12Endpoint" binding="tns:SendSMSFromSoap12Binding">
+      <soap12:address location="http://sr-cix.ntsw.ir/services/SendSMSFrom.SendSMSFromHttpSoap12Endpoint" />
+    </wsdl:port>
+    <wsdl:port name="SendSMSFromHttpsEndpoint" binding="tns:SendSMSFromHttpBinding">
+      <http:address location="https://sr-cix.ntsw.ir/services/SendSMSFrom.SendSMSFromHttpsEndpoint" />
+    </wsdl:port>
+    <wsdl:port name="SendSMSFromHttpEndpoint" binding="tns:SendSMSFromHttpBinding">
+      <http:address location="http://sr-cix.ntsw.ir/services/SendSMSFrom.SendSMSFromHttpEndpoint" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

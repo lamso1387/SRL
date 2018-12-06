@@ -1118,7 +1118,7 @@ namespace SRL
         public class EventLogs
         {
             static System.Diagnostics.EventLog eventLog1 = new System.Diagnostics.EventLog();
-            public static void WriteEventLog(string mes, EventLogEntryType type, string eventSourceName, string logName)
+            public static void WriteEventLog(string mes, EventLogEntryType type = EventLogEntryType.Information, string eventSourceName = "NwmsInterfaceErrorSource", string logName = "srNwmsInterface")
             {
                 if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
                 {
@@ -1201,24 +1201,10 @@ namespace SRL
             }
             public static string CreateErrorMessage(Exception ex)
             {
-                string error = $"'{SRL.ActionManagement.Exceptions.GetExeptionFileLine(ex)}' ({ex.GetType().FullName}): {ex.Message} \n StackTrace:  {ex.StackTrace}";
+                string error = $"Error, Line={SRL.ActionManagement.Exceptions.GetExeptionFileLine(ex)},Type={ex.GetType().FullName},Message={ex.Message} \n StackTrace:  {ex.StackTrace}";
                 if (ex.InnerException != null)
                 {
-                    var inner = ex.InnerException;
-                    error += "\n " + inner.Message;
-                    if (inner.InnerException != null)
-                    {
-                        inner = inner.InnerException;
-                        error += "\n " + inner.Message;
-                        if (inner.InnerException != null)
-                        {
-                            inner = inner.InnerException;
-                            error += "\n " + inner.Message;
-
-                        }
-
-                    }
-
+                    error += "\n InnerException " + CreateErrorMessage(ex.InnerException);
                 }
                 return error;
             }
@@ -1342,18 +1328,13 @@ namespace SRL
             public class Parallel
             {
                 public delegate void MethodDelegateListParams<T>(List<T> list, BackgroundWorker bg, params object[] args);
-                static List<BackgroundWorker> bgList = new List<BackgroundWorker>(); 
+                static List<BackgroundWorker> bgList = new List<BackgroundWorker>();
 
-                /// <summary>
-                /// 
-                /// </summary>
-                /// <typeparam name="T"></typeparam>
-                /// <param name="DBitems"></param>
-                /// <param name="parallel"></param>
-                /// <param name="function">only function names</param>
-                /// <param name="call_back_">like : ()=>fun(a,b)</param>
-                /// <param name="progress_bar_lbl_"></param>
-                /// <param name="parameters">consider order</param>
+                public static void ParallelCall<T>(List<T> DBitems, string parallel, MethodDelegateListParams<T> function, Action func_call_back,
+                   Action<Exception> func_error, Action finall_call_back)
+                {
+                    ParallelCall<T>(DBitems, parallel, function, func_call_back, func_error, finall_call_back, null);
+                }
                 public static void ParallelCall<T>(List<T> DBitems, string parallel, MethodDelegateListParams<T> function, Action func_call_back,
                     Action<Exception> func_error, Action finall_call_back, Label progress_bar_lbl, params object[] parameters)
                 {/*use:
@@ -1364,8 +1345,8 @@ namespace SRL
                     }                    
                     bg.ReportProgress(1);
 
-                    */ 
-                    int progress = 0; 
+                    */
+                    int progress = 0;
                     if (progress_bar_lbl != null) progress_bar_lbl.EnabledChanged += (s0, e0) =>
                     {
                         foreach (var worker in bgList)
@@ -1642,13 +1623,35 @@ namespace SRL
 
             }
 
-            public static void RunAsyncByThread(Action act, Action call_back)
+            public static void RunAsyncByThread(Action act, Action call_back, Action<Exception> error_call)
             {
-                System.Threading.ThreadStart starter = new System.Threading.ThreadStart(act);
+                bool error_called = false;
+                System.Threading.ThreadStart starter = new System.Threading.ThreadStart(() =>
+                {
+                    if(error_call !=null)
+                    {
+                        try
+                        { 
+                            act();
+                        }
+                        catch (Exception ex)
+                        {
+                            error_called = true;
+                            error_call(ex);
+                        } 
+                    }
+                    else
+                    {
+                        act();
+                    }
+                }
+                    );
                 starter += () =>
                 {
-                    if (call_back != null)
+                    if (call_back != null && error_called==false)
+                    {
                         call_back();
+                    }
                 };
 
                 System.Threading.Thread th = new System.Threading.Thread(starter);
@@ -1684,7 +1687,7 @@ namespace SRL
 
             public static void CallInterval(double interval, System.Timers.Timer timer, Action onTimer)
             {
-                RunAsyncByThread(onTimer, null);
+                RunAsyncByThread(onTimer, null, null);
                 timer.Interval = interval;
                 timer.Elapsed += (s, e) => { onTimer(); };
                 timer.Start();
@@ -5096,11 +5099,22 @@ namespace SRL
                         binding.Security.Mode = BasicHttpSecurityMode.Transport;
                         binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
                         break;
+                    case 2:
+                        binding.Security.Mode = BasicHttpSecurityMode.TransportWithMessageCredential; 
+                        break;
                 }
                 soap_client.Endpoint.Binding = binding;
             }
         }
 
+        public static T CreateWcfClient<T>(string url)
+        {
+            EndpointAddress address = new EndpointAddress(url);
+            BasicHttpBinding binding = new BasicHttpBinding();
+            T client = SRL.ClassManagement.CreateInstance<T>(binding, address);
+            return client;
+
+        }
     }
     public class Convertor
     {
@@ -5563,10 +5577,12 @@ namespace SRL
 
             return date_list;
         }
-        public static string EnglishToPersianDate(DateTime d)
+        public static string EnglishToPersianDate(DateTime d, string format= "{0}/{1}/{2}")
         {
             PersianCalendar pc = new PersianCalendar();
-            string date = string.Format("{0}/{1}/{2}", pc.GetYear(d), pc.GetMonth(d), pc.GetDayOfMonth(d));
+            string month = pc.GetMonth(d).ToString();
+            string day = pc.GetDayOfMonth(d).ToString();
+            string date = string.Format(format, pc.GetYear(d), month.Length == 1 ? "0" + month : month, day.Length == 1 ? "0" + day : day);
             return date;
         }
         public static DateTime PersianToEnglishDate(int year, int month, int day)
@@ -5682,7 +5698,7 @@ namespace SRL
         public static T ClassToClass<T>(Object input)
         {
             string input_json = SRL.Json.ClassObjectToJson(input);
-
+            //ActionManagement.EventLogs.WriteEventLog("input_json= " + input_json, EventLogEntryType.Error, "NwmsInterfaceErrorSource", "NwmsInterfaceErrors");
             T output = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input_json);
             return output;
         }
@@ -5721,7 +5737,7 @@ namespace SRL
                     return arr;
 
                 }
-            } 
+            }
 
         }
 
@@ -5746,16 +5762,17 @@ namespace SRL
         {
             return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input);
         }
-        public static string ClassObjectToJson(object obj)
+        public static string ClassObjectToJson(object obj, Newtonsoft.Json.Formatting format = Newtonsoft.Json.Formatting.Indented)
         {
             if (obj == null) return null;
             try
             {
                 if (obj.GetType() == typeof(string)) obj = Newtonsoft.Json.JsonConvert.DeserializeObject(obj.ToString());
-                string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+                // var set = new JsonSerializerSettings();
+                string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, format);
                 return json;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
 
                 string json = new JavaScriptSerializer().Serialize(obj);
@@ -5864,7 +5881,7 @@ namespace SRL
             where TDbContext : DbContext
             where TConfiguration : DbMigrationsConfiguration<TDbContext>, new()
         {
-
+            //set DbMigrationsConfiguration.AutomaticMigrationsEnabled to true
             System.Data.Entity.Database.SetInitializer(new MigrateDatabaseToLatestVersion<TDbContext, TConfiguration>());
         }
 
@@ -6137,8 +6154,10 @@ namespace SRL
             }
             public static string DatetimeWhere(string base_datetime, string opt, string col_name)
             {
+                //base_datetime= date.ToString("yyyy/MM/dd HH:mm:ss"); 
+                //col_name: nameof(insert_date)
                 //sqlite standard datetime format: '2015-06-01 12:15:06'
-                string sql = "strftime('%s',replace('" + base_datetime + "','/','-')) " + opt + " strftime('%s', datetime(replace(substr(" + col_name + ", 1, 10), '/', '-') || ' ' || substr(" + col_name + ", 12))) ";
+                string sql = $"strftime('%s',replace('{base_datetime}','/','-')) {opt} strftime('%s', datetime(replace(substr({col_name}, 1, 10), '/', '-') || ' ' || substr({col_name}, 12))) ";
                 return sql;
             }
             public int DeleteAll<T>()
@@ -6822,11 +6841,11 @@ namespace SRL
 
         public static DataTable GetDataTableFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
-            if (!System.IO.File.Exists(file_full_path))
-            {
-                MessageBox.Show("choose file!");
-                return null;
-            }
+            //if (!System.IO.File.Exists(file_full_path))
+            //{
+            //    MessageBox.Show("choose file!");
+            //    return null;
+            //}
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
             string strSql = "Select * from " + table_name;
             OleDbConnection con = new OleDbConnection(strProvider);
@@ -6835,16 +6854,9 @@ namespace SRL
             cmd.CommandType = CommandType.Text;
             OleDbDataAdapter da = new OleDbDataAdapter(cmd);
             DataTable table = new DataTable();
-            try
-            {
-                da.Fill(table);
-                return table;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-                return null;
-            }
+
+            da.Fill(table);
+            return table;
         }
 
         public static DataColumnCollection GetTableHeadersFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
@@ -6869,14 +6881,14 @@ namespace SRL
                 return null;
             }
         }
-        public static int AddColumnToAccess(string column_name, string table_name, AccessDataType type_enum, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
+        public static int AddColumnToAccess(string column_name, string table_name, AccessDataType type_enum, string file_full_path, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
             DataColumnCollection columns = SRL.AccessManagement.GetTableHeadersFromAccess(file_full_path, "table1");
             if (!columns.Contains(column_name))
             {
                 string type = SRL.ClassManagement.GetEnumDescription<AccessDataType>(type_enum);
                 string query = "alter table " + table_name + " add " + column_name + " " + type;
-                return ExecuteToAccess(query, file_full_path, show_error, provider);
+                return ExecuteToAccess(query, file_full_path, provider);
             }
             else return -1;
 
@@ -6898,29 +6910,19 @@ namespace SRL
             return modal;
         }
 
-        public static int ExecuteToAccess(string query, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
+        public static int ExecuteToAccess(string query, string file_full_path, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
 
             using (OleDbConnection con = new OleDbConnection(strProvider))
             {
-
-
                 OleDbCommand cmd = new OleDbCommand(query, con);
+                con.Open();
+                cmd.CommandType = CommandType.Text;
+                int res = cmd.ExecuteNonQuery();
+                return res;
 
-                try
-                {
-                    con.Open();
-                    cmd.CommandType = CommandType.Text;
-                    int res = cmd.ExecuteNonQuery();
-                    return res;
-                }
-                catch (Exception ex)
-                {
-                    if (show_error) MessageBox.Show(ex.Message);
 
-                    return -1;
-                }
             }
         }
 
@@ -6982,6 +6984,20 @@ namespace SRL
 
         }
 
+        public static void CreateIndex(string index_name, string column_name, string table_name, string file_full_path)
+        {
+            //DataTable dt = con.GetSchema("Indexes");
+            //List<AccessSchema> list = SRL.Convertor.ConvertDataTableToList<AccessSchema>(dt);
+            SRL.AccessManagement.ExecuteToAccess($"CREATE INDEX {index_name} ON {table_name}({column_name})", file_full_path);
+
+
+        }
+
+        public class AccessSchema
+        {
+            public string TABLE_NAME { get; set; }
+            public string INDEX_NAME { get; set; }
+        }
     }
     public class ExcelManagement : SRL.ControlLoad
     {
@@ -7695,9 +7711,9 @@ namespace SRL
 
                     foreach (var item in headers)
                     {
-                        SRL.AccessManagement.ExecuteToAccess("alter table table1 add " + item + " nvarchar(50)", des, true);
+                        SRL.AccessManagement.ExecuteToAccess("alter table table1 add " + item + " nvarchar(50)", des);
                     }
-                    SRL.AccessManagement.ExecuteToAccess("alter table table1 drop column Deleted_column", des, true);
+                    SRL.AccessManagement.ExecuteToAccess("alter table table1 drop column Deleted_column", des);
                     MessageBox.Show("file created in: " + des);
                     break;
 
