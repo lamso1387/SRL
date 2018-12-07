@@ -1591,20 +1591,22 @@ namespace SRL
             {
                 string error = item.ErrorMessage;
                 string attr_name = (item as dynamic).TypeId.Name;
-                while (error.Contains("{") && !string.IsNullOrWhiteSpace(error))
-                {
-                    error = error.Replace("{0}", item.Name);
-                    switch (attr_name)
+                if (error != null)
+                    while (error.Contains("{") && !string.IsNullOrWhiteSpace(error))
                     {
-                        case nameof(RangeAttribute):
-                            error = error.Replace("{1}", item.Minimum.ToString());
-                            error = error.Replace("{2}", item.Maximum.ToString());
-                            break;
+                        error = error.Replace("{0}", item.Name);
+                        switch (attr_name)
+                        {
+                            case nameof(RangeAttribute):
+                                error = error.Replace("{1}", item.Minimum.ToString());
+                                error = error.Replace("{2}", item.Maximum.ToString());
+                                break;
+                        }
+                        if (error == null) break;
                     }
-                }
-                errors.Add(error);
+                if (error != null)
+                    errors.Add(error);
             }
-
             return errors;
         }
     }
@@ -2421,6 +2423,15 @@ namespace SRL
 
         public class DatagridviewClass
         {
+            public static int GetRowsHeaderHeight(DataGridView dgv)
+            {
+                return dgv.ColumnHeadersHeight + dgv.Rows.Cast<DataGridViewRow>().Sum(r => r.Height);
+            }
+            public static int GetRowsHeight(DataGridView dgv)
+            {
+                return dgv.Rows.Cast<DataGridViewRow>().Sum(r => r.Height);
+            }
+
             public static void StyleDatagridviewDefault(DataGridView dataGridView1, float cell_size = 10F, float header_size = 10F, int row_height = 25)
             {
                 dataGridView1.DefaultCellStyle.Font = new Font(dataGridView1.DefaultCellStyle.Font.FontFamily, cell_size);
@@ -2493,7 +2504,7 @@ namespace SRL
     {
         public class Win
         {
-            public static void MenuResizer(BunifuGradientPanel gp, BunifuAnimatorNS.BunifuTransition t, int from,int to, Control container)
+            public static void MenuResizer(BunifuGradientPanel gp, BunifuAnimatorNS.BunifuTransition t, int from, int to, Control container)
             {
                 if (gp.Width == to)
                 {
@@ -2502,7 +2513,7 @@ namespace SRL
 
                     gp.Width = from;
                     t.ShowSync(gp);
-                    
+
                 }
                 else
                 {
@@ -3216,14 +3227,15 @@ namespace SRL
                 /// <param name="controlNext_"></param>
                 /// <param name="controlLast_"></param>
                 /// <param name="tbpaging_"></param>
-                public DataGridViewWithPaging(DataGridView dgv, Control controlFirst_, Control controlPrevious_, Control controlNext_, Control controlLast_, TextBox tbpaging_)
+                public DataGridViewWithPaging(DataGridView dgv, Control controlFirst_, Control controlPrevious_,
+                    Control controlNext_, Control controlLast_, TextBox tbpaging_)
                 {
 
                     dataGridView1 = dgv;
-                    controlFirst_.Click += btnFirst_Click;
-                    controlPrevious_.Click += btnPrevious_Click;
-                    controlNext_.Click += btnNext_Click;
-                    controlLast_.Click += btnLast_Click;
+                    if (controlFirst_ != null) controlFirst_.Click += btnFirst_Click;
+                    if(controlPrevious_!=null) controlPrevious_.Click += btnPrevious_Click;
+                   if(controlNext_ !=null) controlNext_.Click += btnNext_Click;
+                    if(controlLast_!=null) controlLast_.Click += btnLast_Click;
                     txtPaging = tbpaging_;
 
                 }
@@ -3245,7 +3257,7 @@ namespace SRL
                         dt.ImportRow(item);
                     }
 
-                    txtPaging.Text = string.Format("Page {0} Of {1} Pages", pageNumber, (DataSource.Rows.Count / PageSize) + 1);
+                    if(txtPaging !=null) txtPaging.Text = string.Format("Page {0} Of {1} Pages", pageNumber, (DataSource.Rows.Count / PageSize) + 1);
                     return dt;
                 }
                 public void DataBind(DataTable dataTable)
