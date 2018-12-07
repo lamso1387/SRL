@@ -1551,7 +1551,7 @@ namespace SRL
                 }
             }
 
-            public static BackgroundWorker RunAsyncByWorker(Action function, Action call_back, Action<string> error_call, ProgressBar progress_bar, ProgressBarStyle bar_style)
+            public static BackgroundWorker RunAsyncByWorker(Action function, Action call_back, Action<Exception> error_call, ProgressBar progress_bar, ProgressBarStyle bar_style)
             {
                 BackgroundWorker bg = new BackgroundWorker();
 
@@ -1578,7 +1578,7 @@ namespace SRL
 
                     if (e1.Error != null)
                     {
-                        if (error_call != null) error_call(e1.Error.ToString());
+                        if (error_call != null) error_call(e1.Error);
                     }
 
                     else
