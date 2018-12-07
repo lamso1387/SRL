@@ -24,7 +24,7 @@ namespace SRL
         string personnel_entity;
         SRL.WinTools.UserControlValidation srl_valid;
         private ProfileMode profile_mode { get; set; }
-        WinLoginUser win_login_user;
+        WinLoginUser win_login_user { get; set; }
         long? edit_id;
         string permission_entity;
         Security.HashAlgoritmType password_type;

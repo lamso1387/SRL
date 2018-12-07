@@ -75,8 +75,16 @@ namespace SRL
 
         private void button4_Click(object sender, EventArgs e)
         {
-            string mess = SRL.Security.SendEmail("lamso1387", tbEmail.Text, tbsubject.Text, tbEmailMes.Text, "soheillamso@gmail.com", "2050130351", textBox2.Text, tbFileName.Text);
-            if (mess != "") MessageBox.Show(mess);
+            try
+            {
+                SRL.Security.SendEmail(tbEmail.Text, tbsubject.Text, tbEmailMes.Text, tbEmailSender.Text, tbSenderPass.Text, textBox2.Text, tbFileName.Text);
+                MessageBox.Show("done");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+           
         }
     }
 }

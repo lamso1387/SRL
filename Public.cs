@@ -47,6 +47,10 @@ using System.Data.Entity.Migrations;
 using Microsoft.Win32;
 using System.ComponentModel.DataAnnotations;
 using Bunifu.Framework.UI;
+using System.ServiceModel.Security;
+using System.Drawing.Imaging;
+using System.ServiceProcess;
+using Newtonsoft.Json;
 
 namespace SRL
 {
@@ -575,6 +579,15 @@ namespace SRL
             DateTime dt = new DateTime();
             return DateTime.TryParseExact(input, format, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out dt);
 
+
+        }
+
+        public static DateTime SetDateTimeFormat(DateTime? date, string format)
+        {
+            //format= "yyyy/MM/dd HH:mm:ss" 
+            string d = ((DateTime)date).ToString(format);
+            DateTime dt2 = DateTime.Parse(d);
+            return dt2;
         }
     }
     public class SettingClass<SettingEntity> where SettingEntity : class
@@ -1103,7 +1116,27 @@ namespace SRL
     }
     public class ActionManagement
     {
-        static System.Diagnostics.EventLog eventLog1 = new System.Diagnostics.EventLog();
+        public class EventLogs
+        {
+            static System.Diagnostics.EventLog eventLog1 = new System.Diagnostics.EventLog();
+            public static void WriteEventLog(string mes, EventLogEntryType type = EventLogEntryType.Information, string eventSourceName = "NwmsInterfaceErrorSource", string logName = "srNwmsInterface")
+            {
+                if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
+                {
+
+                    eventLog1 = new System.Diagnostics.EventLog();
+                    System.Diagnostics.EventLog.CreateEventSource(
+                        eventSourceName, logName);
+
+                }
+                eventLog1.Source = eventSourceName;
+                eventLog1.Log = logName;
+
+                eventLog1.WriteEntry(mes, type);
+
+            }
+
+        }
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static string GetCurrentMethodName()
         {
@@ -1112,60 +1145,153 @@ namespace SRL
             return sf.GetMethod().Name;
         }
 
-        public static void WriteEventLog(string mes, EventLogEntryType type, string eventSourceName, string logName)
+        public static void ToggleWinService(string service_name)
         {
-            if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
+            ServiceController sc = new ServiceController(service_name);
+            if ((sc.Status.Equals(ServiceControllerStatus.Stopped)) ||
+                 (sc.Status.Equals(ServiceControllerStatus.StopPending)))
             {
+                StartWinService(service_name);
+            }
+            else
+            {
+                StopWinService(service_name);
+            }
 
-                eventLog1 = new System.Diagnostics.EventLog();
-                System.Diagnostics.EventLog.CreateEventSource(
-                    eventSourceName, logName);
+            sc.Refresh();
+
+        }
+        public static void StartWinService(string service_name)
+        {
+            ServiceController sc = new ServiceController(service_name);
+            if ((sc.Status.Equals(ServiceControllerStatus.Stopped)) ||
+                 (sc.Status.Equals(ServiceControllerStatus.StopPending)))
+            {
+                sc.Start();
+            }
+
+        }
+        public static void StopWinService(string service_name)
+        {
+            ServiceController sc = new ServiceController(service_name);
+            if ((sc.Status.Equals(ServiceControllerStatus.Stopped)) ||
+                 (sc.Status.Equals(ServiceControllerStatus.StopPending)))
+            {
+                return;
+            }
+            else
+            {
+                sc.Stop();
 
             }
-            eventLog1.Source = eventSourceName;
-            eventLog1.Log = logName;
-
-            eventLog1.WriteEntry(mes, type);
 
         }
-
-        public static string GetExeptionFileLine(Exception ex)
+        public class Exceptions
         {
-            // Get stack trace for the exception with source file information
-            var st = new StackTrace(ex, true);
-            // Get the top stack frame
-            var frame = st.GetFrame(0);
-            // Get the line number from the stack frame
-            var file = frame.GetFileName();
-            var line = frame.GetFileLineNumber();
-
-            return file + ": " + line;
-        }
-
-        public static string CreateErrorMessage(Exception ex)
-        {
-            string error = ex.Message + " StackTrace: " + ex.StackTrace;
-            if (ex.InnerException != null)
+            public static string GetExeptionFileLine(Exception ex)
             {
-                var inner = ex.InnerException;
-                error += " " + inner.Message;
-                if (inner.InnerException != null)
-                {
-                    inner = inner.InnerException;
-                    error += " " + inner.Message;
+                // Get stack trace for the exception with source file information
+                var st = new StackTrace(ex, true);
+                // Get the top stack frame 
+                StackFrame frame = st?.GetFrame(0);
+                // Get the line number from the stack frame
+                string file = frame?.GetFileName();
+                int? line = frame?.GetFileLineNumber();
 
+                return file + ": " + line;
+            }
+            public static string CreateErrorMessage(Exception ex)
+            {
+                string error = $"Error, Line={SRL.ActionManagement.Exceptions.GetExeptionFileLine(ex)},Type={ex.GetType().FullName},Message={ex.Message} \n StackTrace:  {ex.StackTrace}";
+                if (ex.InnerException != null)
+                {
+                    error += "\n InnerException " + CreateErrorMessage(ex.InnerException);
                 }
-                if (inner.InnerException != null)
-                {
-                    inner = inner.InnerException;
-                    error += " " + inner.Message;
+                return error;
+            }
 
+            public static string CreateDbEntityExceptionMessage(DbEntityValidationException ee)
+            {
+                string error = "";
+                foreach (var eve in ee.EntityValidationErrors)
+                {
+                    error += $"Entity of type '{eve.Entry.Entity.GetType().Name}' in state '{ eve.Entry.State}' has the following validation errors: ";
+                    foreach (var ve in eve.ValidationErrors)
+                    {
+                        error += $"\n Property: {ve.PropertyName} , Error: {ve.ErrorMessage}";
+                    }
+                    error += "\n";
+                }
+                return error;
+            }
+        }
+        public class Captcha
+        {
+            public static Bitmap CreateCaptchaImage(ref string code)
+            {
+                Random rand = new Random();
+                code = GetRandomText();
+
+                Bitmap bitmap = new Bitmap(200, 50, PixelFormat.Format32bppArgb);
+
+                using (Graphics g = Graphics.FromImage(bitmap))
+                {
+
+                    Pen pen = new Pen(Color.Yellow);
+                    Rectangle rect = new Rectangle(0, 0, 200, 50);
+
+                    SolidBrush b = new SolidBrush(Color.Black);
+                    SolidBrush White = new SolidBrush(Color.White);
+
+                    int counter = 0;
+
+                    g.DrawRectangle(pen, rect);
+                    g.FillRectangle(b, rect);
+
+                    for (int i = 0; i < code.Length; i++)
+                    {
+                        g.DrawString(code[i].ToString(), new Font("Georgia", 10 + rand.Next(14, 18)), White, new PointF(10 + counter, 10));
+                        counter += 20;
+                    }
+
+                    DrawRandomLines(g, rand);
+
+                    return bitmap;
                 }
 
             }
-            return error;
-        }
+            private static void DrawRandomLines(Graphics g, Random rand)
+            {
+                SolidBrush green = new SolidBrush(Color.Green);
+                //For Creating Lines on The Captcha
+                for (int i = 0; i < 20; i++)
+                {
+                    g.DrawLines(new Pen(green, 2), GetRandomPoints(rand));
+                }
 
+            }
+            private static Point[] GetRandomPoints(Random rand)
+            {
+                Point[] points = { new Point(rand.Next(10, 150), rand.Next(10, 150)), new Point(rand.Next(10, 100), rand.Next(10, 100)) };
+                return points;
+            }
+
+            private static string GetRandomText()
+            {
+                StringBuilder randomText = new StringBuilder();
+
+                string alphabets = "abcdefghijklmnopqrstuvwxyz1234567890";
+
+                Random r = new Random();
+                for (int j = 0; j <= 5; j++)
+                {
+                    randomText.Append(alphabets[r.Next(alphabets.Length)]);
+                }
+
+                return randomText.ToString();
+            }
+
+        }
         public class FormActions
         {
 
@@ -1200,25 +1326,18 @@ namespace SRL
 
         public class MethodCall
         {
-            public class ParallelMethodCaller
+            public class Parallel
             {
                 public delegate void MethodDelegateListParams<T>(List<T> list, BackgroundWorker bg, params object[] args);
                 static List<BackgroundWorker> bgList = new List<BackgroundWorker>();
-                static Action call_back;
-                static Label progress_bar_lbl;
-                static int progress = 0;
 
-                /// <summary>
-                /// 
-                /// </summary>
-                /// <typeparam name="T"></typeparam>
-                /// <param name="DBitems"></param>
-                /// <param name="parallel"></param>
-                /// <param name="function">only function names</param>
-                /// <param name="call_back_">like : ()=>fun(a,b)</param>
-                /// <param name="progress_bar_lbl_"></param>
-                /// <param name="parameters">consider order</param>
-                public static void ParallelCall<T>(List<T> DBitems, string parallel, MethodDelegateListParams<T> function, Action call_back_, Label progress_bar_lbl_, params object[] parameters)
+                public static void ParallelCall<T>(List<T> DBitems, string parallel, MethodDelegateListParams<T> function, Action func_call_back,
+                   Action<Exception> func_error, Action finall_call_back)
+                {
+                    ParallelCall<T>(DBitems, parallel, function, func_call_back, func_error, finall_call_back, null);
+                }
+                public static void ParallelCall<T>(List<T> DBitems, string parallel, MethodDelegateListParams<T> function, Action func_call_back,
+                    Action<Exception> func_error, Action finall_call_back, Label progress_bar_lbl, params object[] parameters)
                 {/*use:
                     write this in function loop :
                     if (bg.CancellationPending)
@@ -1228,10 +1347,15 @@ namespace SRL
                     bg.ReportProgress(1);
 
                     */
-                    progress = 0;
-                    call_back = call_back_;
-                    progress_bar_lbl = progress_bar_lbl_;
-                    if (progress_bar_lbl != null) progress_bar_lbl.EnabledChanged += Progress_bar_lbl_EnabledChanged;
+                    int progress = 0;
+                    if (progress_bar_lbl != null) progress_bar_lbl.EnabledChanged += (s0, e0) =>
+                    {
+                        foreach (var worker in bgList)
+                        {
+                            if (!progress_bar_lbl.Enabled && worker != null && worker.IsBusy)
+                                worker.CancelAsync();
+                        }
+                    };
                     int per_count = int.Parse(parallel);
                     int all = 0;
                     int take = 0;
@@ -1255,7 +1379,19 @@ namespace SRL
                             skip += take;
                             bg.WorkerReportsProgress = true;
                             bg.WorkerSupportsCancellation = true;
-                            bg.ProgressChanged += (s, epg) => Bg_ProgressChanged(all);
+                            bg.ProgressChanged += (s, epg) =>
+                            {
+                                progress++;
+                                if (progress_bar_lbl != null)
+                                {
+                                    int value = ((int)((double)(progress) / (double)all * 100));
+
+                                    string value_str = value.ToString();
+                                    progress_bar_lbl.Text = value_str;
+                                    progress_bar_lbl.Tag = progress;
+
+                                }
+                            };
                         }
 
                         bg.DoWork += (s, e) =>
@@ -1263,48 +1399,23 @@ namespace SRL
                             try
                             {
                                 function(DBitems != null ? query.ToList() : null, bg, parameters);
+                                if (func_call_back != null) func_call_back();
                             }
                             catch (Exception ex)
                             {
-                                throw new InvalidOperationException("Message: " + ex.Message + ". StackTrace" + ex.StackTrace);
+                                if (func_error != null) func_error(ex);
+                                else throw new InvalidOperationException(SRL.ActionManagement.Exceptions.CreateErrorMessage(ex));
                             }
 
                         };
 
-                        bg.RunWorkerCompleted += Workers_Complete;
+                        bg.RunWorkerCompleted += (coms, come) => Workers_Complete(coms, come, finall_call_back);
 
                         bg.RunWorkerAsync();
                     }
-
-
-
                 }
 
-                private async static void Progress_bar_lbl_EnabledChanged(object sender, EventArgs e)
-                {
-                    foreach (var worker in bgList)
-                    {
-                        if (!progress_bar_lbl.Enabled && worker != null && worker.IsBusy)
-                            worker.CancelAsync();
-                    }
-
-                }
-
-                private static void Bg_ProgressChanged(int all)
-                {
-                    progress++;
-                    if (progress_bar_lbl != null)
-                    {
-                        int value = ((int)((double)(progress) / (double)all * 100));
-
-                        string value_str = value.ToString();
-                        progress_bar_lbl.Text = value_str;
-                        progress_bar_lbl.Tag = progress;
-
-                    }
-                }
-
-                private async static void Workers_Complete(object sender, RunWorkerCompletedEventArgs e)
+                private async static void Workers_Complete(object sender, RunWorkerCompletedEventArgs e, Action call_back)
                 {
                     BackgroundWorker bgw = (BackgroundWorker)sender;
                     bgList.Remove(bgw);
@@ -1327,6 +1438,53 @@ namespace SRL
                         }
                     }
                 }
+
+                public static void ParallelTasksCall<T>(List<T> DBitems, int parallel, MethodDelegateListParams<T> function, Action func_call_back, Action final_call_back, BackgroundWorker bgTask, params object[] parameters)
+                {
+                    //write this in function loop :
+                    //if (bg.CancellationPending)
+                    //{
+                    //    return;
+                    //}
+                    //int percent=(i+0)*100/all;
+                    //bg.ReportProgress(percent);
+
+                    //write this in to show progress :
+                    //bg.ProgressChanged += (s, epg) =>
+                    //{
+                    //    int percent = epg.ProgressPercentage;
+                    //    ...
+                    //}; 
+                    List<Task> task_list = new List<Task>();
+                    if (bgTask != null)
+                    {
+                        bgTask.WorkerReportsProgress = true;
+                        bgTask.WorkerSupportsCancellation = true;
+                    }
+                    int all = 0;
+                    int take = 0;
+                    int skip = 0;
+                    IQueryable<T> DBquery = DBitems.AsQueryable();
+
+                    all = DBitems.Count;
+                    take = all / parallel;
+
+                    for (int j = 0; j < parallel; j++)
+                    {
+                        IQueryable<T> query = DBquery.Skip(skip).Take(take);
+                        skip += take;
+                        Task task = new Task(() =>
+                        {
+                            function(query.ToList(), bgTask, parameters);
+                            if (func_call_back != null) func_call_back();
+                        });
+                        task_list.Add(task);
+                        task.Start();
+                    }
+                    Task.WaitAll(task_list.ToArray());
+                    if (final_call_back != null) final_call_back();
+                }
+
 
 
             }
@@ -1393,74 +1551,52 @@ namespace SRL
                 }
             }
 
-            public class RunMethodInBack
+            public static BackgroundWorker RunAsyncByWorker(Action function, Action call_back, Action<string> error_call, ProgressBar progress_bar, ProgressBarStyle bar_style)
             {
-                static ProgressBar progress_bar;
-                static ProgressBarStyle main_style;
-                static public BackgroundWorker bg;
+                BackgroundWorker bg = new BackgroundWorker();
 
-
-                public static void Run(Action function, Action call_back, ProgressBar progress_bar_, ProgressBarStyle bar_style)
+                if (progress_bar != null)
                 {
-                    bg = new BackgroundWorker();
 
-                    if (progress_bar_ != null)
+                    bg.ProgressChanged += (ss, ee) =>
+                     {
+                         progress_bar.Style = ProgressBarStyle.Blocks;
+                         progress_bar.Value = ee.ProgressPercentage;
+                     };
+                    bg.WorkerReportsProgress = true;
+                    progress_bar.Parent.Visible = true;
+                    progress_bar.Style = bar_style;
+                }
+
+                bg.RunWorkerCompleted += (s1, e1) =>
+                {
+                    if (progress_bar != null)
                     {
-                        bg.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bg_RunWorkerCompleted);
-                        bg.ProgressChanged += Bg_ProgressChanged;
-                        bg.WorkerReportsProgress = true;
-                        progress_bar = progress_bar_;
-                        progress_bar.Parent.Visible = true;
-                        main_style = progress_bar.Style;
                         progress_bar.Style = bar_style;
+                        progress_bar.Parent.Visible = false;
                     }
 
-                    if (call_back != null)
-                        bg.RunWorkerCompleted += (s1, e1) =>
-                        {
-                            BackgroundWorker bgw = (BackgroundWorker)s1;
-
-                            if (e1.Error != null)
-                            {
-                                MessageBox.Show("There was an error for one thread: " + e1.Error.ToString());
-                            }
-
-                            else
-                            {
-                                SRL.ActionManagement.MethodCall.MethodInvoker(call_back);
-                            }
-                        };
-
-
-                    System.Windows.Forms.Application.DoEvents();
-
-
-                    bg.DoWork += (s, e) =>
+                    if (e1.Error != null)
                     {
-                        SRL.ActionManagement.MethodCall.MethodInvoker(function);
-                    };
+                        if (error_call != null) error_call(e1.Error.ToString());
+                    }
 
-                    bg.RunWorkerAsync();
+                    else
+                    {
+                        if (call_back != null) SRL.ActionManagement.MethodCall.MethodInvoker(call_back);
+                    }
+                };
 
-
-
-
-                }
-
-                private static void bg_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+                bg.DoWork += (s, e) =>
                 {
-                    progress_bar.Style = main_style;
-                    progress_bar.Parent.Visible = false;
-                }
-                private static void Bg_ProgressChanged(object sender, ProgressChangedEventArgs e)
-                {
+                    SRL.ActionManagement.MethodCall.MethodInvoker(function);
+                };
 
-                    progress_bar.Style = ProgressBarStyle.Blocks;
-                    progress_bar.Value = e.ProgressPercentage;
-                }
-
+                bg.RunWorkerAsync();
+                return bg;
 
             }
+
             public static void MethodDynamicInvoker(Action function, Control container_control, params object[] parameters)
             { // use it for datagridviews_CellEndEdit event in error "Operation is not valid because it results in a reentrant call to the SetCurrentCellAddressCore function"
               /* 
@@ -1488,15 +1624,74 @@ namespace SRL
 
             }
 
-            public static object MethodDynamicInvoker<T>(Func<T> function, params object[] parameters)
+            public static void RunAsyncByThread(Action act, Action call_back, Action<Exception> error_call)
             {
-                return function.DynamicInvoke(parameters);
+                bool error_called = false;
+                System.Threading.ThreadStart starter = new System.Threading.ThreadStart(() =>
+                {
+                    if(error_call !=null)
+                    {
+                        try
+                        { 
+                            act();
+                        }
+                        catch (Exception ex)
+                        {
+                            error_called = true;
+                            error_call(ex);
+                        } 
+                    }
+                    else
+                    {
+                        act();
+                    }
+                }
+                    );
+                starter += () =>
+                {
+                    if (call_back != null && error_called==false)
+                    {
+                        call_back();
+                    }
+                };
+
+                System.Threading.Thread th = new System.Threading.Thread(starter);
+                th.Start();
+            }
+            public static int CallTry(Action act, int counter, Action call_error = null)
+            {
+                for (int i = 0; i < counter; i++)
+                {
+                    try
+                    {
+                        act();
+                        return i;
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+                }
+
+                try
+                {
+                    if (call_error != null) call_error();
+                }
+                catch (Exception)
+                {
+                }
+
+                act();
+                return counter;
+
             }
 
-            public static void RunAsynch(Action act)
+            public static void CallInterval(double interval, System.Timers.Timer timer, Action onTimer)
             {
-                act.DynamicInvoke();
-
+                RunAsyncByThread(onTimer, null, null);
+                timer.Interval = interval;
+                timer.Elapsed += (s, e) => { onTimer(); };
+                timer.Start();
             }
         }
         public class DB
@@ -4455,33 +4650,25 @@ namespace SRL
             }
         }
 
-        public static string SendEmail(string username, string toMail, string subject, string body, string fromMail, string password, string attach_text_file_content = null, string attach_text_file_name = null)
+        public static void SendEmail(string toMail, string subject, string body, string fromMail, string password, string attach_text_file_content = null, string attach_text_file_name = null)
         {
-            string error = "";
-            try
-            {
-                System.Net.Mail.MailMessage mailMessage = new System.Net.Mail.MailMessage();
-                System.Net.Mail.MailAddress from = new System.Net.Mail.MailAddress(fromMail);
-                mailMessage.To.Add(toMail);
-                mailMessage.From = from;
-                mailMessage.Subject = subject;
-                mailMessage.Body = body;
+            System.Net.Mail.MailMessage mailMessage = new System.Net.Mail.MailMessage();
+            System.Net.Mail.MailAddress from = new System.Net.Mail.MailAddress(fromMail);
+            mailMessage.To.Add(toMail);
+            mailMessage.From = from;
+            mailMessage.Subject = subject;
+            mailMessage.Body = body;
 
-                if (attach_text_file_content != null)
-                    mailMessage.Attachments.Add(Attachment.CreateAttachmentFromString(attach_text_file_content, attach_text_file_name));
+            if (attach_text_file_content != null)
+                mailMessage.Attachments.Add(Attachment.CreateAttachmentFromString(attach_text_file_content, attach_text_file_name));
 
-                SRL.Convertor convertor = new SRL.Convertor();
-                System.Net.Mail.SmtpClient smtpClient = new System.Net.Mail.SmtpClient("smtp.gmail.com");
-                smtpClient.Port = 587;
-                smtpClient.Credentials = new System.Net.NetworkCredential(fromMail, password);
-                smtpClient.EnableSsl = true;
-                smtpClient.Send(mailMessage);
-            }
-            catch (Exception ex)
-            {
-                error = ex.Message;
-            }
-            return error;
+            SRL.Convertor convertor = new SRL.Convertor();
+            System.Net.Mail.SmtpClient smtpClient = new System.Net.Mail.SmtpClient("smtp.gmail.com");
+            smtpClient.Port = 587;
+            smtpClient.Credentials = new System.Net.NetworkCredential(fromMail, password);
+            smtpClient.EnableSsl = true;
+            smtpClient.Send(mailMessage);
+
         }
 
 
@@ -4917,6 +5104,56 @@ namespace SRL
             binding.MaxReceivedMessageSize = received_Size;
             ser_.Endpoint.Binding = binding;
         }
+        public static void SetSoapTimeOut<TChannel>(System.ServiceModel.ClientBase<TChannel> ser_, TimeSpan time) where TChannel : class
+        {
+            //call:  SRL.Web.SetSoapMessageSize(ccs_client, Int32.MaxValue);
+            dynamic binding = ser_.Endpoint.Binding;
+            binding.SendTimeout = binding.ReceiveTimeout = time;
+            ser_.Endpoint.Binding = binding;
+        }
+
+        public static void AddBasicAuthToSoapHeader<TChannel>(System.ServiceModel.ClientBase<TChannel> soap_client,
+            string username, string password, int? secure_type) where TChannel : class
+        {
+            soap_client.ClientCredentials.UserName.UserName = username;
+            soap_client.ClientCredentials.UserName.Password = password;
+            BasicHttpBinding binding = new System.ServiceModel.BasicHttpBinding()
+            {
+                Name = soap_client.Endpoint.Binding.Name,
+                Namespace = soap_client.Endpoint.Binding.Namespace
+            };
+            if (secure_type != null)
+            {
+                switch (secure_type)
+                {
+                    case 0:
+                        binding.Security.Mode = BasicHttpSecurityMode.TransportWithMessageCredential;
+                        binding.Security.Transport.ProxyCredentialType = HttpProxyCredentialType.None;
+                        binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.None;
+                        binding.Security.Transport.Realm = "";
+                        binding.Security.Message.ClientCredentialType = BasicHttpMessageCredentialType.UserName;
+                        binding.Security.Message.AlgorithmSuite = SecurityAlgorithmSuite.Default;
+                        break;
+                    case 1:
+                        binding.Security.Mode = BasicHttpSecurityMode.Transport;
+                        binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
+                        break;
+                    case 2:
+                        binding.Security.Mode = BasicHttpSecurityMode.TransportWithMessageCredential; 
+                        break;
+                }
+                soap_client.Endpoint.Binding = binding;
+            }
+        }
+
+        public static T CreateWcfClient<T>(string url)
+        {
+            EndpointAddress address = new EndpointAddress(url);
+            BasicHttpBinding binding = new BasicHttpBinding();
+            T client = SRL.ClassManagement.CreateInstance<T>(binding, address);
+            return client;
+
+        }
     }
     public class Convertor
     {
@@ -5335,8 +5572,8 @@ namespace SRL
         }
         public static double EnglishDateTimeToUnixEpoch(DateTime dt)
         {
-            var epoch = dt - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            return epoch.TotalSeconds;
+            TimeSpan epoch = dt - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            return Math.Round(epoch.TotalSeconds);
         }
         public static DateTime EnglishToPersianDateTime(DateTime date)
         {
@@ -5379,10 +5616,12 @@ namespace SRL
 
             return date_list;
         }
-        public static string EnglishToPersianDate(DateTime d)
+        public static string EnglishToPersianDate(DateTime d, string format= "{0}/{1}/{2}")
         {
             PersianCalendar pc = new PersianCalendar();
-            string date = string.Format("{0}/{1}/{2}", pc.GetYear(d), pc.GetMonth(d), pc.GetDayOfMonth(d));
+            string month = pc.GetMonth(d).ToString();
+            string day = pc.GetDayOfMonth(d).ToString();
+            string date = string.Format(format, pc.GetYear(d), month.Length == 1 ? "0" + month : month, day.Length == 1 ? "0" + day : day);
             return date;
         }
         public static DateTime PersianToEnglishDate(int year, int month, int day)
@@ -5498,7 +5737,7 @@ namespace SRL
         public static T ClassToClass<T>(Object input)
         {
             string input_json = SRL.Json.ClassObjectToJson(input);
-
+            //ActionManagement.EventLogs.WriteEventLog("input_json= " + input_json, EventLogEntryType.Error, "NwmsInterfaceErrorSource", "NwmsInterfaceErrors");
             T output = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input_json);
             return output;
         }
@@ -5516,14 +5755,28 @@ namespace SRL
 
         public static byte[] ImageToByteArray(string path)
         {
-            Image img = Image.FromFile(path);
-            byte[] arr;
-            using (var ms = new MemoryStream())
+
+            using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
             {
-                img.Save(ms, img.RawFormat);
-                arr = ms.ToArray();
+                using (Image img = Image.FromStream(fs))
+                {
+                    MemoryStream ms = new MemoryStream();
+                    byte[] arr;
+                    try
+                    {
+                        img.Save(ms, img.RawFormat);
+                        arr = ms.ToArray();
+
+                    }
+                    finally
+                    {
+                        ms.Close();
+                        img.Dispose();
+                    }
+                    return arr;
+
+                }
             }
-            return arr;
 
         }
 
@@ -5561,16 +5814,17 @@ namespace SRL
         {
             return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input);
         }
-        public static string ClassObjectToJson(object obj)
+        public static string ClassObjectToJson(object obj, Newtonsoft.Json.Formatting format = Newtonsoft.Json.Formatting.Indented)
         {
             if (obj == null) return null;
             try
             {
                 if (obj.GetType() == typeof(string)) obj = Newtonsoft.Json.JsonConvert.DeserializeObject(obj.ToString());
-                string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+                // var set = new JsonSerializerSettings();
+                string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, format);
                 return json;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
 
                 string json = new JavaScriptSerializer().Serialize(obj);
@@ -5629,14 +5883,12 @@ namespace SRL
 
         }
 
-        internal static Newtonsoft.Json.Linq.JObject RemoveEmptyKeys(object obj)
+        internal static Newtonsoft.Json.Linq.JObject RemoveEmptyKeys(object obj, bool remove_null, bool remove_default)
         {
-            //add [DefaultValue("")] to must be remved properties
-            var serializer = new Newtonsoft.Json.JsonSerializerSettings()
-            {
-                DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Ignore,
-                NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore
-            };
+            //add [DefaultValue("")] to must be remved properties  
+            var serializer = new Newtonsoft.Json.JsonSerializerSettings();
+            if (remove_null) serializer.NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore;
+            if (remove_default) serializer.DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Ignore;
             serializer.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, serializer);
             Newtonsoft.Json.Linq.JObject conv = Newtonsoft.Json.Linq.JObject.Parse(json);
@@ -5681,7 +5933,7 @@ namespace SRL
             where TDbContext : DbContext
             where TConfiguration : DbMigrationsConfiguration<TDbContext>, new()
         {
-
+            //set DbMigrationsConfiguration.AutomaticMigrationsEnabled to true
             System.Data.Entity.Database.SetInitializer(new MigrateDatabaseToLatestVersion<TDbContext, TConfiguration>());
         }
 
@@ -5792,7 +6044,7 @@ namespace SRL
             }
         }
 
-        public class SqliteEF
+        public class SqliteEF : IDisposable
         {
             public string ConnectionStr
             {
@@ -5809,7 +6061,22 @@ namespace SRL
                 Command = new SQLiteCommand();
                 Command.Connection = Connection;
                 DataAdaptor = new SQLiteDataAdapter();
-                Connection.Open();
+                OpenConnection();
+            }
+
+            private void OpenConnection()
+            {
+                if (Connection.State != ConnectionState.Open)
+                {
+                    Connection.Open();
+                }
+            }
+            private void CloseConnection()
+            {
+                if (Connection.State != ConnectionState.Closed)
+                {
+                    Connection.Close();
+                }
             }
 
             public List<EntityClass> SelectAll<EntityClass>()
@@ -5822,12 +6089,23 @@ namespace SRL
                 Command.CommandText = sql;
                 return Select<EntityClass>();
             }
+            public long SelectLastRowid()
+            {
+                string sql = @"select last_insert_rowid()";
+                OpenConnection();
+                Command.CommandText = sql;
+                long lastId = (long)Command.ExecuteScalar();
+                CloseConnection();
+                return lastId;
+            }
 
             private List<EntityClass> Select<EntityClass>()
             {
+                OpenConnection();
                 DataAdaptor = new SQLiteDataAdapter(Command);
                 DataTable dt = new DataTable();
                 DataAdaptor.Fill(dt);
+                CloseConnection();
                 List<EntityClass> list = SRL.Convertor.ConvertDataTableToList<EntityClass>(dt);
                 return list;
             }
@@ -5857,11 +6135,25 @@ namespace SRL
                     SQLiteParameter p = new SQLiteParameter(field_name, propertyInfo.GetValue(obj));
                     Command.Parameters.Add(p);
                 }
-                int insert = SaveChange();
+                int insert = SaveChange(true);
                 return insert;
             }
             public int Insert<EntityClass>(EntityClass obj, List<string> ignore_fields)
             {
+                InsertRow(obj, ignore_fields);
+                int insert = SaveChange(true);
+                return insert;
+            }
+            public long InsertGetId<EntityClass>(EntityClass obj, List<string> ignore_fields)
+            {
+                InsertRow(obj, ignore_fields);
+                SaveChange(false);
+                long row_id = SelectLastRowid();
+                return row_id;
+            }
+            private void InsertRow<EntityClass>(EntityClass obj, List<string> ignore_fields)
+            {
+
                 Type objType = obj.GetType();
                 List<string> fields = new List<string>();
                 List<string> field_values = new List<string>();
@@ -5869,7 +6161,8 @@ namespace SRL
                 foreach (PropertyInfo propertyInfo in objType.GetProperties())
                 {
                     string field_name = propertyInfo.Name;
-                    if (ignore_fields.Contains(field_name)) continue;
+                    if (ignore_fields != null)
+                        if (ignore_fields.Contains(field_name)) continue;
                     fields.Add(field_name);
                     field_values.Add("@" + field_name);
                 }
@@ -5879,16 +6172,18 @@ namespace SRL
                 foreach (PropertyInfo propertyInfo in objType.GetProperties())
                 {
                     string field_name = propertyInfo.Name;
-                    if (ignore_fields.Contains(field_name)) continue;
+                    if (ignore_fields != null)
+                        if (ignore_fields.Contains(field_name)) continue;
                     SQLiteParameter p = new SQLiteParameter(field_name, propertyInfo.GetValue(obj));
                     Command.Parameters.Add(p);
                 }
-                int insert = SaveChange();
-                return insert;
             }
-            public int SaveChange()
+
+            public int SaveChange(bool close)
             {
+                OpenConnection();
                 int insert = Command.ExecuteNonQuery();
+                if (close) CloseConnection();
                 return insert;
             }
             public class WhereClause
@@ -5899,23 +6194,62 @@ namespace SRL
             }
             public List<TSource> Where<TSource>(List<WhereClause> where_clause, List<string> raw_where = null)
             {
+                string where = CreateWhere<TSource>("select * from", where_clause, raw_where);
+                return Select<TSource>();
+            }
+
+            public static string DatetimeAbsDiffCheck(string base_datetime, string col_name, string opt, int diffSec)
+            {
+                //sqlite standard datetime format: '2015-06-01 12:15:06'
+                string sql = "abs( strftime('%s',replace('" + base_datetime + "','/','-')) -strftime('%s', datetime(replace(substr(" + col_name + ", 1, 10), '/', '-') || ' ' || substr(" + col_name + ", 12)))) " + opt + " " + diffSec;
+                return sql;
+            }
+            public static string DatetimeWhere(string base_datetime, string opt, string col_name)
+            {
+                //base_datetime= date.ToString("yyyy/MM/dd HH:mm:ss"); 
+                //col_name: nameof(insert_date)
+                //sqlite standard datetime format: '2015-06-01 12:15:06'
+                string sql = $"strftime('%s',replace('{base_datetime}','/','-')) {opt} strftime('%s', datetime(replace(substr({col_name}, 1, 10), '/', '-') || ' ' || substr({col_name}, 12))) ";
+                return sql;
+            }
+            public int DeleteAll<T>()
+            {
+                Command.CommandText = " delete from " + typeof(T).Name;
+                int insert = SaveChange(true);
+                return insert;
+            }
+
+            public int Delete<EntityClassT>(List<WhereClause> where_clause, List<string> raw_where)
+            {
+                string where = CreateWhere<EntityClassT>("delete from", where_clause, raw_where);
+                int delete = SaveChange(true);
+                return delete;
+            }
+
+            private string CreateWhere<TSource>(string first_sql, List<WhereClause> where_clause, List<string> raw_where)
+            {
                 Type objType = typeof(TSource);
+                Command.CommandText = $"{first_sql} {objType.Name} ";
+
+
+                if (where_clause?.Count < 1) where_clause = null;
+                if (raw_where?.Count < 1) raw_where = null;
+
+                string where = "";
                 List<string> fields = new List<string>();
-                Command.CommandText = "select * from " + objType.Name + " where 1=1 ";
 
                 if (where_clause != null)
                 {
                     foreach (var wc in where_clause)
                     {
-                        string field_name = wc.key + " " + wc.opt + " @" + wc.key;
+                        string field_name = $"{wc.key} {wc.opt} @{wc.key}";
                         fields.Add(field_name);
 
                     }
                     string fields_query = string.Join(" and ", fields.ToArray());
 
-                    Command.CommandText = Command.CommandText + " and " + fields_query;
-
-
+                    where = fields_query;
+                    Command.Parameters.Clear();
                     foreach (var wc in where_clause)
                     {
                         string field_name = wc.key;
@@ -5926,25 +6260,26 @@ namespace SRL
                 }
 
                 if (raw_where != null)
+                {
+                    List<string> raws = new List<string>();
                     foreach (var item in raw_where)
                     {
-                        Command.CommandText += " and " + item;
+                        raws.Add($"({item}");
                     }
-                return Select<TSource>();
+                    string raw_query = string.Join(" and ", raw_where.ToArray());
+                    if (string.IsNullOrWhiteSpace(where)) where = raw_query;
+                    else where = $"{where} and {raw_query}";
+                }
+
+
+                if (!string.IsNullOrWhiteSpace(where)) Command.CommandText += $" where {where}";
+
+                return where;
             }
 
-            public static string DatetimeAbsDiffCheck(string base_datetime, string col_name, string opt, int diffSec)
+            public void Dispose()
             {
-                //sqlite standard datetime format: '2015-06-01 12:15:06'
-                string sql = "abs( strftime('%s',replace('" + base_datetime + "','/','-')) -strftime('%s', datetime(replace(substr(" + col_name + ", 1, 10), '/', '-') || ' ' || substr(" + col_name + ", 12)))) " + opt + " " + diffSec;
-                return sql;
-            }
-
-            public int DeleteAll<T>()
-            {
-                Command.CommandText = " delete from " + typeof(T).Name;
-                int insert = SaveChange();
-                return insert;
+                Connection.Close();
             }
         }
         public class ReportTBClass
@@ -6406,7 +6741,7 @@ namespace SRL
             {
 
                 System.Data.SqlClient.SqlConnectionStringBuilder builder =
-  new System.Data.SqlClient.SqlConnectionStringBuilder();
+    new System.Data.SqlClient.SqlConnectionStringBuilder();
 
                 builder.DataSource = item;
                 builder.InitialCatalog = db_name;
@@ -6480,6 +6815,13 @@ namespace SRL
                 return "";
             }
         }
+
+        public static bool IsDatetimeDefault(DateTime? date)
+        {
+            if (date == DateTime.MinValue || date == new DateTime() || date == default(DateTime))
+                return true;
+            else return false;
+        }
     }
     public class AccessManagement
     {
@@ -6551,11 +6893,11 @@ namespace SRL
 
         public static DataTable GetDataTableFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
-            if (!System.IO.File.Exists(file_full_path))
-            {
-                MessageBox.Show("choose file!");
-                return null;
-            }
+            //if (!System.IO.File.Exists(file_full_path))
+            //{
+            //    MessageBox.Show("choose file!");
+            //    return null;
+            //}
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
             string strSql = "Select * from " + table_name;
             OleDbConnection con = new OleDbConnection(strProvider);
@@ -6564,16 +6906,9 @@ namespace SRL
             cmd.CommandType = CommandType.Text;
             OleDbDataAdapter da = new OleDbDataAdapter(cmd);
             DataTable table = new DataTable();
-            try
-            {
-                da.Fill(table);
-                return table;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-                return null;
-            }
+
+            da.Fill(table);
+            return table;
         }
 
         public static DataColumnCollection GetTableHeadersFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
@@ -6598,14 +6933,14 @@ namespace SRL
                 return null;
             }
         }
-        public static int AddColumnToAccess(string column_name, string table_name, AccessDataType type_enum, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
+        public static int AddColumnToAccess(string column_name, string table_name, AccessDataType type_enum, string file_full_path, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
             DataColumnCollection columns = SRL.AccessManagement.GetTableHeadersFromAccess(file_full_path, "table1");
             if (!columns.Contains(column_name))
             {
                 string type = SRL.ClassManagement.GetEnumDescription<AccessDataType>(type_enum);
                 string query = "alter table " + table_name + " add " + column_name + " " + type;
-                return ExecuteToAccess(query, file_full_path, show_error, provider);
+                return ExecuteToAccess(query, file_full_path, provider);
             }
             else return -1;
 
@@ -6627,29 +6962,19 @@ namespace SRL
             return modal;
         }
 
-        public static int ExecuteToAccess(string query, string file_full_path, bool show_error, string provider = "Microsoft.ACE.OLEDB.12.0")
+        public static int ExecuteToAccess(string query, string file_full_path, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
 
             using (OleDbConnection con = new OleDbConnection(strProvider))
             {
-
-
                 OleDbCommand cmd = new OleDbCommand(query, con);
+                con.Open();
+                cmd.CommandType = CommandType.Text;
+                int res = cmd.ExecuteNonQuery();
+                return res;
 
-                try
-                {
-                    con.Open();
-                    cmd.CommandType = CommandType.Text;
-                    int res = cmd.ExecuteNonQuery();
-                    return res;
-                }
-                catch (Exception ex)
-                {
-                    if (show_error) MessageBox.Show(ex.Message);
 
-                    return -1;
-                }
             }
         }
 
@@ -6711,6 +7036,20 @@ namespace SRL
 
         }
 
+        public static void CreateIndex(string index_name, string column_name, string table_name, string file_full_path)
+        {
+            //DataTable dt = con.GetSchema("Indexes");
+            //List<AccessSchema> list = SRL.Convertor.ConvertDataTableToList<AccessSchema>(dt);
+            SRL.AccessManagement.ExecuteToAccess($"CREATE INDEX {index_name} ON {table_name}({column_name})", file_full_path);
+
+
+        }
+
+        public class AccessSchema
+        {
+            public string TABLE_NAME { get; set; }
+            public string INDEX_NAME { get; set; }
+        }
     }
     public class ExcelManagement : SRL.ControlLoad
     {
@@ -7347,6 +7686,35 @@ namespace SRL
             System.IO.File.WriteAllLines(path, arrLine);
 
         }
+        public static void SaveFileOverwrite(string fileFullName, Action file_action)
+        {
+            if (System.IO.File.Exists(fileFullName))
+            {
+                System.IO.File.Delete(fileFullName);
+                file_action();
+            }
+            else
+            {
+                file_action();
+
+            }
+
+        }
+
+        public static void SaveImageOverwrite(string fileFullName, Bitmap bitmap)
+        {
+            if (System.IO.File.Exists(fileFullName))
+            {
+                System.IO.File.Delete(fileFullName);
+                bitmap.Save(fileFullName);
+            }
+            else
+            {
+                bitmap.Save(fileFullName);
+
+            }
+
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -7395,9 +7763,9 @@ namespace SRL
 
                     foreach (var item in headers)
                     {
-                        SRL.AccessManagement.ExecuteToAccess("alter table table1 add " + item + " nvarchar(50)", des, true);
+                        SRL.AccessManagement.ExecuteToAccess("alter table table1 add " + item + " nvarchar(50)", des);
                     }
-                    SRL.AccessManagement.ExecuteToAccess("alter table table1 drop column Deleted_column", des, true);
+                    SRL.AccessManagement.ExecuteToAccess("alter table table1 drop column Deleted_column", des);
                     MessageBox.Show("file created in: " + des);
                     break;
 

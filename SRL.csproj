@@ -88,6 +88,7 @@
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Security" />
     <Reference Include="System.ServiceModel" />
+    <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows.Forms" />
@@ -105,12 +106,27 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.svcmap</DependentUpon>
     </Compile>
+    <Compile Include="Service References\CixGetLegalPerson\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\CixGetPersonInfoServiceReference\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
     <Compile Include="Service References\PostCodeServiceReference\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.svcmap</DependentUpon>
     </Compile>
     <Compile Include="Service References\ServiceReferenceSendSms\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\SmsNtswService\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Reference.svcmap</DependentUpon>
@@ -322,6 +338,38 @@
     <Content Include="script\jquery.min.js" />
     <Content Include="script\select2.min.js" />
     <Content Include="script\SRL.js" />
+    <None Include="Service References\SmsNtswService\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+    <None Include="Service References\SmsNtswService\configuration.svcinfo" />
+    <None Include="Service References\SmsNtswService\configuration91.svcinfo" />
+    <None Include="Service References\CixGetLegalPerson\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+    <None Include="Service References\CixGetLegalPerson\configuration.svcinfo" />
+    <None Include="Service References\CixGetLegalPerson\configuration91.svcinfo" />
+    <None Include="Service References\CixGetLegalPerson\GetLegalPersonInfoDB.wsdl" />
+    <None Include="Service References\CixGetLegalPerson\SRL.CixGetLegalPerson.InquiryByNationalCodeResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\CixGetLegalPerson\SRL.CixGetLegalPerson.Result.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\CixGetPersonInfoServiceReference\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+    <None Include="Service References\CixGetPersonInfoServiceReference\configuration.svcinfo" />
+    <None Include="Service References\CixGetPersonInfoServiceReference\configuration91.svcinfo" />
+    <None Include="Service References\CixGetPersonInfoServiceReference\GetPersonInfo.wsdl" />
+    <None Include="Service References\CixGetPersonInfoServiceReference\SRL.CixGetPersonInfoServiceReference.getPersonInfoSAHA96MResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\CixGetPersonInfoServiceReference\SRL.CixGetPersonInfoServiceReference.SabtAhvalSAHAPersonInfoStract.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
     <None Include="Service References\ServiceReferenceSendSms\Reference.svcmap">
       <Generator>WCF Proxy Generator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>
@@ -400,6 +448,13 @@
       <DependentUpon>Reference.svcmap</DependentUpon>
     </None>
     <None Include="Service References\ServiceReferenceSendSms\SRL.ServiceReferenceSendSms.SendSmsResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\SmsNtswService\SendSMSFrom.wsdl" />
+    <None Include="Service References\SmsNtswService\SRL.SmsNtswService.CsOperationManagmentRequestAnswer.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\SmsNtswService\SRL.SmsNtswService.SendSMSFromResponse.datasource">
       <DependentUpon>Reference.svcmap</DependentUpon>
     </None>
     <None Include="tools\BPersianCalender\Resources\Calendar-1128083418.png" />
@@ -508,8 +563,11 @@
   </ItemGroup>
   <ItemGroup>
     <WCFMetadataStorage Include="Service References\CIXGetAddressByPostcode\" />
+    <WCFMetadataStorage Include="Service References\CixGetLegalPerson\" />
+    <WCFMetadataStorage Include="Service References\CixGetPersonInfoServiceReference\" />
     <WCFMetadataStorage Include="Service References\PostCodeServiceReference\" />
     <WCFMetadataStorage Include="Service References\ServiceReferenceSendSms\" />
+    <WCFMetadataStorage Include="Service References\SmsNtswService\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
