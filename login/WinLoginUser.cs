@@ -16,7 +16,7 @@ namespace SRL
     {
         DbContext db;
         string personnel_entity;
-        WinLoginProfile profile;
+        WinLoginProfile profile; 
 
         /// <summary>
         /// user table must have column: ID (long or bigint),username, password, name, family, role(admin, user)
@@ -28,11 +28,11 @@ namespace SRL
         /// <param name="menu"></param>
         /// <param name="password_type"></param>
         /// <param name="enable_child_parent_check"></param>
-        public WinLoginUser(DbContext db_, string personnel_entity_, Color btn_color, string permission_entity, MenuStrip menu, Security.HashAlgoritmType password_type, bool enable_child_parent_check)
+        public WinLoginUser(DbContext db_, string personnel_entity_, Color btn_color, string permission_entity, MenuStrip menu, Security.HashAlgoritmType password_type, bool enable_child_parent_check, bool unique_user_name_)
         {
             InitializeComponent();
             db = db_;
-            personnel_entity = personnel_entity_;
+            personnel_entity = personnel_entity_; 
             foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
             {
                 new SRL.WinUI.ButtonClass.StyleButton(item, btn_color, Color.Black, Color.FromKnownColor(KnownColor.Control));
@@ -40,7 +40,7 @@ namespace SRL
 
             if (permission_entity != null) SRL.WinTools.AddChildToParentControls(pnlRoles, new WinRolePermissions(db, permission_entity, btn_color, menu, enable_child_parent_check));
 
-            profile = new WinLoginProfile(db, personnel_entity, btn_color, this, WinLoginProfile.ProfileMode.New, password_type, null, permission_entity);
+            profile = new WinLoginProfile(db, personnel_entity, btn_color, this, WinLoginProfile.ProfileMode.New, password_type, null, permission_entity, unique_user_name_);
             SRL.WinTools.AddChildToParentControls(pnlProfile, profile);
 
         }

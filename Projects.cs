@@ -5,9 +5,11 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Data.Entity;
+using System.Data.OleDb;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
@@ -349,6 +351,31 @@ namespace SRL
                 Error
             }
 
+            public static bool UpdateWarehouseAddress(string api_key, string war_id, string post_code, Action<string> error_call, Action<PostAddress> call_back)
+            {
+
+                Dictionary<string, object> input = new Dictionary<string, object>();
+
+                string error = "";
+                var address = SRL.Projects.Nwms.GetAddress(api_key, post_code, ref error);
+                if (address == null)
+                {
+                    if (error_call != null) error_call(error);
+                    return false;
+                }
+
+                string[] updater = { $"province:{address.province}", $"city:{address.city}", $"township:{address.township}", $"full_address:{address.address}", $"village:{address.village}", $"country:", $"zone:", $"rural:" };
+                input["st"] = updater;
+                if (SRL.Projects.Nwms.PutWarehouse(api_key, war_id, input, "https", out error) == false)
+                {
+                    if (error_call != null) error_call(error);
+                    return false;
+                }
+
+                if (call_back != null) call_back(address);
+                return true;
+            }
+
             public class BaseValueTypes
             {
                 public enum Base
@@ -369,6 +396,8 @@ namespace SRL
                 CoNationalIdEmpty,
                 NationalIdEmpty
             }
+
+
             public enum NwmsResultType
             {
                 OK,
@@ -432,6 +461,7 @@ namespace SRL
                     public List<string> supervisor_org { get; set; }
                     public List<string> activity_sector { get; set; }
                     public string type { get; set; }
+                    public string[] st { get; set; }
 
                 }
 
@@ -474,6 +504,62 @@ namespace SRL
                 }
             }
 
+            public static void UpdateWarehouseAddressGroup(string api_key, string table_name, string access_file_name, int paralel, Action call_back, Action<Exception> call_error)
+            {
+
+                SRL.AccessManagement.AddColumnToAccess("error", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+                SRL.AccessManagement.AddColumnToAccess("status", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+                SRL.AccessManagement.AddColumnToAccess("address", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+
+                DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
+                var list_ = SRL.Convertor.ConvertDataTableToList<AddressUpdator>(dt);
+                var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
+
+                SRL.AccessManagement.ExecuteToAccess("update " + table_name + " set id=Trim(id)", access_file_name);
+
+                SRL.ActionManagement.MethodCall.Parallel.ParallelCall<AddressUpdator>(list, paralel.ToString(),
+                    UpdateWarehouseAddressParallel, null, call_error, call_back, null, table_name, access_file_name, api_key);
+            }
+            public class AddressUpdator
+            {
+                public string id { get; set; }
+                public string postal_code { get; set; }
+                public string error { get; set; }
+                public string status { get; set; }
+                public string address { get; set; }
+
+            }
+            public static void UpdateWarehouseAddressParallel(List<AddressUpdator> list, BackgroundWorker worker, params object[] args)
+            {
+                string table_name = args[0].ToString();
+                string access_file_name = args[1].ToString();
+                string api_key = args[2].ToString();
+
+                foreach (var item in list)
+                {
+                    string query = "";
+                    if (string.IsNullOrWhiteSpace(item.id))
+                    {
+                        query = $"update {table_name} set status='OK', error='id is null'  where id='' or id is null";
+                    }
+                    else
+                    {
+                        AddressUpdator war = new AddressUpdator();
+                        UpdateWarehouseAddress(api_key, item.id, item.postal_code, (error) =>
+                           {
+                               query = $"update { table_name } set status='NOK' , error='{ error}' where id='{ item.id }'";
+                           }, (address) =>
+                           {
+                               query = $"update { table_name } set status='OK', address='{address.address}' where id='{ item.id }'";
+
+                           });
+
+                    }
+
+                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name);
+                }
+            }
+
             public static string SendSms(string sms_user, string sms_pass, string esb_user, string esb_pass, string message, string sms_from, string to)
             {
                 using (SmsNtswService.SendSMSFromPortTypeClient client = SRL.Web.CreateWcfClient<SmsNtswService.SendSMSFromPortTypeClient>("https://sr-cix.ntsw.ir/services/SendSMSFrom?wsdl"))
@@ -496,11 +582,11 @@ namespace SRL
                 }
             }
 
-            public static GetComplexResult GetComplex(string api_key, string postal_code, ref string result)
+            public static GetComplexResult GetComplex(string api_key, string postal_code, string protocol, ref string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/complex/by-postal-code/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/complex/by-postal-code/");
                     HttpResponseMessage response = client.GetAsync(postal_code).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -515,11 +601,11 @@ namespace SRL
                     }
                 }
             }
-            public static GetComplexResult GetComplexById(string api_key, string id, ref string result)
+            public static GetComplexResult GetComplexById(string api_key, string id, string protocol, ref string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/complex/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/complex/");
                     HttpResponseMessage response = client.GetAsync(id).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -535,11 +621,11 @@ namespace SRL
                 }
             }
 
-            public static string GetUserMobile(string api_key, string national_id, ref string error)
+            public static string GetUserMobile(string api_key, string national_id, string protocol, ref string error)
             {
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["national_id"] = national_id;
-                List<SearchResult.SearchUserResult> list = SearchUserBySize(input, api_key, 0, 1, out error);
+                List<SearchResult.SearchUserResult> list = SearchUserBySize(input, api_key, 0, 1, protocol, out error);
                 if (list == null)
                 {
                     return null;
@@ -564,7 +650,13 @@ namespace SRL
                 public string account_status { get; set; }
                 public string postal_code { get; set; }
                 public string org_creator_national_id { get; set; }
-
+                public ST st { get; set; }
+            }
+            public class ST
+            {
+                public string province { get; set; }
+                public string township { get; set; }
+                public string city { get; set; }
             }
             public class EstelamAccessFile
             {
@@ -594,7 +686,7 @@ namespace SRL
 
                             else if (item.code.Length > 10)
                             {
-                                continue;
+
                                 string result = "";
                                 CompanyClass company = new CompanyClass();
                                 var is_ok = SRL.Projects.Nwms.GetCixCompanyByCoNationalId("2050130318", item.code, out company, out result);
@@ -628,7 +720,7 @@ namespace SRL
                         }
                     }
 
-                    public static void CheckCoOrPersonIsCorrect(string access_file_name, string table_name, int paralel)
+                    public static void CheckCoOrPersonIsCorrect(string access_file_name, string table_name, int paralel, Action<Exception> call_error, Action final_call_back)
                     {
                         SRL.AccessManagement.AddColumnToAccess("name", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
                         SRL.AccessManagement.AddColumnToAccess("family", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
@@ -643,21 +735,9 @@ namespace SRL
 
                         SRL.AccessManagement.ExecuteToAccess("update " + table_name + " set code=Trim(code)", access_file_name);
 
-                        SRL.ActionManagement.MethodCall.Parallel.ParallelCall<CoOrPerson>(list, paralel.ToString(), StartParallelCallCoOrPerson, null, null, () => { MessageBox.Show("done"); }, null, table_name, access_file_name);
+                        SRL.ActionManagement.MethodCall.Parallel.ParallelCall<CoOrPerson>(list, paralel.ToString(),
+                            StartParallelCallCoOrPerson, null, call_error, final_call_back, null, table_name, access_file_name);
                     }
-                }
-                public class PostCodeEstelamResult
-                {
-                    public long ID { get; set; }
-                    public string postal_code { get; set; }
-                    public string status { get; set; }
-                    public string exist_anbar { get; set; }
-                    public string correct { get; set; }
-                    public string province { get; set; }
-                    public string township { get; set; }
-                    public string city { get; set; }
-                    public string address { get; set; }
-                    public string error { get; set; }
                 }
                 public class NationalCodeEstelamInput
                 {
@@ -727,7 +807,7 @@ namespace SRL
                         HttpResponseMessage response = new HttpResponseMessage();
                         string message = "";
                         SRL.Projects.Nwms.ComplexByPostCodeResult war =
-                        SRL.Projects.Nwms.GetComplexByPostalCode(item.postal_code, api_key, true, out message);
+                        SRL.Projects.Nwms.GetComplexByPostalCode(item.postal_code, api_key, true, "https", out message);
                         string query = "";
                         if (response.StatusCode == System.Net.HttpStatusCode.OK)
                         {
@@ -897,7 +977,7 @@ namespace SRL
                     List<BaseValueTB> orgs = (List<BaseValueTB>)args[4];
 
                     foreach (var item in list)
-                    { 
+                    {
                         if (item.status == "OK") continue;
 
                         Dictionary<string, object> input = new Dictionary<string, object>();
@@ -905,7 +985,7 @@ namespace SRL
                         input["person"] = item.national_code;
                         string message = "";
                         List<SearchResult.SearchWarehouseResult> war =
-                        SRL.Projects.Nwms.SearchWarehouse(input, api_key, 0, 100, ref message);
+                        SRL.Projects.Nwms.SearchWarehouse(input, api_key, 0, 100, "https", ref message);
                         string query = "";
                         if (war != null)
                         {
@@ -913,7 +993,7 @@ namespace SRL
                             {
                                 var warehouse = war[0];
                                 var contractor_has = warehouse.contractors?.Where(x => x.national_id == item.national_code);
-                                if (contractor_has?.Count()>0)
+                                if (contractor_has?.Count() > 0)
                                 {
                                     var contractor = contractor_has.First();
                                     query = $"update {table_name} set status='OK' , correct='true' ,name_family='{contractor.name}', exist_anbar='{war.Count}', war_id='{warehouse.id}', " +
@@ -940,14 +1020,14 @@ namespace SRL
 
                         }
 
-                         SRL.AccessManagement.ExecuteToAccess(query, file_full_path); 
+                        SRL.AccessManagement.ExecuteToAccess(query, file_full_path);
 
-                         
+
 
                     }
                 }
 
-            
+
 
                 public static void EstelamFromPost(string file_full_path, string table_name, string api_key, string parallel, string password, string username)
                 {
@@ -1015,7 +1095,7 @@ namespace SRL
                             HttpClient client = new HttpClient();
                             client.BaseAddress = new Uri($"https://app.nwms.ir/v2/b2b-api/{api_key}/admin/{method}/");
                             string error = "";
-                            var complex = SRL.Projects.Nwms.GetComplexById(api_key, item.code, ref error);
+                            var complex = SRL.Projects.Nwms.GetComplexById(api_key, item.code, "https", ref error);
                             if (complex == null) continue;
                             string query = "";
                             if (complex.name.Contains("?"))
@@ -1046,15 +1126,96 @@ namespace SRL
 
             }
 
+            public class PostCodeEstelamResult
+            {
+                public long ID { get; set; }
+                public string postal_code { get; set; }
+                public string status { get; set; }
+                public string exist_anbar { get; set; }
+                public string correct { get; set; }
+                public string province { get; set; }
+                public string township { get; set; }
+                public string city { get; set; }
+                public string address { get; set; }
+                public string error { get; set; }
+            }
+            public static void EstelamFromNwms(string file_full_path, string table_name, string api_key, string parallel, Action callback, Action<Exception> func_error)
+            {
+                string[] exist_anbar_head = { "status", "exist_anbar", "error" };
+                foreach (var item in exist_anbar_head)
+                {
+                    SRL.AccessManagement.AddColumnToAccess(item, "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
+                }
+                try
+                {
+                    SRL.AccessManagement.CreateIndex("postal_code", "postal_code", table_name, file_full_path);
 
-            public static bool DeleteAllContractors(string api_key, string warehouse_id, out string error)
+                }
+                catch (Exception ex)
+                {
+                }
+
+                DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
+
+                List<PostCodeEstelamResult> list = SRL.Convertor.ConvertDataTableToList<PostCodeEstelamResult>(table).Where(x => x.status != "OK" || x.status == "" || x.status == null).ToList();
+
+                SRL.ActionManagement.MethodCall.Parallel.ParallelCall<PostCodeEstelamResult>(list, parallel, EstelamFromNwmsParallel, null, func_error, callback, null, api_key, table_name, file_full_path);
+
+            }
+
+            private static void EstelamFromNwmsParallel(List<PostCodeEstelamResult> list, BackgroundWorker bg, params object[] args)
+            {
+                string api_key = args[0].ToString();
+                string table_name = args[1].ToString();
+                string file_full_path = args[2].ToString();
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                input["account_status"] = "1";
+
+
+                foreach (var item in list)
+                {
+                    if (item.status == "OK") continue;
+
+                    string message = "";
+                    input["postal_code"] = item.postal_code;
+                    System.Data.OleDb.OleDbParameter[] parameters = null;
+
+                    var war = SRL.Projects.Nwms.SearchWarehouseBySize(api_key,0,1, input,"https", ref message);
+                    
+                    string query = "";
+                    if (war == null)
+                    {
+                        System.Data.OleDb.OleDbParameter parameter = new System.Data.OleDb.OleDbParameter { ParameterName = "@error", Value = message };
+                        parameters = new OleDbParameter[] { parameter };
+                        query = $"update {table_name} set status='NOK' , error=@error where ID={item.ID};";
+
+                    }
+                    else if (war.Count == 0)
+                    {
+                        query = $"update {table_name} set status='OK' , exist_anbar='false' where ID={item.ID};";
+
+                    }
+                    else
+                    {
+                        query = $"update {table_name} set status='OK' , exist_anbar='true'  where ID={item.ID};"; ;
+
+
+                    }
+                    
+                    SRL.AccessManagement.ExecuteToAccess(query, file_full_path, parameters);
+
+                }
+            }
+
+
+            public static bool DeleteAllContractors(string api_key, string warehouse_id, string protocol, out string error)
             {
 
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["contractors"] = new List<ContractorListClass>();
-                return PutWarehouse(api_key, warehouse_id, input, out error);
+                return PutWarehouse(api_key, warehouse_id, input, protocol, out error);
             }
-            public static bool DeleteContractor(string api_key, string national_id, GetWarehouseClass warehouse, out string error)
+            public static bool DeleteContractor(string api_key, string national_id, GetWarehouseClass warehouse, string protocol, out string error)
             {
                 var contractors = new List<ContractorListClass>();
                 foreach (var item in warehouse.contractors)
@@ -1064,17 +1225,18 @@ namespace SRL
                 }
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["contractors"] = contractors;
-                return PutWarehouse(api_key, warehouse.id, input, out error);
+                return PutWarehouse(api_key, warehouse.id, input, protocol, out error);
             }
-            public static bool DeleteOwner(string api_key, string national_id, ComplexByPostCodeResult complex, ref string result)
+            public static bool DeleteOwner(string api_key, string national_id, ComplexByPostCodeResult complex, string protocol, ref string result)
             {
                 var new_owners = new ComplexOwnerClass();
+                new_owners.agent = new ComplexOwnerClass.person();
                 foreach (var item in complex?.owners)
                 {
                     if (item.national_id == national_id) continue;
                     new_owners.owners.Add(new ComplexOwnerClass.person { national_id = item.national_id, name = item.name });
                 }
-                if (complex?.agent?.national_id == national_id)
+                if (complex?.agent?.national_id == national_id || complex?.agent?.national_id == null)
                 {
                     bool any_owner = new_owners.owners.Any();
                     new_owners.agent.national_id = any_owner ? new_owners.owners.First().national_id : "0000000000";
@@ -1082,19 +1244,20 @@ namespace SRL
                 }
                 else
                 {
-                    new_owners.agent.national_id = complex.agent.national_id;
-                    new_owners.agent.name = complex.agent.name;
+                    bool has_agent = !(complex?.agent == null);
+                    new_owners.agent.national_id = has_agent ? complex.agent.national_id : "0000000000";
+                    new_owners.agent.name = has_agent ? complex.agent.name : "UNKNOWN";
 
                 }
-                return SetOwners(api_key, new_owners, complex.id, ref result);
+                return SetOwners(api_key, new_owners, complex.id, protocol, ref result);
             }
 
-            public static bool DeleteWarehouse(string api_key, string war_id, ref string mes)
+            public static bool DeleteWarehouse(string api_key, string war_id, string protocol, ref string mes)
             {
                 Dictionary<string, object> inp = new Dictionary<string, object>();
                 inp["account_status"] = "3";
                 mes = "";
-                return PutWarehouse(api_key, war_id, inp, out mes);
+                return PutWarehouse(api_key, war_id, inp, protocol, out mes);
             }
 
             public class ShahkarInputClass
@@ -1106,12 +1269,12 @@ namespace SRL
                 public string identificationNo { get; set; }
             }
 
-            public static List<CardexResult> GetCardex(string api_key, string contractor_national_id, int start, int size, CardexFilter filters, ref string result)
+            public static List<CardexResult> GetCardex(string api_key, string contractor_national_id, int start, int size, CardexFilter filters, string protocol, ref string result)
             {
                 result = "";
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri($"https://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/cardex/_search/");
+                    client.BaseAddress = new Uri($"{ protocol}://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/cardex/_search/");
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     Dictionary<string, object> filter = new Dictionary<string, object>();
                     input["filter"] = filter;
@@ -1120,6 +1283,11 @@ namespace SRL
                         if (!string.IsNullOrWhiteSpace(filters.warehouse_id)) filter["warehouse_id"] = filters.warehouse_id;
                         if (!string.IsNullOrWhiteSpace(filters.user_id)) filter["user_id"] = filters.user_id;
                         if (!string.IsNullOrWhiteSpace(filters.good_id)) filter["good_id"] = filters.good_id;
+                        if (!string.IsNullOrWhiteSpace(filters.postal_code)) filter["additional_data.postal_code"] = filters.postal_code;
+                        if (!string.IsNullOrWhiteSpace(filters.province)) filter["additional_data.province"] = filters.province;
+                        if (!string.IsNullOrWhiteSpace(filters.township)) filter["additional_data.township"] = filters.township;
+                        if (!string.IsNullOrWhiteSpace(filters.city)) filter["additional_data.city"] = filters.city;
+
                     }
 
                     HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
@@ -1137,12 +1305,12 @@ namespace SRL
                     }
                 }
             }
-            public static List<CardexResult> SearchCardex(string api_key, int start, int size, CardexFilter filters, ref string result)
+            public static List<CardexResult> SearchCardex(string api_key, int start, int size, CardexFilter filters, string protocol, ref string result)
             {
                 result = "";
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri($"https://app.nwms.ir/v2/b2b-api/{api_key}/admin/cardex/_search/");
+                    client.BaseAddress = new Uri($"{ protocol}://app.nwms.ir/v2/b2b-api/{api_key}/admin/cardex/_search/");
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     Dictionary<string, object> filter = new Dictionary<string, object>();
                     input["filter"] = filter;
@@ -1153,6 +1321,7 @@ namespace SRL
                         if (!string.IsNullOrWhiteSpace(filters.good_id)) filter["good_id"] = filters.good_id;
                         if (!string.IsNullOrWhiteSpace(filters.postal_code)) filter["additional_data.postal_code"] = filters.postal_code;
                         if (!string.IsNullOrWhiteSpace(filters.province)) filter["additional_data.province"] = filters.province;
+                        if (!string.IsNullOrWhiteSpace(filters.township)) filter["additional_data.township"] = filters.township;
                         if (!string.IsNullOrWhiteSpace(filters.city)) filter["additional_data.city"] = filters.city;
                     }
 
@@ -1253,7 +1422,6 @@ namespace SRL
                     public string national_id { get; set; }
                     public string mobile { get; set; }
                 }
-
             }
 
             public class GetComplexResult
@@ -1315,11 +1483,11 @@ namespace SRL
 
             }
 
-            public static bool DeleteApiKey(string api_key, string key_id, out string result)
+            public static bool DeleteApiKey(string api_key, string key_id, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/");
+                    client.BaseAddress = new Uri($"{protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/");
                     HttpResponseMessage response = client.DeleteAsync(key_id).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -1582,12 +1750,14 @@ namespace SRL
                     public string category_id { get; set; }
                     public string taxonomy_id { get; set; }
                     public string good_id { get; set; }
+                    public string good_desc { get; set; }
                     public string measurement_unit { get; set; }
                     public double count { get; set; }
+                    public string production_type { get; set; }
                     public double? total_weight { get; set; }
                     public string package_type { get; set; }
-                    public int? package_count { get; set; }
-                    public int? item_value { get; set; }
+                    public double? package_count { get; set; }
+                    public double? item_value { get; set; }
                     public string location { get; set; }
                     public double? production_date { get; set; }
                     public double? expire_date { get; set; }
@@ -1602,7 +1772,7 @@ namespace SRL
                     public string number { get; set; }
                     public string owner_name { get; set; }
                     public string owner { get; set; }
-                    public double rcp_date { get; set; }
+                    public Nullable<double> rcp_date { get; set; }
                     public string warehouse_id { get; set; }//virt_id
                     public string postal_code { get; set; }
                     public string doc_type { get; set; }
@@ -1610,7 +1780,7 @@ namespace SRL
                     public string driver_national_id { get; set; }
                     public string driver { get; set; }
                     public string insurance_name { get; set; }
-                    public int? insurance_date { get; set; }
+                    public double? insurance_date { get; set; }
                     public string insurance_number { get; set; }
                     public double? weight_impure { get; set; }
                     public double? weight_pure { get; set; }
@@ -1661,11 +1831,13 @@ namespace SRL
                     public string category_id { get; set; }
                     public string taxonomy_id { get; set; }
                     public string good_id { get; set; }
+                    public string good_desc { get; set; }
                     public string measurement_unit { get; set; }
                     public double count { get; set; }
+                    public string production_type { get; set; }
                     public double? total_weight { get; set; }
                     public string package_type { get; set; }
-                    public int? package_count { get; set; }
+                    public double? package_count { get; set; }
                     public double? production_date { get; set; }
                     public double? expire_date { get; set; }
                     public string location { get; set; }
@@ -1673,20 +1845,80 @@ namespace SRL
                 }
 
 
-                public static bool Receipt(string api_key, string contractor_national_id, AnbarOperation.SimpleReceipt simple_receipt, out string id)
+                public static bool Receipt(string api_key, string contractor_national_id, AnbarOperation.SimpleReceipt simple_receipt, string protocol, out string id, ref object input_sent)
                 {
                     System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
-                    object input = simple_receipt;
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
+                    input_sent = simple_receipt;
 
-                    input = SRL.Json.RemoveEmptyKeys(simple_receipt, true, true);
-                    HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/receipt/simple", input).Result;
+                    input_sent = SRL.Json.RemoveEmptyKeys(simple_receipt, true, true);
+                    HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/receipt/simple", input_sent).Result;
 
                     id = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode != System.Net.HttpStatusCode.OK)
                     {
                         id = SRL.Json.IsJson(id) ? id : response.StatusCode.ToString();
                         return false;
+                    }
+                    else
+                    {
+                        //ثبت سند بصورت موقت انجام شد
+                        Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(id);
+                        id = output["id"].ToString();
+                        int version = int.Parse(output["version"].ToString());
+                        return true;
+                    }
+
+
+                }
+                public static bool ReceiptFinal(string api_key, string contractor_national_id, AnbarOperation.SimpleReceipt simple_receipt, string protocol, bool final_if_EXISTS, out string id, ref object input_sent)
+                {
+                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
+                    input_sent = simple_receipt;
+
+                    input_sent = SRL.Json.RemoveEmptyKeys(simple_receipt, true, true);
+                    HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/receipt/receipt_finalize", input_sent).Result;
+
+                    id = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        id = SRL.Json.IsJson(id) ? id : response.StatusCode.ToString();
+                        if (id == @"{""number"": ""EXISTS_BEFORE""}" && final_if_EXISTS)
+                        {
+                            var filters = new SearchFilters { number = simple_receipt.number };
+                            if (!string.IsNullOrWhiteSpace(simple_receipt.postal_code)) filters.postal_code = simple_receipt.postal_code;
+                            else if (!string.IsNullOrWhiteSpace(simple_receipt.warehouse_id)) filters.warehouse_id = simple_receipt.warehouse_id;
+                            var list = SearchReceipt(api_key, 0, 1, filters, protocol, ref id);
+                            if (list == null)
+                            {
+                                return false;
+                            }
+                            else if (!list.Any())
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                string to_final = list.First().id;
+                                if (FinalizeReceipt(to_final, api_key, contractor_national_id, protocol, out id))
+                                {
+                                    id = to_final;
+                                    return true;
+                                }
+                                else
+                                {
+                                    if (id == @"{""status"": ""already permanent""}")
+                                    {
+                                        id = to_final;
+                                        return true;
+                                    }
+                                    else return false;
+                                }
+                            }
+
+                        }
+                        else return false;
                     }
                     else
                     {
@@ -1793,12 +2025,12 @@ namespace SRL
 
                 }
 
-                public static bool FinalizeReceipt(string id, string api_key, string contractor_national_id, out string result_final)
+                public static bool FinalizeReceipt(string id, string api_key, string contractor_national_id, string protocol, out string result_final)
                 {
 
                     //جهت نهایی سازی سند:
                     System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
                     HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/receipt/" + id + "/finalize", null).Result;
 
                     result_final = response_final.Content.ReadAsStringAsync().Result;
@@ -1820,7 +2052,7 @@ namespace SRL
 
                 private void btnHavale_Click(object sender, EventArgs e)
                 {//متد ثبت موقت حواله
-                    HttpResponseMessage response = SendGoodIssueSimple();
+                    HttpResponseMessage response = SendGoodIssueSimple("https");
                     string result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode != System.Net.HttpStatusCode.OK)
                     {
@@ -1834,7 +2066,7 @@ namespace SRL
                         string id = output["id"].ToString();
                         int version = int.Parse(output["version"].ToString());
                         //جهت نهایی سازی سند:
-                        HttpResponseMessage response_final = FinalizeGoodIsuue(id);
+                        HttpResponseMessage response_final = FinalizeGoodIsuue(id, "https");
                         string result_final = response_final.Content.ReadAsStringAsync().Result;
                         if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
                         {
@@ -1849,14 +2081,14 @@ namespace SRL
 
                 }
 
-                private HttpResponseMessage FinalizeGoodIsuue(string id)
+                private HttpResponseMessage FinalizeGoodIsuue(string id, string protocol)
                 {
                     System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
                     return client.PostAsync("2050130000/2050130000/goods_issue/" + id + "/finalize", null).Result;
                 }
 
-                private HttpResponseMessage SendGoodIssueSimple()
+                private HttpResponseMessage SendGoodIssueSimple(string protocol)
                 {
                     AnbarOperation.SimpleGoodIssue simple_good_issue = new AnbarOperation.SimpleGoodIssue();
                     //شماره داخلی حواله- این شماره توسط انبار وارد می شود و باید غیرتکراری باشد  *
@@ -1939,15 +2171,15 @@ namespace SRL
 
 
                     System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
                     string input = JsonConvert.SerializeObject(simple_good_issue, Formatting.Indented);
                     return client.PostAsJsonAsync("2050130000/2050130000/goods_issue/simple", simple_good_issue).Result;
                 }
 
-                public static bool Havale(string api_key, string contractor_national_id, AnbarOperation.SimpleGoodIssue simple_havale, out string result, ref object sent_data)
+                public static bool Havale(string api_key, string contractor_national_id, AnbarOperation.SimpleGoodIssue simple_havale, string protocol, out string result, ref object sent_data)
                 {
                     System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
                     sent_data = simple_havale;
                     sent_data = SRL.Json.RemoveEmptyKeys(simple_havale, true, true);
                     HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/goods_issue/simple", sent_data).Result;
@@ -1970,11 +2202,35 @@ namespace SRL
 
                 }
 
-                public static bool FinalizeGoodIssue(string id, string api_key, string contractor_national_id, out string finalization)
+                public static bool HavaleFinal(string api_key, string contractor_national_id, AnbarOperation.SimpleGoodIssue simple_havale, string protocol, out string result, ref object sent_data)
+                {
+                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
+                    sent_data = simple_havale;
+                    sent_data = SRL.Json.RemoveEmptyKeys(simple_havale, true, true);
+                    HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/goods_issue/goods_issue_finalize", sent_data).Result;
+
+                    result = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        return false;
+                    }
+                    else
+                    {
+                        Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                        string id = output["id"].ToString();
+                        int version = int.Parse(output["version"].ToString());
+                        result = id;
+                        return true;
+                    }
+
+                }
+                public static bool FinalizeGoodIssue(string id, string api_key, string contractor_national_id, string protocol, out string finalization)
                 {
                     //جهت نهایی سازی سند:
                     System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
                     HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/goods_issue/" + id + "/finalize", null).Result;
 
                     finalization = response_final.Content.ReadAsStringAsync().Result;
@@ -1993,10 +2249,10 @@ namespace SRL
                     }
                 }
 
-                public static bool ExchangePre(string api_key, string contractor_national_id, AnbarOperation.ExchangeInput deal, out string result)
+                public static bool ExchangePre(string api_key, string contractor_national_id, AnbarOperation.ExchangeInput deal, string protocol, out string result)
                 {
                     System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
                     object input = deal;
                     if (string.IsNullOrWhiteSpace(deal.goods_issue.warehouse_id))
                     {
@@ -2020,13 +2276,13 @@ namespace SRL
                     }
                 }
 
-                public static bool FinalizeExchange(string id, string api_key, string contractor_national_id, out string finalization)
+                public static bool FinalizeExchange(string id, string api_key, string contractor_national_id, string protocol, out string finalization)
                 {
                     //جهت نهایی سازی سند:
                     using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
                     {
 
-                        client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                        client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
                         HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/exchange/" + id + "/finalize", null).Result;
 
                         finalization = response_final.Content.ReadAsStringAsync().Result;
@@ -2042,10 +2298,10 @@ namespace SRL
                     }
                 }
 
-                public static bool CancelReceipt(string id, string api_key, string contractor, out string result_final)
+                public static bool CancelReceipt(string id, string api_key, string contractor, string protocol, out string result_final)
                 {
                     System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
                     HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor + "/receipt/" + id + "/cancel", null).Result;
 
                     result_final = response_final.Content.ReadAsStringAsync().Result;
@@ -2064,10 +2320,10 @@ namespace SRL
                     }
                 }
 
-                public static bool CancelHavale(string id, string api_key, string contractor, out string result_final)
+                public static bool CancelHavale(string id, string api_key, string contractor, string protocol, out string result_final)
                 {
                     System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
                     HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor + "/goods_issue/" + id + "/cancel", null).Result;
 
                     result_final = response_final.Content.ReadAsStringAsync().Result;
@@ -2086,7 +2342,7 @@ namespace SRL
                     }
                 }
 
-                public static List<SimpleReceipt> GetReceiptList(string api_key, string contractor_national_id, int start, int size, SearchFilters _filters, ref string result)
+                public static List<SimpleReceipt> GetReceiptList(string api_key, string contractor_national_id, int start, int size, SearchFilters _filters, string protocol, ref string result)
                 {
                     using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
                     {
@@ -2107,7 +2363,14 @@ namespace SRL
                                 filter["rcp_date"] = date_filter;
                             }
                         }
-                        client.BaseAddress = new Uri($"https://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/receipt/_search/");
+                        if (string.IsNullOrWhiteSpace(contractor_national_id))
+                        {
+                            string virt = "";
+                            List<ContractorListClass> cons = new List<ContractorListClass>();
+                            GetVirtualWarehouse(api_key, "", ref contractor_national_id, "", _filters.postal_code, protocol, false, out virt, ref cons);
+                        }
+
+                        client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/receipt/_search/");
                         HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
                         result = response.Content.ReadAsStringAsync().Result;
 
@@ -2124,7 +2387,7 @@ namespace SRL
                         }
                     }
                 }
-                public static List<SimpleReceipt> SearchReceipt(string api_key, int start, int size, SearchFilters _filters, ref string result)
+                public static List<SimpleReceipt> SearchReceipt(string api_key, int start, int size, SearchFilters _filters, string protocol, ref string result)
                 {
                     using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
                     {
@@ -2150,7 +2413,7 @@ namespace SRL
                             if (!string.IsNullOrWhiteSpace(_filters.city)) filter["additional_data.city"] = _filters.city;
                             if (!string.IsNullOrWhiteSpace(_filters.warehouse_id)) filter["warehouse_id"] = _filters.warehouse_id;
                         }
-                        client.BaseAddress = new Uri($"https://app.nwms.ir/v2/b2b-api/{api_key}/admin/receipt/_search/");
+                        client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{api_key}/admin/receipt/_search/");
                         HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
                         result = response.Content.ReadAsStringAsync().Result;
 
@@ -2168,7 +2431,7 @@ namespace SRL
                     }
                 }
 
-                public static List<SimpleGoodIssue> GetHavaleList(string api_key, string contractor_national_id, int start, int size, SearchFilters _filters, ref string result)
+                public static List<SimpleGoodIssue> GetHavaleList(string api_key, string contractor_national_id, int start, int size, SearchFilters _filters, string protocol, ref string result)
                 {
                     using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
                     {
@@ -2189,7 +2452,13 @@ namespace SRL
                                 filter["goods_issue_date"] = date_filter;
                             }
                         }
-                        client.BaseAddress = new Uri($"https://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/goods_issue/_search/");
+                        if (string.IsNullOrWhiteSpace(contractor_national_id))
+                        {
+                            string virt = "";
+                            List<ContractorListClass> cons = new List<ContractorListClass>();
+                            GetVirtualWarehouse(api_key, "", ref contractor_national_id, "", _filters.postal_code, protocol, false, out virt, ref cons);
+                        }
+                        client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/goods_issue/_search/");
                         HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
                         result = response.Content.ReadAsStringAsync().Result;
                         if (response.StatusCode != System.Net.HttpStatusCode.OK)
@@ -2205,7 +2474,7 @@ namespace SRL
                         }
                     }
                 }
-                public static List<SimpleGoodIssue> SearchHavale(string api_key, int start, int size, SearchFilters _filters, ref string result)
+                public static List<SimpleGoodIssue> SearchHavale(string api_key, int start, int size, SearchFilters _filters, string protocol, ref string result)
                 {
 
                     using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
@@ -2231,7 +2500,7 @@ namespace SRL
                             if (!string.IsNullOrWhiteSpace(_filters.city)) filter["additional_data.city"] = _filters.city;
                             if (!string.IsNullOrWhiteSpace(_filters.warehouse_id)) filter["warehouse_id"] = _filters.warehouse_id;
                         }
-                        client.BaseAddress = new Uri($"https://app.nwms.ir/v2/b2b-api/{api_key}/admin/goods_issue/_search/");
+                        client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{api_key}/admin/goods_issue/_search/");
                         HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
                         result = response.Content.ReadAsStringAsync().Result;
                         if (response.StatusCode != System.Net.HttpStatusCode.OK)
@@ -2463,6 +2732,12 @@ namespace SRL
                 public string co_national_id { get; set; }
                 [Required]
                 public string postal_code { get; set; }
+                [Required]
+                public string warehouse_usage_type { get; set; }
+                [Required]
+                public string area_type { get; set; }
+                [Required]
+                public string area { get; set; }
                 public string province { get; set; }
                 public string city { get; set; }
                 [Required]
@@ -2475,6 +2750,9 @@ namespace SRL
                 public List<string> supervisor_org { get; set; } = new List<string>();
                 [DefaultValue("")]
                 public string gov_warehouse_no { get; set; }
+
+                [DefaultValue("")]
+                public string birth_date { get; set; }
                 public bool on_error_data_send_sms_to_user { get; set; } = false;
 
 
@@ -2492,13 +2770,13 @@ namespace SRL
                 public string complex_id { get; set; }
                 public string company_name { get; set; }
             }
-            public static RegWarehouseOut RegWarehouse(string api_key, RegWarehouseInput input_, ref string result, string prefix = "app")
+            public static RegWarehouseOut RegWarehouse(string api_key, RegWarehouseInput input_, string protocol, ref string result, ref object sent_data, string prefix = "app")
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    var input = SRL.Json.RemoveEmptyKeys(input_, true, true);
-                    client.BaseAddress = new Uri($"https://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/");
-                    HttpResponseMessage response = client.PostAsJsonAsync("reg_warehouse", input).Result;
+                    sent_data = SRL.Json.RemoveEmptyKeys(input_, true, true);
+                    client.BaseAddress = new Uri($"{protocol}://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/");
+                    HttpResponseMessage response = client.PostAsJsonAsync("reg_warehouse", sent_data).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
@@ -2535,9 +2813,45 @@ namespace SRL
 
 
             }
+            public class PostAddress
+            {
+                public string province { get; set; }
+                public string township { get; set; }
+                public string city { get; set; }
+                public string village { get; set; }
+                public string address { get; set; }
+                public string error { get; set; }
+            }
+            public static PostAddress GetAddress(string api_key, string postal_code, ref string result)
+            {
 
-            public static List<WarehouseSearchResult> WarehouseSearch(string api_key,
-                 long date_from, long date_to, int start, int size)
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri($"https://app.nwms.ir/v2/b2b-api/{ api_key }/iran-post/");
+                    HttpResponseMessage response = client.GetAsync(postal_code).Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        PostAddress output = Newtonsoft.Json.JsonConvert.DeserializeObject<PostAddress>(result);
+                        if (string.IsNullOrWhiteSpace(output.error))
+                        {
+                            return output;
+                        }
+                        else
+                        {
+                            result = output.error;
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        return null;
+                    }
+                }
+
+            }
+            public static List<WarehouseSearchResult> WarehouseSearch(string api_key, long date_from, long date_to, int start, int size, string protocol)
             {
                 try
                 {
@@ -2551,7 +2865,7 @@ namespace SRL
 
                     HttpClient client = new HttpClient();
 
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/_search/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/_search/");
                     client.Timeout = new TimeSpan(0, 30, 0);
                     var result = client.PostAsJsonAsync(start + "/" + size, filter).Result;
                     if (result.StatusCode != System.Net.HttpStatusCode.OK)
@@ -2640,11 +2954,11 @@ namespace SRL
                 }
 
             }
-            public static void GetComplexByPostalCodeSample(string postal_code, string api_key)
+            public static void GetComplexByPostalCodeSample(string postal_code, string api_key, string protocol)
             {
 
                 System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/");
 
                 HttpResponseMessage message = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code).Result;
                 string result = message.Content.ReadAsStringAsync().Result;
@@ -2794,11 +3108,11 @@ namespace SRL
 
             }
 
-            public static bool PutComplex(string api_key, string complex_id, object body_json, out string result)
+            public static bool PutComplex(string api_key, string complex_id, object body_json, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
                     HttpResponseMessage response = client.PutAsJsonAsync(complex_id, body_json).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -2813,7 +3127,7 @@ namespace SRL
                 }
             }
 
-            public static RegCompanyResult RegCo(string api_key, string national_id, string mobile, string postal_code, string co_national_id,
+            public static RegCompanyResult RegCo(string api_key, string national_id, string mobile, string postal_code, string co_national_id, string protocol,
                out string ceo_name, out string co_error)
             {
                 co_error = ceo_name = "";
@@ -2821,7 +3135,7 @@ namespace SRL
                 SRL.Projects.Nwms.GetPersonResult person_ok = new SRL.Projects.Nwms.GetPersonResult();
                 var person = new SRL.Projects.Nwms.PersonClass();
                 var company = new SRL.Projects.Nwms.CompanyInAnbarClass();
-                co_ok = SRL.Projects.Nwms.GetCompanyInAnbar(api_key, national_id, co_national_id, out company, out co_error);
+                co_ok = SRL.Projects.Nwms.GetCompanyInAnbar(api_key, national_id, co_national_id, protocol, out company, out co_error);
                 switch (co_ok)
                 {
                     case SRL.Projects.Nwms.GetCompanyInAnbarResult.EmptyInput:
@@ -2831,13 +3145,13 @@ namespace SRL
                     case SRL.Projects.Nwms.GetCompanyInAnbarResult.NotFound:
                     case SRL.Projects.Nwms.GetCompanyInAnbarResult.NotActiveFound:
                         var company_ext = new SRL.Projects.Nwms.CompanyClass();
-                        if (SRL.Projects.Nwms.GetCompanyByCoNationalId(api_key, co_national_id, out company_ext, out co_error) == false)
+                        if (SRL.Projects.Nwms.GetCompanyByCoNationalId(api_key, co_national_id, protocol, out company_ext, out co_error) == false)
                         {
                             return RegCompanyResult.Error;
                         }
                         else
                         {
-                            person_ok = SRL.Projects.Nwms.GetPersonByNationalId(api_key, national_id, out person);
+                            person_ok = SRL.Projects.Nwms.GetPersonByNationalId(api_key, national_id, protocol, out person);
                             switch (person_ok)
                             {
                                 case GetPersonResult.OK:
@@ -2849,7 +3163,7 @@ namespace SRL
                                     inp.national_id = co_national_id;
                                     inp.register_code = company_ext.RegisterNumber;
                                     ceo_name = person.FirstName + " " + person.LastName;
-                                    if (SRL.Projects.Nwms.AddNewCompany(api_key, inp, out company, out co_error) == false)
+                                    if (SRL.Projects.Nwms.AddNewCompany(api_key, inp, protocol, out company, out co_error) == false)
                                     {
                                         return RegCompanyResult.Error;
                                     }
@@ -2866,7 +3180,7 @@ namespace SRL
                         break;
                     case SRL.Projects.Nwms.GetCompanyInAnbarResult.OKNotCeos:
                     case SRL.Projects.Nwms.GetCompanyInAnbarResult.OKNotInCeos:
-                        if (AddCeoAgent(api_key, company, national_id, mobile, postal_code, out ceo_name) == false)
+                        if (AddCeoAgent(api_key, company, national_id, mobile, postal_code, protocol, out ceo_name) == false)
                         {
                             co_error = ceo_name;
                             return RegCompanyResult.Error;
@@ -2881,10 +3195,10 @@ namespace SRL
             }
 
             public static bool AddCeoAgent(string api_key, CompanyInAnbarClass company,
-                string national_id, string mobile, string postal_code, out string name_error, long start_epoch = 1524252600, long expire_epoch = 1839785400)
+                string national_id, string mobile, string postal_code, string protocol, out string name_error, long start_epoch = 1524252600, long expire_epoch = 1839785400)
             {
                 string error = "";
-                name_error = AddUser(api_key, national_id, mobile, postal_code, out error);
+                name_error = AddUser(api_key, national_id, mobile, postal_code, protocol, out error);
                 if (name_error == null)
                 {
                     name_error = error;
@@ -2913,7 +3227,7 @@ namespace SRL
 
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     input["ceo_agents"] = agent_list;
-                    bool put_mode = PutCompany(api_key, company.id, input, out error);
+                    bool put_mode = PutCompany(api_key, company.id, input, protocol, out error);
                     if (put_mode)
                     {
                         return true;
@@ -2926,13 +3240,13 @@ namespace SRL
                 }
             }
 
-            public static string AddUser(string api_key, string national_id, string mobile, string postal_code, out string error)
+            public static string AddUser(string api_key, string national_id, string mobile, string postal_code, string protocol, out string error)
             {
                 error = "";
-                var user = GetAnbarUser(national_id, api_key, out error);
+                var user = GetAnbarUser(national_id, api_key, protocol, out error);
                 if (user == null)
                 {
-                    var saha_user = GetSahaUser(national_id, api_key, out error);
+                    var saha_user = GetSahaUser(national_id, api_key, protocol, out error);
                     if (saha_user == null) return null;
                     RegUserInput inp = new RegUserInput();
                     inp.account_status = "1";
@@ -2948,7 +3262,7 @@ namespace SRL
                     inp.SSNN_serial = saha_user.IdentitySerial + "|" + saha_user.IdentitySeries + "|الف";
                     inp.using_two_phase_password = "0";
 
-                    var reged_user = RegisterUser(inp, api_key, out error);
+                    var reged_user = RegisterUser(inp, api_key, protocol, out error);
                     if (reged_user != null)
                     {
                         return saha_user.FirstName + " " + saha_user.LastName;
@@ -2966,11 +3280,11 @@ namespace SRL
                 }
             }
 
-            public static string RegisterUser(RegUserInput input, string api_key, out string result)
+            public static string RegisterUser(RegUserInput input, string api_key, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/");
                     HttpResponseMessage response = client.PostAsJsonAsync("users", input).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -2986,11 +3300,11 @@ namespace SRL
                 }
             }
 
-            public static bool PutCompany(string api_key, string co_id, object input, out string result)
+            public static bool PutCompany(string api_key, string co_id, object input, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/company/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/company/");
                     HttpResponseMessage response = client.PutAsJsonAsync(co_id, input).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3004,12 +3318,12 @@ namespace SRL
                     }
                 }
             }
-            public static bool AddNewCompany(string api_key, RegCoInput inp, out CompanyInAnbarClass company, out string result)
+            public static bool AddNewCompany(string api_key, RegCoInput inp, string protocol, out CompanyInAnbarClass company, out string result)
             {
                 company = null;
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/");
                     HttpResponseMessage response = client.PostAsJsonAsync("admin/company", inp).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3025,11 +3339,11 @@ namespace SRL
                 }
             }
 
-            public static string GetUserName(string api_key, string national_id)
+            public static string GetUserName(string api_key, string national_id, string protocol)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/inquiry/national_id/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/inquiry/national_id/");
                     HttpResponseMessage response = client.GetAsync(national_id).Result;
                     string result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3046,17 +3360,17 @@ namespace SRL
                 }
             }
 
-            public static bool SetOwners(string api_key, ComplexOwnerClass complexOwnerClass, string complex_id, ref string result)
+            public static bool SetOwners(string api_key, ComplexOwnerClass complexOwnerClass, string complex_id, string protocol, ref string result)
             {
                 result = "";
                 if (complexOwnerClass.owners.Count < 1)
                 {
-                    return DeleteAllOwners(api_key, complex_id);
+                    return DeleteAllOwners(api_key, complex_id, protocol);
                 }
 
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
                     HttpResponseMessage response = client.PutAsJsonAsync(complex_id, complexOwnerClass).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3069,12 +3383,12 @@ namespace SRL
                     }
                 }
             }
-            public static bool SetOwnersByPostcode(string api_key, ComplexOwnerClass complexOwnerClass, string postal_code, ref string result)
+            public static bool SetOwnersByPostcode(string api_key, ComplexOwnerClass complexOwnerClass, string postal_code, string protocol, ref string result)
             {
-                string com_id = SearchComplex(new Dictionary<string, object> { ["account_status"] = "1", ["postal_code"] = postal_code }, api_key).First().id;
-                return SetOwners(api_key, complexOwnerClass, com_id, ref result);
+                string com_id = SearchComplex(new Dictionary<string, object> { ["account_status"] = "1", ["postal_code"] = postal_code }, api_key, protocol).First().id;
+                return SetOwners(api_key, complexOwnerClass, com_id, protocol, ref result);
             }
-            public static bool AddOwner(string api_key, string national_id, string name, ComplexByPostCodeResult complex)
+            public static bool AddOwner(string api_key, string national_id, string name, ComplexByPostCodeResult complex, string protocol)
             {
                 ComplexOwnerClass complexOwnerClass = new ComplexOwnerClass();
                 bool exist = false;
@@ -3108,7 +3422,7 @@ namespace SRL
 
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
                     HttpResponseMessage response = client.PutAsJsonAsync(complex.id, complexOwnerClass).Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
@@ -3121,11 +3435,11 @@ namespace SRL
                 }
             }
 
-            public static bool SetContractors(string api_key, List<ContractorListClass> contractors, string warehouse_id)
+            public static bool SetContractors(string api_key, List<ContractorListClass> contractors, string warehouse_id, string protocol)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     input["contractors"] = contractors;
                     HttpResponseMessage response = client.PutAsJsonAsync(warehouse_id, input).Result;
@@ -3139,7 +3453,7 @@ namespace SRL
                 }
 
             }
-            public static bool AddContractor(string api_key, string national_id, string name, GetWarehouseClass warehouse)
+            public static bool AddContractor(string api_key, string national_id, string name, GetWarehouseClass warehouse, string protocol)
             {
                 List<ContractorListClass> contractors = new List<ContractorListClass>();
                 bool exist = false;
@@ -3154,7 +3468,7 @@ namespace SRL
                 }
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     input["contractors"] = contractors;
                     HttpResponseMessage response = client.PutAsJsonAsync(warehouse.id, input).Result;
@@ -3169,11 +3483,11 @@ namespace SRL
 
             }
 
-            public static NwmsResultType GetVirtualWarehouseWithPost(string api_key, string warehouse_id, string postal_code, string contractor_national_id, string contractor_co_national_id, out string result)
+            public static NwmsResultType GetVirtualWarehouseWithPost(string api_key, string warehouse_id, string postal_code, string contractor_national_id, string contractor_co_national_id, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/" + api_key + "/" + contractor_national_id + "/virt_warehouse/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/" + api_key + "/" + contractor_national_id + "/virt_warehouse/");
                     HttpResponseMessage response = client.GetAsync("_all").Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3212,7 +3526,6 @@ namespace SRL
                             }
                         }
 
-
                     }
                     else
                     {
@@ -3223,14 +3536,15 @@ namespace SRL
                 }
 
             }
-            public static List<VirtClass> GetAllVirtWarehouse(string api_key, string contractor_national_id, ref string result)
+            public static List<VirtClass> GetAllVirtWarehouse(string api_key, string contractor_national_id, string protocol, ref string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-
-                    client.BaseAddress = new Uri($"https://app.nwms.ir/v2/b2b-api-imp/{ api_key }/{ contractor_national_id }/virt_warehouse/");
+                    string url = $"{protocol}://app.nwms.ir/v2/b2b-api-imp/{ api_key }/{ contractor_national_id }/virt_warehouse/";
+                    client.BaseAddress = new Uri(url);
                     HttpResponseMessage response = client.GetAsync("_all").Result;
                     result = response.Content.ReadAsStringAsync().Result;
+
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
                         string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
@@ -3247,8 +3561,9 @@ namespace SRL
             }
 
             public static NwmsResultType GetVirtualWarehouse(string api_key, string warehouse_id, ref string contractor_national_id, string contractor_co_national_id,
-                 string postal_code, out string virt_result)
+               string postal_code, string protocol, bool only_contractor, out string virt_result, ref List<ContractorListClass> contractors)
             {
+                contractors = new List<ContractorListClass>();
                 //try get contractor_national_id if empty
 
                 if (string.IsNullOrWhiteSpace(contractor_national_id))
@@ -3258,76 +3573,85 @@ namespace SRL
                     //first from company
                     if (!string.IsNullOrWhiteSpace(contractor_co_national_id))
                     {
-                        var anbar_co = GetCompanyInAnbar(api_key, contractor_national_id, contractor_co_national_id, out company, out virt_result);
+                        var anbar_co = GetCompanyInAnbar(api_key, contractor_national_id, contractor_co_national_id, protocol, out company, out virt_result);
                         if (anbar_co == GetCompanyInAnbarResult.OK || anbar_co == GetCompanyInAnbarResult.OKNotInCeos)
                         {
                             contractor_national_id = company.ceo.national_id;
                         }
                     }
                     //from warehouse_id
-                    if (string.IsNullOrWhiteSpace(contractor_national_id) && !string.IsNullOrWhiteSpace(warehouse_id))
-                    {
-                        var warehouse = GetWarehouse(api_key, warehouse_id, out virt_result);
-                        if (warehouse != null)
+                    if (only_contractor == false) if (string.IsNullOrWhiteSpace(contractor_national_id) && !string.IsNullOrWhiteSpace(warehouse_id))
                         {
-                            if (warehouse.contractors?.Count == 1)
+                            var warehouse = GetWarehouse(api_key, warehouse_id, protocol, out virt_result);
+                            if (warehouse?.contractors?.Count() > 0)
                             {
-                                contractor_national_id = warehouse.contractors.First().national_id;
-                                //if it is company
-                                if (contractor_national_id.Length == 11)
+
+                                if (warehouse.contractors.Select(x => x.national_id)?.Distinct()?.Count() == 1)
                                 {
-                                    var anbar_co = GetCompanyInAnbar(api_key, "", contractor_national_id, out company, out virt_result);
-                                    if (anbar_co == GetCompanyInAnbarResult.OK || anbar_co == GetCompanyInAnbarResult.OKNotInCeos)
+                                    contractor_national_id = warehouse.contractors.Select(x => x.national_id).First();
+                                    //if it is company
+                                    if (contractor_national_id.Length == 11)
                                     {
-                                        contractor_national_id = company.ceo.national_id;
-                                    }
-                                    else
-                                    {
-                                        contractor_national_id = "";
+                                        var anbar_co = GetCompanyInAnbar(api_key, "", contractor_national_id, protocol, out company, out virt_result);
+                                        if (anbar_co == GetCompanyInAnbarResult.OK || anbar_co == GetCompanyInAnbarResult.OKNotInCeos)
+                                        {
+                                            contractor_national_id = company.ceo.national_id;
+                                        }
+                                        else
+                                        {
+                                            contractor_national_id = "";
+                                        }
                                     }
                                 }
-                            }
-                            else
-                            {
-                                virt_result = "";
-                                return NwmsResultType.NotUniqueFound;
+                                else
+                                {
+                                    foreach (var item in warehouse.contractors)
+                                    {
+                                        contractors.Add(new ContractorListClass { name = item.name, national_id = item.national_id });
+                                    }
+                                    virt_result = "";
+                                    return NwmsResultType.NotUniqueFound;
+                                }
                             }
                         }
-                    }
                     //from postal_code
-                    if (string.IsNullOrWhiteSpace(contractor_national_id) && !string.IsNullOrWhiteSpace(postal_code))
-                    {
-                        var complex = GetComplexByPostalCode(postal_code, api_key, true, out virt_result);
-                        if (complex != null)
+                    if (only_contractor == false) if (string.IsNullOrWhiteSpace(contractor_national_id) && !string.IsNullOrWhiteSpace(postal_code))
                         {
-                            if (complex?.warehouses.Count < 1)
+                            var complex = GetComplexByPostalCode(postal_code, api_key, true, protocol, out virt_result);
+                            if (complex != null)
                             {
-                                return NwmsResultType.WarhouseNotFound;
-                            }
-                            else if (complex?.warehouses.SelectMany(x => x.contractors)?.Select(y => y.national_id)?.Distinct()?.Count() == 1)
-                            {
-                                contractor_national_id = complex.warehouses.SelectMany(x => x.contractors).Select(y => y.national_id).First();
-                                //if it is company
-                                if (contractor_national_id.Length == 11)
+                                if (complex?.warehouses?.Count < 1 || complex?.warehouses == null)
                                 {
-                                    var anbar_co = GetCompanyInAnbar(api_key, "", contractor_national_id, out company, out virt_result);
-                                    if (anbar_co == GetCompanyInAnbarResult.OK || anbar_co == GetCompanyInAnbarResult.OKNotInCeos)
+                                    return NwmsResultType.WarhouseNotFound;
+                                }
+                                else if (complex?.warehouses?.SelectMany(x => x.contractors)?.Select(y => y.national_id)?.Distinct()?.Count() == 1)
+                                {
+                                    contractor_national_id = complex.warehouses.SelectMany(x => x.contractors).Select(y => y.national_id).First();
+                                    //if it is company
+                                    if (contractor_national_id.Length == 11)
                                     {
-                                        contractor_national_id = company.ceo.national_id;
-                                    }
-                                    else
-                                    {
-                                        contractor_national_id = "";
+                                        var anbar_co = GetCompanyInAnbar(api_key, "", contractor_national_id, protocol, out company, out virt_result);
+                                        if (anbar_co == GetCompanyInAnbarResult.OK || anbar_co == GetCompanyInAnbarResult.OKNotInCeos)
+                                        {
+                                            contractor_national_id = company.ceo.national_id;
+                                        }
+                                        else
+                                        {
+                                            contractor_national_id = "";
+                                        }
                                     }
                                 }
-                            }
-                            else
-                            {
-                                virt_result = "";
-                                return NwmsResultType.NotUniqueFound;
+                                else
+                                {
+                                    foreach (var item in complex?.warehouses?.SelectMany(x => x.contractors))
+                                    {
+                                        contractors.Add(new ContractorListClass { name = item.name, national_id = item.national_id });
+                                    }
+                                    virt_result = "";
+                                    return NwmsResultType.NotUniqueFound;
+                                }
                             }
                         }
-                    }
                     if (string.IsNullOrWhiteSpace(contractor_national_id))
                     {
                         virt_result = "";
@@ -3337,7 +3661,7 @@ namespace SRL
 
                 virt_result = "";
 
-                List<VirtClass> virt = GetAllVirtWarehouse(api_key, contractor_national_id, ref virt_result);
+                List<VirtClass> virt = GetAllVirtWarehouse(api_key, contractor_national_id, protocol, ref virt_result);
 
                 if (virt != null)
                 {
@@ -3362,11 +3686,11 @@ namespace SRL
                                 virt_result = first_wirt.id;
                                 return NwmsResultType.OK;
                             }
-                            else return GetNearestId(virt, postal_code, contractor, ref virt_result);
+                            else return GetNearestId(virt, postal_code, contractor, ref virt_result, ref contractors);
                         }
                         else
                         {
-                            return GetNearestId(virt, postal_code, contractor, ref virt_result);
+                            return GetNearestId(virt, postal_code, contractor, ref virt_result, ref contractors);
                         }
                     }
                 }
@@ -3377,8 +3701,9 @@ namespace SRL
 
             }
 
-            private static NwmsResultType GetNearestId(List<VirtClass> virt, string postal_code, string contractor, ref string virt_id)
+            private static NwmsResultType GetNearestId(List<VirtClass> virt, string postal_code, string contractor, ref string virt_id, ref List<ContractorListClass> contractors)
             {
+                contractors = new List<ContractorListClass>();
                 // by postal_code and national_id
                 var query_by_pc_nc = virt.Where(x => (x.postal_code == postal_code && x.contractor_national_id == contractor) && x.account_status != "3");
                 if (query_by_pc_nc.Count() > 0)
@@ -3388,30 +3713,55 @@ namespace SRL
                     return NwmsResultType.OK;
                 }
                 else
-                {// by postal_code 
-                    var query_by_pc = virt.Where(x => x.postal_code == postal_code && x.account_status == "1");
-                    if (query_by_pc.Count() > 0)
+                {  // by national_id 
+                    var query_by_nc = virt.Where(x => x.contractor_national_id == contractor && x.account_status != "3");
+                    if (query_by_nc.Count() == 1)
                     {
-                        var first_wirt = query_by_pc.First();
+                        var first_wirt = query_by_nc.First();
                         virt_id = first_wirt.id;
                         return NwmsResultType.OK;
                     }
+                    else if (query_by_nc.Count() > 1)
+                    {
+                        foreach (var item in query_by_nc)
+                        {
+                            contractors.Add(new ContractorListClass { name = item.name, national_id = item.contractor_national_id });
+                        }
+                        virt_id = "";
+                        return NwmsResultType.NotUniqueFound;
+                    }
                     else
-                    {// only national_id
-                        var first_wirt = virt.First();
-                        virt_id = first_wirt.id;
-                        return NwmsResultType.OK;
-                        //return NwmsResultType.WarhouseNotFound;
+                    {// only postal_code
+                        var query_by_pc = virt.Where(x => x.postal_code == postal_code && x.account_status != "3");
+                        if (query_by_pc.Count() == 1)
+                        {
+                            var first_wirt = query_by_pc.First();
+                            virt_id = first_wirt.id;
+                            return NwmsResultType.OK;
+                        }
+                        else if (query_by_pc.Count() > 1)
+                        {
+                            foreach (var item in query_by_pc)
+                            {
+                                contractors.Add(new ContractorListClass { name = item.name, national_id = item.contractor_national_id });
+                            }
+                            virt_id = "";
+                            return NwmsResultType.NotUniqueFound;
+                        }
+                        else
+                        {
+                            return NwmsResultType.WarhouseNotFound;
+                        }
                     }
 
                 }
             }
 
-            public static bool DeleteAllOwners(string api_key, string complex_id)
+            public static bool DeleteAllOwners(string api_key, string complex_id, string protocol)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     List<Dictionary<string, object>> owners = new List<Dictionary<string, object>>();
                     Dictionary<string, object> unknown = new Dictionary<string, object>();
@@ -3431,12 +3781,12 @@ namespace SRL
                 }
             }
 
-            public static GetWarehouseClass GetWarehouse(string api_key, string warehouse_id, out string result)
+            public static GetWarehouseClass GetWarehouse(string api_key, string warehouse_id, string protocol, out string result)
             {
                 result = "";
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
                     HttpResponseMessage response = client.GetAsync(warehouse_id).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3462,11 +3812,11 @@ namespace SRL
 
             }
 
-            public static bool PutWarehouse(string api_key, string warehouse_id, object body_json, out string result)
+            public static bool PutWarehouse(string api_key, string warehouse_id, object body_json, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
                     HttpResponseMessage response = client.PutAsJsonAsync(warehouse_id, body_json).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3480,13 +3830,13 @@ namespace SRL
                     }
                 }
             }
-            public static bool PutUser(string api_key, string national_id, object body_json, out string error)
+            public static bool PutUser(string api_key, string national_id, object body_json, string protocol, out string error)
             {
                 error = "";
                 Dictionary<string, object> inp = new Dictionary<string, object>();
                 inp["account_status"] = "1";
                 inp["national_id"] = national_id;
-                var users = GetAnbarUser(inp, api_key, out error);
+                var users = GetAnbarUser(inp, api_key, protocol, out error);
                 if (users == null)
                 {
                     return false;
@@ -3498,7 +3848,7 @@ namespace SRL
                 }
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/");
                     HttpResponseMessage response = client.PutAsJsonAsync(users.First().userid, body_json).Result;
                     error = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3531,7 +3881,6 @@ namespace SRL
                 input.serviceNumber = mobile;
                 input.serviceType = 2;
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basic_auth_value);
-
                 HttpResponseMessage response = client.PostAsJsonAsync("Services/GetIDmatching-NWMS", input).Result;
 
                 string result = response.Content.ReadAsStringAsync().Result;
@@ -3539,12 +3888,12 @@ namespace SRL
 
                 return output;
             }
-
-            public static List<SearchResult.SearchWarehouseResult> SearchWarehouse(Dictionary<string, object> input_json, string api_key, int? from_, int? size_, ref string result)
+            
+            public static List<SearchResult.SearchWarehouseResult> SearchWarehouse(Dictionary<string, object> input_json, string api_key, int? from_, int? size_, string protocol, ref string result)
             {
                 List<SearchResult.SearchWarehouseResult> warehouses = new List<SearchResult.SearchWarehouseResult>();
                 HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/_search/");
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/_search/");
                 List<SearchResult.SearchWarehouseResult> warehouse_list = new List<SearchResult.SearchWarehouseResult>();
                 int from = 0;
                 if (from_ != null) from = (int)from_;
@@ -3552,16 +3901,9 @@ namespace SRL
                 {
                     int size = 10;
                     if (size_ != null) size = (int)size_;
-                    HttpResponseMessage response = client.PostAsJsonAsync(from + $"/{size}", input_json).Result;
-                    result = response.Content.ReadAsStringAsync().Result;
-                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                    {
-                        return null;
-                    }
 
-                    Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                    string data = result_json["data"].ToString();
-                    warehouse_list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchWarehouseResult>>(data);
+                    warehouse_list = SearchWarehouseBySize(api_key, from, size, input_json, protocol, ref result);
+                    if (warehouse_list == null) return null;
 
                     warehouses.AddRange(warehouse_list);
                     from += size;
@@ -3569,14 +3911,36 @@ namespace SRL
 
                 return warehouses;
             }
-            public static List<SearchResult.SearchGoodResult> SearchGoods(string api_key, out string result, Dictionary<string, object> input_json = null)
+
+            public static List<SearchResult.SearchWarehouseResult> SearchWarehouseBySize(string api_key, int from, int size, Dictionary<string, object> input_json, string protocol, ref string result)
+            {
+                List<SearchResult.SearchWarehouseResult> warehouses = new List<SearchResult.SearchWarehouseResult>();
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/_search/");
+
+
+                HttpResponseMessage response = client.PostAsJsonAsync(from + $"/{size}", input_json).Result;
+                result = response.Content.ReadAsStringAsync().Result;
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                    return null;
+                }
+
+                Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                string data = result_json["data"].ToString();
+                warehouses = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchWarehouseResult>>(data);
+                 
+                return warehouses;
+            }
+            public static List<SearchResult.SearchGoodResult> SearchGoods(string api_key, string protocol, out string result, Dictionary<string, object> input_json = null)
             {
                 result = "";
                 if (input_json == null) input_json = new Dictionary<string, object> { ["filter"] = new Object() };
 
                 List<SearchResult.SearchGoodResult> goods = new List<SearchResult.SearchGoodResult>();
                 HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/goods/_search/");
+                client.BaseAddress = new Uri($"{protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/goods/_search/");
                 List<SearchResult.SearchGoodResult> goods_list = new List<SearchResult.SearchGoodResult>();
                 int from = 0;
                 int to = 90;
@@ -3603,10 +3967,25 @@ namespace SRL
 
                 return goods;
             }
-            public static string DeleteGood(string api_key, string good_id)
+
+            public static List<SearchResult.SearchGoodResult> SearchGoods(string api_key, string taxonomy, int start, int size, string protocol, ref string result)
+            {
+                Dictionary<string, object> filter = new Dictionary<string, object>();
+                Dictionary<string, object> json = new Dictionary<string, object>();
+                json["json_data.taxonomy"] = taxonomy;
+                json["json_data.custom_pagination_start"] = start;
+                json["json_data.custom_pagination_size"] = size;
+
+                filter["filter"] = json;
+
+                return SearchGoods(api_key, protocol, out result, filter);
+
+            }
+
+            public static string DeleteGood(string api_key, string good_id, string protocol)
             {
                 HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/");
+                client.BaseAddress = new Uri($"{protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/");
                 HttpResponseMessage response = client.DeleteAsync(good_id).Result;
                 string result = response.Content.ReadAsStringAsync().Result;
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3621,12 +4000,12 @@ namespace SRL
                 }
             }
 
-            public static List<SearchResult.SearchUserResult> GetAnbarUser(Dictionary<string, object> input_json, string api_key, out string result)
+            public static List<SearchResult.SearchUserResult> GetAnbarUser(Dictionary<string, object> input_json, string api_key, string protocol, out string result)
             {
                 result = "";
                 List<SearchResult.SearchUserResult> users = new List<SearchResult.SearchUserResult>();
                 HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/_search/");
+                client.BaseAddress = new Uri($"{protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/_search/");
                 List<SearchResult.SearchUserResult> user_list = new List<SearchResult.SearchUserResult>();
                 int from = 0;
                 do
@@ -3652,23 +4031,23 @@ namespace SRL
 
                 return users;
             }
-            public static AnbarUserClass GetAnbarUserPass(string national_id, string api_key, ref string result)
+            public static AnbarUserClass GetAnbarUserPass(string national_id, string api_key, string protocol, ref string result)
             {
-                AnbarUserClass user = GetAnbarUser(national_id, api_key, out result);
+                AnbarUserClass user = GetAnbarUser(national_id, api_key, protocol, out result);
                 if (user == null) return null;
 
-                string pass = GetUserPass(user.userid, api_key, ref result);
+                string pass = GetUserPass(user.userid, api_key, protocol, ref result);
                 if (string.IsNullOrWhiteSpace(pass)) return null;
                 user.password = pass;
                 return user;
             }
 
-            public static string GetUserPass(string userid, string api_key, ref string result)
+            public static string GetUserPass(string userid, string api_key, string protocol, ref string result)
             {
                 result = "";
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/");
                     HttpResponseMessage response = client.GetAsync(userid).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3692,12 +4071,12 @@ namespace SRL
                 }
             }
 
-            public static AnbarUserClassResult GetUserData(string userid, string api_key)
+            public static AnbarUserClassResult GetUserData(string userid, string api_key, string protocol)
             {
                 using (HttpClient client = new HttpClient())
                 {
                     AnbarUserClassResult user_result = new AnbarUserClassResult();
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/");
                     HttpResponseMessage response = client.GetAsync(userid).Result;
                     string result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3727,11 +4106,11 @@ namespace SRL
                 }
             }
 
-            public static List<SearchResult.SearchUserResult> SearchUserBySize(Dictionary<string, object> input_json, string api_key, int from, int size, out string result)
+            public static List<SearchResult.SearchUserResult> SearchUserBySize(Dictionary<string, object> input_json, string api_key, int from, int size, string protocol, out string result)
             {
                 result = "";
                 HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/_search/");
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/_search/");
                 List<SearchResult.SearchUserResult> user_list = new List<SearchResult.SearchUserResult>();
                 HttpResponseMessage response = client.PostAsJsonAsync(from + "/" + size, input_json).Result;
                 result = response.Content.ReadAsStringAsync().Result;
@@ -3746,11 +4125,11 @@ namespace SRL
                 return user_list;
             }
 
-            public static List<SearchResult.SearchComplexResult> SearchComplex(Dictionary<string, object> input_json, string api_key)
+            public static List<SearchResult.SearchComplexResult> SearchComplex(Dictionary<string, object> input_json, string api_key, string protocol)
             {
                 List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
                 HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/_search/");
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/_search/");
 
                 List<SearchResult.SearchComplexResult> data_list = new List<SearchResult.SearchComplexResult>();
                 int from = 0;
@@ -3776,12 +4155,12 @@ namespace SRL
                 return complexes;
             }
 
-            public static List<SearchResult.SearchComplexResult> GetAllWarComplexByNationalId(string api_key, string national_id, out string result)
+            public static List<SearchResult.SearchComplexResult> GetAllWarComplexByNationalId(string api_key, string national_id, string protocol, out string result)
             {
                 result = "";
                 List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
                 HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri("https://app.nwms.ir");
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir");
                 HttpResponseMessage response = client.GetAsync("/v2/b2b-api-imp/" + api_key + "/" + national_id + "/complex/_all").Result;
                 result = response.Content.ReadAsStringAsync().Result;
                 if (response.StatusCode != System.Net.HttpStatusCode.OK)
@@ -3797,12 +4176,12 @@ namespace SRL
                 return complexes;
             }
 
-            public static GetPersonResult GetPersonByNationalId(string api_key, string national_id, out PersonClass person)
+            public static GetPersonResult GetPersonByNationalId(string api_key, string national_id, string protocol, out PersonClass person)
             {
 
                 person = new PersonClass();
                 HttpClient client_ = new HttpClient();
-                client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/ext-service/");
+                client_.BaseAddress = new Uri($"{ protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/ext-service/");
                 person = new PersonClass();
 
                 national_id = SRL.Convertor.NationalId(national_id);
@@ -3877,11 +4256,11 @@ namespace SRL
 
             }
 
-            public static AnbarUserClass GetAnbarUser(string national_id, string api_key, out string result)
+            public static AnbarUserClass GetAnbarUser(string national_id, string api_key, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api-imp/" + api_key + "/" + national_id + "/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/" + api_key + "/" + national_id + "/");
                     HttpResponseMessage response = client.GetAsync("user").Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3897,11 +4276,11 @@ namespace SRL
                     }
                 }
             }
-            public static SahaUserClass GetSahaUser(string national_id, string api_key, out string result)
+            public static SahaUserClass GetSahaUser(string national_id, string api_key, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/ext-service/");
+                    client.BaseAddress = new Uri($"{protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/ext-service/");
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     input["national_id"] = national_id;
                     HttpResponseMessage response = client.PostAsJsonAsync("person_by_national_id", input).Result;
@@ -3960,12 +4339,12 @@ namespace SRL
                     public string user_national_id { get; set; }
                 }
             }
-            public static List<BaseValueData> GetOrgCreators(string api_key, BaseValueTypes.Base base_type, out string result)
+            public static List<BaseValueData> GetOrgCreators(string api_key, BaseValueTypes.Base base_type, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
                     List<BaseValueData> base_values = new List<BaseValueData>();
-                    client.BaseAddress = new Uri($"https://app.nwms.ir/v2/b2b-api/{ api_key }/json_store/b2b_api_key/_search/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{ api_key }/json_store/b2b_api_key/_search/");
                     int from = 0;
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     Dictionary<string, object> filter = new Dictionary<string, object>();
@@ -3994,7 +4373,7 @@ namespace SRL
 
                     foreach (var item in all_org_creators)
                     {
-                        AnbarUserClassResult user = GetUserData(item.json_data.user_id, api_key);
+                        AnbarUserClassResult user = GetUserData(item.json_data.user_id, api_key, protocol);
                         switch (user.result_type)
                         {
                             case AnbarUserClassResult.ResultType.OK:
@@ -4011,11 +4390,11 @@ namespace SRL
                 }
             }
 
-            public static List<BaseValueData> GetBaseValue(string api_key, BaseValueTypes.Base base_type, out string result)
+            public static List<BaseValueData> GetBaseValue(string api_key, BaseValueTypes.Base base_type, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/setting_keyvalue/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/setting_keyvalue/");
                     HttpResponseMessage response = client.GetAsync(base_type.ToString()).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -4066,7 +4445,7 @@ namespace SRL
                 post = null;
                 response = null;
                 HttpClient client_ = new HttpClient();
-                client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/2050130318/admin/ext-service/");
+                client_.BaseAddress = new Uri($"https://admin-app.nwms.ir/v2/b2b-api/2050130318/admin/ext-service/");
                 if (string.IsNullOrWhiteSpace(postal_code)) return null;
                 Dictionary<string, object> input = new Dictionary<string, object>();
                 input["postal_code"] = postal_code;
@@ -4079,12 +4458,12 @@ namespace SRL
                 }
                 return post;
             }
-            public static bool? GetCompanyByCoNationalId(string api_key, string co_national_id, out CompanyClass company, out string result)
+            public static bool? GetCompanyByCoNationalId(string api_key, string co_national_id, string protocol, out CompanyClass company, out string result)
             {
                 company = new CompanyClass();
 
                 HttpClient client_ = new HttpClient();
-                client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/ext-service/");
+                client_.BaseAddress = new Uri($"{ protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/ext-service/");
 
 
                 Dictionary<string, object> input = new Dictionary<string, object>();
@@ -4134,16 +4513,14 @@ namespace SRL
                 }
 
                 CixGetLegalPerson.GetLegalPersonInfoDBPortTypeClient client_ = SRL.Web.CreateWcfClient<CixGetLegalPerson.GetLegalPersonInfoDBPortTypeClient>("https://sr-cix.ntsw.ir/services/GetLegalPersonInfoDB?wsdl");
-                //CixGetLegalPerson.GetLegalPersonInfoDBPortTypeClient client_ = new CixGetLegalPerson.GetLegalPersonInfoDBPortTypeClient("GetLegalPersonInfoDBHttpsSoap11Endpoint");
+
 
                 SRL.Web.AddBasicAuthToSoapHeader(client_, "nwms_user", "2867%plfa@", 0);
                 var inp = new CixGetLegalPerson.Parameter();
                 inp.NationalCode = co_national_id;
                 CixGetLegalPerson.Result response = client_.InquiryByNationalCode(inp);
-
-                if (response.Successful)
+                if (response.Message == null)
                 {
-
                     company.name = response.Name;
                     company.co_national_id = co_national_id;
                     company.address = response.Address;
@@ -4161,7 +4538,7 @@ namespace SRL
             }
 
 
-            public static GetCompanyInAnbarResult GetCompanyInAnbar(string api_key, string national_id, string co_national_id, out CompanyInAnbarClass company, out string error)
+            public static GetCompanyInAnbarResult GetCompanyInAnbar(string api_key, string national_id, string co_national_id, string protocol, out CompanyInAnbarClass company, out string error)
             {
                 GetCompanyInAnbarResult company_result = new GetCompanyInAnbarResult();
                 company = null;
@@ -4173,7 +4550,7 @@ namespace SRL
                 }
                 using (HttpClient client_ = new HttpClient())
                 {
-                    client_.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/company/_search/");
+                    client_.BaseAddress = new Uri($"{protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/company/_search/");
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     input["national_id"] = co_national_id;
                     HttpResponseMessage response = client_.PostAsJsonAsync("0/99", input).Result;
@@ -4234,11 +4611,11 @@ namespace SRL
                 }
             }
 
-            public static CompanyListClass GetCompanySeoByCoNationalId(string co_national_id, string api_key, out string result)
+            public static CompanyListClass GetCompanySeoByCoNationalId(string co_national_id, string api_key, string protocol, out string result)
             {
                 result = "";
                 HttpClient client_list = new HttpClient();
-                client_list.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/company/_search/");
+                client_list.BaseAddress = new Uri($"{protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/admin/company/_search/");
 
                 if (string.IsNullOrWhiteSpace(co_national_id)) return null;
 
@@ -4256,7 +4633,7 @@ namespace SRL
                     {
                         if (item.account_status == "3") continue;
 
-                        item.ceo.ceo_mobile = Nwms.GetAnbarUser(item.ceo.national_id, api_key, out result)?.mobile;
+                        item.ceo.ceo_mobile = Nwms.GetAnbarUser(item.ceo.national_id, api_key, protocol, out result)?.mobile;
                         return item;
                     }
                     return null;
@@ -4267,13 +4644,13 @@ namespace SRL
                 }
 
             }
-            public static ComplexByPostCodeResult GetComplexByPostalCode(string postal_code, string api_key, bool remove_unknown, out string result, string prefix = "app")
+            public static ComplexByPostCodeResult GetComplexByPostalCode(string postal_code, string api_key, bool remove_unknown, string protocol, out string result, string prefix = "app")
             {
                 ComplexByPostCodeResult estelam_result = new ComplexByPostCodeResult();
 
                 using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
                 {
-                    client.BaseAddress = new Uri($"https://{prefix}.nwms.ir/v2/b2b-api/");
+                    client.BaseAddress = new Uri($"{protocol}://{prefix}.nwms.ir/v2/b2b-api/");
 
                     HttpResponseMessage response = client.GetAsync(api_key + "/complex_by_post_code/" + postal_code).Result;
                     result = response.Content.ReadAsStringAsync().Result;
@@ -4375,7 +4752,7 @@ namespace SRL
 
                 foreach (BaseValueTypes.Base base_type in Enum.GetValues(typeof(BaseValueTypes.Base)))
                 {
-                    if (InsertBaseValue<T>(api_key, db, base_type, ref error) == false)
+                    if (InsertBaseValue<T>(api_key, db, base_type, "http", ref error) == false)
                     {
                         return null;
                     }
@@ -4385,9 +4762,9 @@ namespace SRL
                 return exe;
             }
 
-            public static bool InsertBaseValue<T>(string api_key, DbContext db, BaseValueTypes.Base base_type, ref string error) where T : class
+            public static bool InsertBaseValue<T>(string api_key, DbContext db, BaseValueTypes.Base base_type, string protocol, ref string error) where T : class
             {
-                List<SRL.Projects.Nwms.BaseValueData> list = SRL.Projects.Nwms.GetBaseValue(api_key, base_type, out error);
+                List<SRL.Projects.Nwms.BaseValueData> list = SRL.Projects.Nwms.GetBaseValue(api_key, base_type, protocol, out error);
                 if (list == null)
                 {
                     return false;
@@ -4406,11 +4783,11 @@ namespace SRL
                 }
             }
 
-            public static bool CreateApiKey(string api_key, string userid, string title, string key, out string result)
+            public static bool CreateApiKey(string api_key, string userid, string title, string key, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri("https://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/");
+                    client.BaseAddress = new Uri($"{protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/");
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     Dictionary<string, object> user_key = new Dictionary<string, object>();
                     user_key["user_id"] = userid;
@@ -4432,11 +4809,11 @@ namespace SRL
                 }
             }
 
-            public static string AddCategory(string api_key, string title, string key, out string result, string prefix = "admin-app")
+            public static string AddCategory(string api_key, string title, string key, string protocol, out string result, string prefix = "admin-app")
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri($"https://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/admin/setting_keyvalue/");
+                    client.BaseAddress = new Uri($"{protocol}://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/admin/setting_keyvalue/");
                     Dictionary<string, string> title_obj = new Dictionary<string, string>();
                     title_obj["title"] = title;
                     Dictionary<string, string> input = new Dictionary<string, string>();
@@ -4457,11 +4834,11 @@ namespace SRL
                 }
             }
 
-            public static string AddTaxonomy(string api_key, string title, string key, string category_key, out string result, string prefix = "app")
+            public static string AddTaxonomy(string api_key, string title, string key, string category_key, string protocol, out string result, string prefix = "app")
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri($"https://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/json_store/");
+                    client.BaseAddress = new Uri($"{protocol}://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/json_store/");
                     Dictionary<string, bool> categories = new Dictionary<string, bool>();
                     categories[category_key] = true;
                     Dictionary<string, object> json_data = new Dictionary<string, object>();
@@ -4485,11 +4862,11 @@ namespace SRL
                 }
             }
 
-            public static string AddGood(string api_key, string title, string key, string taxonomy_key, out string result, string prefix = "app")
+            public static string AddGood(string api_key, string title, string key, string taxonomy_key, string protocol, out string result, string prefix = "app")
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri($"https://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/json_store/");
+                    client.BaseAddress = new Uri($"{protocol}://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/json_store/");
                     Dictionary<string, object> json_data = new Dictionary<string, object>();
                     json_data["title"] = title;
                     json_data["key"] = key;
@@ -4511,11 +4888,11 @@ namespace SRL
                 }
             }
 
-            public static string DeleteJsonStore(string api_key, string id, string prefix = "app")
+            public static string DeleteJsonStore(string api_key, string id, string protocol, string prefix = "app")
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri($"https://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/json_store/");
+                    client.BaseAddress = new Uri($"{protocol}://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/json_store/");
                     HttpResponseMessage response = client.DeleteAsync(id).Result;
                     string result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -4529,13 +4906,21 @@ namespace SRL
                     }
                 }
             }
-
-            public static bool DeleteComplex(string postal_code, string api_key, out string message)
+            public static bool DeleteComplexById(string id, string api_key, string protocol, out string message)
             {
                 Dictionary<string, object> inp = new Dictionary<string, object>();
                 inp["account_status"] = "3";
                 message = "";
-                var list = GetComplex(api_key, postal_code, ref message);
+                return PutComplex(api_key, id, inp, protocol, out message);
+
+            }
+
+            public static bool DeleteComplex(string postal_code, string api_key, string protocol, out string message)
+            {
+                Dictionary<string, object> inp = new Dictionary<string, object>();
+                inp["account_status"] = "3";
+                message = "";
+                var list = GetComplex(api_key, postal_code, protocol, ref message);
                 if (list == null)
                 {
                     return false;
@@ -4543,16 +4928,16 @@ namespace SRL
                 else
                 {
                     string id = list.id;
-                    return PutComplex(api_key, id, inp, out message);
+                    return PutComplex(api_key, id, inp, protocol, out message);
                 }
 
             }
 
-            public static string DeleteCategory(string api_key, string uid,int version, string prefix="app")
+            public static string DeleteCategory(string api_key, string uid, int version, string protocol, string prefix = "app")
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri($"https://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/admin/setting_keyvalue/");
+                    client.BaseAddress = new Uri($"{protocol}://{prefix}.nwms.ir/v2/b2b-api/{ api_key }/admin/setting_keyvalue/");
                     HttpResponseMessage response = client.DeleteAsync($"{uid}?version={version}").Result;
                     string result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -4567,6 +4952,98 @@ namespace SRL
                 }
             }
 
+            public static List<JsonDataResult> SearchTaxonomy(string api_key, string category, int start, int size, string protocol, ref string result)
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{ api_key }/json_store/taxonomies/_search/0/");
+                    Dictionary<string, object> filter = new Dictionary<string, object>();
+                    Dictionary<string, object> json = new Dictionary<string, object>();
+                    string json_categories = $"json_data.categories.{category}";
+                    json[json_categories] = true;
+                    json["json_data.custom_pagination_start"] = start;
+                    json["json_data.custom_pagination_size"] = size;
+
+                    filter["filter"] = json;
+                    HttpResponseMessage response = client.PostAsJsonAsync("10", filter).Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+                        List<JsonDataResult> json_result = Newtonsoft.Json.JsonConvert.DeserializeObject<List<JsonDataResult>>(data);
+                        return json_result;
+                    }
+                    else
+                    {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        return null;
+                    }
+                }
+            }
+            private static void StartDeleteComplexById(List<DeleteComplexByIdClass> list, BackgroundWorker worker, params object[] args)
+            {
+                string table_name = args[0].ToString();
+                string access_file_name = args[1].ToString();
+                string api_key = args[2].ToString();
+
+                foreach (var item in list)
+                {
+                    string query = "";
+
+
+                    string result = "";
+                    CompanyClass company = new CompanyClass();
+                    var is_ok = SRL.Projects.Nwms.DeleteComplexById(item.complex_id, api_key, "https", out result);
+
+                    if (is_ok == false)
+                    {
+                        query = $"update {table_name} set status='NOK', error='{result}'  where complex_id='{item.complex_id}'";
+                    }
+                    else
+                    {
+                        query = $"update {table_name} set status='OK'  where complex_id='" + item.complex_id + "'";
+                    }
+
+
+                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name);
+                }
+            }
+
+            public static void DeleteComplexByIdGroup(string api_key, string access_file_name, string table_name, int paralel, Action<Exception> call_error, Action final_call_back)
+            {
+                SRL.AccessManagement.AddColumnToAccess("error", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+                SRL.AccessManagement.AddColumnToAccess("status", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+
+                DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
+                var list_ = SRL.Convertor.ConvertDataTableToList<DeleteComplexByIdClass>(dt);
+                var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
+
+                SRL.AccessManagement.ExecuteToAccess("update " + table_name + " set complex_id=Trim(complex_id)", access_file_name);
+
+                SRL.ActionManagement.MethodCall.Parallel.ParallelCall<DeleteComplexByIdClass>(list, paralel.ToString(),
+                    StartDeleteComplexById, null, call_error, final_call_back, null, table_name, access_file_name, api_key);
+            }
+            public class DeleteComplexByIdClass
+            {
+                public string complex_id { get; set; }
+                public string error { get; set; }
+                public string status { get; set; }
+            }
+
+
+            public class JsonDataResult
+            {
+                public string doc_type { get; set; }
+                public JsonData json_data { get; set; }
+                public string id { get; set; }
+                public class JsonData
+                {
+                    public string id { get; set; }
+                    public string key { get; set; }
+                    public string title { get; set; }
+                }
+            }
+
             public class CardexFilter
             {
                 public string warehouse_id { get; set; }//virt_id
@@ -4575,6 +5052,7 @@ namespace SRL
                 public string postal_code { get; set; }
 
                 public string province { get; set; }
+                public string township { get; set; }
                 public string city { get; set; }
 
             }
@@ -4584,6 +5062,7 @@ namespace SRL
                 public string user_id { get; set; }
                 public string data_owner { get; set; }
                 public string good_id { get; set; }
+                public string good_desc { get; set; }
                 public Creator creator { get; set; }
                 public double? removable_count { get; set; }
                 public double? total_count { get; set; }
@@ -4593,6 +5072,7 @@ namespace SRL
                 public double? create_date { get; set; }
                 public object modifier { get; set; }
                 public string id { get; set; }
+                public string production_type { get; set; }
 
                 public class AdditionalData
                 {
@@ -4704,5 +5184,6 @@ namespace SRL
             }
         }
     }
+
 
 }

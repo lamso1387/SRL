@@ -1119,7 +1119,7 @@ namespace SRL
         public class EventLogs
         {
             static System.Diagnostics.EventLog eventLog1 = new System.Diagnostics.EventLog();
-            public static void WriteEventLog(string mes, EventLogEntryType type = EventLogEntryType.Information, string eventSourceName = "NwmsInterfaceErrorSource", string logName = "srNwmsInterface")
+            public static void WriteEventLog(string mes,int event_id, EventLogEntryType type = EventLogEntryType.Information, string eventSourceName = "NwmsInterfaceErrorSource", string logName = "srNwmsInterface")
             {
                 if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
                 {
@@ -1132,7 +1132,7 @@ namespace SRL
                 eventLog1.Source = eventSourceName;
                 eventLog1.Log = logName;
 
-                eventLog1.WriteEntry(mes, type);
+                eventLog1.WriteEntry(mes, type, event_id);
 
             }
 
@@ -1629,17 +1629,17 @@ namespace SRL
                 bool error_called = false;
                 System.Threading.ThreadStart starter = new System.Threading.ThreadStart(() =>
                 {
-                    if(error_call !=null)
+                    if (error_call != null)
                     {
                         try
-                        { 
+                        {
                             act();
                         }
                         catch (Exception ex)
                         {
                             error_called = true;
                             error_call(ex);
-                        } 
+                        }
                     }
                     else
                     {
@@ -1649,7 +1649,7 @@ namespace SRL
                     );
                 starter += () =>
                 {
-                    if (call_back != null && error_called==false)
+                    if (call_back != null && error_called == false)
                     {
                         call_back();
                     }
@@ -3428,9 +3428,9 @@ namespace SRL
 
                     dataGridView1 = dgv;
                     if (controlFirst_ != null) controlFirst_.Click += btnFirst_Click;
-                    if(controlPrevious_!=null) controlPrevious_.Click += btnPrevious_Click;
-                   if(controlNext_ !=null) controlNext_.Click += btnNext_Click;
-                    if(controlLast_!=null) controlLast_.Click += btnLast_Click;
+                    if (controlPrevious_ != null) controlPrevious_.Click += btnPrevious_Click;
+                    if (controlNext_ != null) controlNext_.Click += btnNext_Click;
+                    if (controlLast_ != null) controlLast_.Click += btnLast_Click;
                     txtPaging = tbpaging_;
 
                 }
@@ -3452,7 +3452,7 @@ namespace SRL
                         dt.ImportRow(item);
                     }
 
-                    if(txtPaging !=null) txtPaging.Text = string.Format("Page {0} Of {1} Pages", pageNumber, (DataSource.Rows.Count / PageSize) + 1);
+                    if (txtPaging != null) txtPaging.Text = string.Format("Page {0} Of {1} Pages", pageNumber, (DataSource.Rows.Count / PageSize) + 1);
                     return dt;
                 }
                 public void DataBind(DataTable dataTable)
@@ -5139,7 +5139,7 @@ namespace SRL
                         binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
                         break;
                     case 2:
-                        binding.Security.Mode = BasicHttpSecurityMode.TransportWithMessageCredential; 
+                        binding.Security.Mode = BasicHttpSecurityMode.TransportWithMessageCredential;
                         break;
                 }
                 soap_client.Endpoint.Binding = binding;
@@ -5225,17 +5225,9 @@ namespace SRL
 
             public static DataTable CopyToDataTable<T>(IEnumerable<T> source)
             {
-                try
-                {
 
-                    return new ObjectShredder<T>().Shred(source, null, null);
 
-                }
-                catch (Exception es)
-                {
-                    MessageBox.Show(es.Message);
-                    return null;
-                }
+                return new ObjectShredder<T>().Shred(source, null, null);
             }
 
             public static DataTable CopyToDataTable<T>(IEnumerable<T> source,
@@ -5404,7 +5396,7 @@ namespace SRL
                             _ordinalMap.Add(f.Name, dc.Ordinal);
                         }
                     }
-                    foreach (PropertyInfo p in type.GetProperties())
+                    foreach (PropertyInfo p in type?.GetProperties())
                     {
 
                         if (!_ordinalMap.ContainsKey(p.Name))
@@ -5616,7 +5608,7 @@ namespace SRL
 
             return date_list;
         }
-        public static string EnglishToPersianDate(DateTime d, string format= "{0}/{1}/{2}")
+        public static string EnglishToPersianDate(DateTime d, string format = "{0}/{1}/{2}")
         {
             PersianCalendar pc = new PersianCalendar();
             string month = pc.GetMonth(d).ToString();
@@ -6856,7 +6848,7 @@ namespace SRL
         /// <param name="main_headers"></param>
         /// <param name="dataGridView1"></param>
         /// <param name="lblCount"></param>
-        public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
+        public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount, string table_name )
         {
             try
             {
@@ -6870,14 +6862,19 @@ namespace SRL
                 if (table == null) return null;
 
                 string header_checked = SRL.KeyValue.CheckDataTableHeaders(table, main_headers, check_type);
-                if (header_checked == "true")
+                if (header_checked == "true" )
                 {
-                    dgv.DataSource = table;
+                    if (dgv != null)
+                    {
+                        dgv.DataSource = table;
 
-                    if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+                        if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+                    }
                 }
-
-                else MessageBox.Show(header_checked);
+                else
+                {
+                   MessageBox.Show(header_checked);
+                }
                 ofDialog.FileName = "";
                 return table;
 
@@ -6940,7 +6937,7 @@ namespace SRL
             {
                 string type = SRL.ClassManagement.GetEnumDescription<AccessDataType>(type_enum);
                 string query = "alter table " + table_name + " add " + column_name + " " + type;
-                return ExecuteToAccess(query, file_full_path, provider);
+                return ExecuteToAccess(query, file_full_path, null, provider);
             }
             else return -1;
 
@@ -6962,13 +6959,18 @@ namespace SRL
             return modal;
         }
 
-        public static int ExecuteToAccess(string query, string file_full_path, string provider = "Microsoft.ACE.OLEDB.12.0")
+        public static int ExecuteToAccess(string query, string file_full_path, OleDbParameter[] parameters = null, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
+            //parameters = new OleDbParameter[]{ new OleDbParameter("@title", "")};
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
 
             using (OleDbConnection con = new OleDbConnection(strProvider))
             {
                 OleDbCommand cmd = new OleDbCommand(query, con);
+                if (parameters != null)
+                {
+                    cmd.Parameters.AddRange(parameters);
+                }
                 con.Open();
                 cmd.CommandType = CommandType.Text;
                 int res = cmd.ExecuteNonQuery();
@@ -7043,6 +7045,75 @@ namespace SRL
             SRL.AccessManagement.ExecuteToAccess($"CREATE INDEX {index_name} ON {table_name}({column_name})", file_full_path);
 
 
+        }
+
+        public static void SendSmsFromAccess(string access_file_name, string table_name, int paralel, bool text_from_file, string static_content, Action<Exception> error_call, Action final_call_back, string api_key, Label progress_label)
+        {
+            SRL.AccessManagement.AddColumnToAccess("status", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+            SRL.AccessManagement.AddColumnToAccess("error", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+            SRL.AccessManagement.ExecuteToAccess("update " + table_name + " set mobile=Trim(mobile)", access_file_name);
+            SRL.AccessManagement.ExecuteToAccess($"update {table_name} set status='OK', error='mobile is null'  where mobile is null", access_file_name);
+            SRL.AccessManagement.ExecuteToAccess($"update {table_name} set status='OK', error='mobile is null'  where mobile =''", access_file_name);
+
+            DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
+            var list_ = SRL.Convertor.ConvertDataTableToList<SendSms>(dt);
+            var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
+
+            SRL.ActionManagement.MethodCall.Parallel.ParallelCall<SendSms>(list, paralel.ToString(),
+                ParallelAccessSendSms, null, error_call, final_call_back, progress_label, table_name, access_file_name, text_from_file, static_content, api_key);
+
+        }
+
+        private static void ParallelAccessSendSms(List<SendSms> list, BackgroundWorker worker, params object[] args)
+        {
+            string table_name = args[0].ToString();
+            string access_file_name = args[1].ToString();
+            bool text_from_file = (bool)args[2];
+            string static_content = args[3].ToString();
+            string api_key = args[4].ToString();
+
+            if (text_from_file)
+            {
+                if (string.IsNullOrWhiteSpace(list[0]?.text)) return;
+
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(static_content)) return;
+            }
+
+            string method = $"{api_key}/admin/ext-service/send_sms";
+
+            System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+
+            client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
+
+            foreach (var item in list)
+            {
+                if (worker.CancellationPending)
+                {
+                    return;
+                }
+
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                string mobile = item.mobile;
+                if (mobile.Length == 10) mobile = "0" + mobile;
+                input["cell_no"] = mobile;
+                input["content"] = text_from_file ? item.text : static_content;
+                System.Net.Http.HttpResponseMessage httpResponse = client.PostAsJsonAsync(method, input).Result;
+
+                worker.ReportProgress(1);
+                SRL.AccessManagement.ExecuteToAccess($"update {table_name} set status='{httpResponse.StatusCode.ToString()}'  where ID={item.ID}", access_file_name);
+
+            }
+        }
+
+        public class SendSms
+        {
+            public long ID { get; set; }
+            public string mobile { get; set; }
+            public string text { get; set; }
+            public string status { get; set; }
         }
 
         public class AccessSchema
