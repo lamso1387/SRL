@@ -51,6 +51,7 @@ using System.ServiceModel.Security;
 using System.Drawing.Imaging;
 using System.ServiceProcess;
 using Newtonsoft.Json;
+using System.Net;
 
 namespace SRL
 {
@@ -1119,7 +1120,7 @@ namespace SRL
         public class EventLogs
         {
             static System.Diagnostics.EventLog eventLog1 = new System.Diagnostics.EventLog();
-            public static void WriteEventLog(string mes,int event_id, EventLogEntryType type = EventLogEntryType.Information, string eventSourceName = "NwmsInterfaceErrorSource", string logName = "srNwmsInterface")
+            public static void WriteEventLog(string mes, int event_id, EventLogEntryType type = EventLogEntryType.Information, string eventSourceName = "NwmsInterfaceErrorSource", string logName = "srNwmsInterface")
             {
                 if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
                 {
@@ -1223,6 +1224,49 @@ namespace SRL
                     error += "\n";
                 }
                 return error;
+            }
+            public static string CreateHttpRequestExMes(HttpRequestException requestException)
+            {
+                string error = $"\n {requestException.GetType().Name}: {requestException.Message}";
+                if (requestException.InnerException is WebException && ((WebException)requestException.InnerException).Status == WebExceptionStatus.NameResolutionFailure)
+                {
+                    error += "\n" + $"{requestException.InnerException.GetType().Name}: {requestException.InnerException.Message}";
+                }
+                else if (requestException.InnerException != null)
+                {
+                    error += "\n InnerException " + CreateErrorMessage(requestException.InnerException);
+                }
+
+                return error;
+            }
+            public static string CreateAggregateExceptionMessage(AggregateException ae)
+            {
+                string error = "";
+                foreach (var ex in ae.InnerExceptions)
+                    error += "\n" + $"{ex.GetType().Name}: {ex.Message}";
+
+                return error;
+            }
+
+
+            public static string CreateExactErrorMessage(Exception ex)
+            {
+                var type_ = ex.GetType().Name;
+                switch (type_)
+                {
+                    case nameof(AggregateException):
+                        return CreateAggregateExceptionMessage((AggregateException)ex);
+                        break;
+                    case nameof(HttpRequestException):
+                        return CreateHttpRequestExMes((HttpRequestException)ex);
+                        break;
+                    case nameof(DbEntityValidationException):
+                        return CreateDbEntityExceptionMessage((DbEntityValidationException)ex);
+                        break;
+                    default:
+                        return CreateErrorMessage(ex);
+                        break;
+                }
             }
         }
         public class Captcha
@@ -1554,7 +1598,7 @@ namespace SRL
             public static BackgroundWorker RunAsyncByWorker(Action function, Action call_back, Action<Exception> error_call, ProgressBar progress_bar, ProgressBarStyle bar_style)
             {
                 BackgroundWorker bg = new BackgroundWorker();
-
+                var error_called = false;
                 if (progress_bar != null)
                 {
 
@@ -1576,20 +1620,24 @@ namespace SRL
                         progress_bar.Parent.Visible = false;
                     }
 
-                    if (e1.Error != null)
+                    if (error_called == false)
                     {
-                        if (error_call != null) error_call(e1.Error);
-                    }
+                        if (e1.Error != null)
+                        {
+                            if (error_call != null) error_call(e1.Error);
+                        }
 
-                    else
-                    {
-                        if (call_back != null) SRL.ActionManagement.MethodCall.MethodInvoker(call_back);
+                        else
+                        {
+                            if (call_back != null) SRL.ActionManagement.MethodCall.MethodInvoker(call_back);
+                        }
                     }
                 };
 
                 bg.DoWork += (s, e) =>
                 {
-                    SRL.ActionManagement.MethodCall.MethodInvoker(function);
+                    function();
+
                 };
 
                 bg.RunWorkerAsync();
@@ -1658,6 +1706,7 @@ namespace SRL
                 System.Threading.Thread th = new System.Threading.Thread(starter);
                 th.Start();
             }
+
             public static int CallTry(Action act, int counter, Action call_error = null)
             {
                 for (int i = 0; i < counter; i++)
@@ -4108,12 +4157,14 @@ namespace SRL
             {
                 this.Text = title;
 
-                this.StartPosition = FormStartPosition.CenterScreen;
 
                 var borders = GetFormBorderSizes(this);
                 if (back_color != null) this.BackColor = (Color)back_color;
                 this.Width = width_ + borders.right + borders.left;
                 this.Height = height_ + borders.top + borders.bottom;
+
+                this.StartPosition = FormStartPosition.CenterScreen;
+                this.CenterToScreen();
 
                 SRL.WinTools.AddChildToParentControlsAliagn(this, user_control);
             }
@@ -4881,6 +4932,7 @@ namespace SRL
 
             return "true";
 
+
         }
 
         public static void AddRowToDataTable(DataTable dt, Dictionary<string, object> item)
@@ -5025,6 +5077,27 @@ namespace SRL
         }
 
     }
+    public class Console_
+    {
+        public static string WritePassword()
+        {
+            string pass = "";
+            do
+            {
+                ConsoleKeyInfo key = Console.ReadKey(true);
+                if (key.Key != ConsoleKey.Enter)
+                {
+                    pass += key.KeyChar;
+                    Console.Write("*");
+                }
+                else
+                {
+                    break;
+                }
+            } while (true);
+            return pass;
+        }
+    }
     public class Web
     {
 
@@ -5152,6 +5225,30 @@ namespace SRL
             BasicHttpBinding binding = new BasicHttpBinding();
             T client = SRL.ClassManagement.CreateInstance<T>(binding, address);
             return client;
+
+        }
+
+        public static void AddBasicAuthToRestHeader(HttpClient client, string keyvalue)
+        {
+            // string keyvalue = $"{""}:{""}";
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(keyvalue);
+            string basic = $"Basic {System.Convert.ToBase64String(plainTextBytes)}";
+            client.DefaultRequestHeaders.Add("Authorization", basic);
+        }
+        public static void AddToRestHeader(HttpClient client, string key, string value)
+        {
+            client.DefaultRequestHeaders.Add(key, value);
+        }
+        public static void AddAuthTokenToRestHeader(HttpClient client, string token)
+        {
+
+            AddToRestHeader(client, "AuthToken", token);
+
+        }
+        public static void AddHostToRestHeader(HttpClient client, string host)
+        {
+
+            AddToRestHeader(client, "Host", host);
 
         }
     }
@@ -5885,6 +5982,25 @@ namespace SRL
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, serializer);
             Newtonsoft.Json.Linq.JObject conv = Newtonsoft.Json.Linq.JObject.Parse(json);
             return conv;
+        }
+
+        public static string EnumToJson(Type enum_type)
+        {
+            //enum_type=typeof(EnumTypeName)
+
+            var ret = "{";
+            int first = 0;
+            foreach (var val in Enum.GetValues(enum_type))
+            {
+                if (first != 0) ret += ",";
+                var name = Enum.GetName(enum_type, val);
+
+                ret += $"\n \"{ name}\" : \"{((int)val).ToString()}\"";
+                first++;
+            }
+            ret += " \n }";
+            return ret;
+
         }
 
     }
@@ -6837,7 +6953,10 @@ namespace SRL
             autonumberlong = 5,
 
             [Description("Date/Time")]
-            datetime = 6
+            datetime = 6,
+
+            [Description("YESNO")]
+            YESNO = 7
         }
 
         /// <summary>
@@ -6848,7 +6967,7 @@ namespace SRL
         /// <param name="main_headers"></param>
         /// <param name="dataGridView1"></param>
         /// <param name="lblCount"></param>
-        public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount, string table_name )
+        public static DataTable LoadDGVFromAccess(OpenFileDialog ofDialog, Label lblFileName, SRL.KeyValue.DataTableHeaderCheckType check_type, string[] main_headers, DataGridView dgv, Label lblCount, string table_name)
         {
             try
             {
@@ -6862,7 +6981,7 @@ namespace SRL
                 if (table == null) return null;
 
                 string header_checked = SRL.KeyValue.CheckDataTableHeaders(table, main_headers, check_type);
-                if (header_checked == "true" )
+                if (header_checked == "true")
                 {
                     if (dgv != null)
                     {
@@ -6873,7 +6992,7 @@ namespace SRL
                 }
                 else
                 {
-                   MessageBox.Show(header_checked);
+                    MessageBox.Show(header_checked);
                 }
                 ofDialog.FileName = "";
                 return table;
@@ -6886,6 +7005,27 @@ namespace SRL
                 MessageBox.Show("LoadDGVFromAccess " + ex.Message);
                 throw;
             }
+        }
+        public static DataTable GetDataTableFromAccess(OpenFileDialog ofDialog, string[] main_headers, SRL.KeyValue.DataTableHeaderCheckType check_type, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
+        {
+            if (!System.IO.File.Exists(ofDialog.FileName))
+            {
+                ofDialog.Filter = "Access files|*.accdb";
+                if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
+            }
+            string file_full_path = ofDialog.FileName;
+            //            ofDialog.FileName = "";
+            DataTable table = GetDataTableFromAccess(file_full_path, table_name);
+            if (table == null) return null;
+
+            string header_checked = SRL.KeyValue.CheckDataTableHeaders(table, main_headers, check_type);
+            if (header_checked != "true")
+            {
+                return null;
+            }
+            return table;
+
+
         }
 
         public static DataTable GetDataTableFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
@@ -7102,8 +7242,74 @@ namespace SRL
                 input["content"] = text_from_file ? item.text : static_content;
                 System.Net.Http.HttpResponseMessage httpResponse = client.PostAsJsonAsync(method, input).Result;
 
+                string content = httpResponse.Content.ReadAsStringAsync().Result;
                 worker.ReportProgress(1);
-                SRL.AccessManagement.ExecuteToAccess($"update {table_name} set status='{httpResponse.StatusCode.ToString()}'  where ID={item.ID}", access_file_name);
+                string query = "";
+                if (httpResponse.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    query = $"update {table_name} set status='{httpResponse.StatusCode.ToString()}'  where ID={item.ID}";
+
+                }
+                else
+                {
+                    query = $"update {table_name} set status='{httpResponse.StatusCode.ToString()}', error=@error  where ID={item.ID}";
+                }
+                var parameters = new OleDbParameter[] { new OleDbParameter("@error", content) };
+
+                SRL.AccessManagement.ExecuteToAccess(query, access_file_name, parameters);
+
+            }
+        }
+
+        private static void ParallelAccessSendSmsCix(List<SendSms> list, BackgroundWorker worker, params object[] args)
+        {
+            string table_name = args[0].ToString();
+            string access_file_name = args[1].ToString();
+            bool text_from_file = (bool)args[2];
+            string static_content = args[3].ToString();
+            string api_key = args[4].ToString();
+
+            if (text_from_file)
+            {
+                if (string.IsNullOrWhiteSpace(list[0]?.text)) return;
+
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(static_content)) return;
+            }
+
+            // Projects.Nwms.SendSms("utcms_admin", "jhdfghfghjh234#$df",)
+
+            foreach (var item in list)
+            {
+                if (worker.CancellationPending)
+                {
+                    return;
+                }
+
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                string mobile = item.mobile;
+                if (mobile.Length == 10) mobile = "0" + mobile;
+                input["cell_no"] = mobile;
+                input["content"] = text_from_file ? item.text : static_content;
+                System.Net.Http.HttpResponseMessage httpResponse = new HttpResponseMessage();// client.PostAsJsonAsync(method, input).Result;
+
+                string content = "";//= httpResponse.Content.ReadAsStringAsync().Result;
+                worker.ReportProgress(1);
+                string query = "";
+                if (httpResponse.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    query = $"update {table_name} set status='{httpResponse.StatusCode.ToString()}'  where ID={item.ID}";
+
+                }
+                else
+                {
+                    query = $"update {table_name} set status='{httpResponse.StatusCode.ToString()}', error=@error  where ID={item.ID}";
+                }
+                var parameters = new OleDbParameter[] { new OleDbParameter("@error", content) };
+
+                SRL.AccessManagement.ExecuteToAccess(query, access_file_name, parameters);
 
             }
         }
@@ -7324,14 +7530,6 @@ namespace SRL
             btn_loader = btnLoader;
             btn_loader.Tag = btn_loader.Text;
         }
-
-        //public ControlLoad(Control controlToLoad)
-        //{
-        //    control_to_load = controlToLoad;
-        //    control_to_load.Tag = control_to_load.Text;
-        //}
-
-
 
         public void ButtonLoader(int all)
         {
@@ -7843,7 +8041,16 @@ namespace SRL
             }
 
         }
+        public static bool CreateFileIfNotExists(string file_pat)
+        {
+            if (!System.IO.File.Exists(file_pat))
+            {
+                System.IO.File.Create(file_pat).Close();
+                return true;
+            }
+            else return false;
 
+        }
         public static void CreateFileOverwrite(string file_path, string text, bool launch)
         {
             // var file_path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "json.txt");
@@ -7853,6 +8060,13 @@ namespace SRL
             if (launch)
                 System.Diagnostics.Process.Start(file_path);
 
+        }
+
+        public static string GetFilePathInCurrent(string fileName)
+        {
+            string path = SRL.FileManagement.GetCurrentDirectory();
+            path = Path.Combine(path, fileName);
+            return path;
         }
     }
 

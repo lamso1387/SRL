@@ -351,29 +351,46 @@ namespace SRL
                 Error
             }
 
-            public static bool UpdateWarehouseAddress(string api_key, string war_id, string post_code, Action<string> error_call, Action<PostAddress> call_back)
+            public static bool UpdateWarehouseAddress(string api_key, string war_id, string post_code, Action<string> error_call, Action call_back)
             {
 
                 Dictionary<string, object> input = new Dictionary<string, object>();
 
                 string error = "";
-                var address = SRL.Projects.Nwms.GetAddress(api_key, post_code, ref error);
-                if (address == null)
-                {
-                    if (error_call != null) error_call(error);
-                    return false;
-                }
+                //var address = SRL.Projects.Nwms.GetAddress(api_key, post_code, ref error);
+                //if (address == null)
+                //{
+                //    if (error_call != null) error_call(error);
+                //    return false;
+                //}
 
-                string[] updater = { $"province:{address.province}", $"city:{address.city}", $"township:{address.township}", $"full_address:{address.address}", $"village:{address.village}", $"country:", $"zone:", $"rural:" };
-                input["st"] = updater;
+                //  string[] updater = { $"province:{address.province}", $"city:{address.city}", $"township:{address.township}", $"full_address:{address.address}", $"village:{address.village}", $"country:", $"zone:", $"rural:" };
+                input["update_address"] = true;
                 if (SRL.Projects.Nwms.PutWarehouse(api_key, war_id, input, "https", out error) == false)
                 {
                     if (error_call != null) error_call(error);
                     return false;
                 }
 
-                if (call_back != null) call_back(address);
+                if (call_back != null) call_back();
                 return true;
+            }
+
+            public static void EditWarehouseById(string api_key, string access_file_name, string table_name, int paralel, Action<Exception> call_error, Action final_call_back)
+            {
+
+                SRL.AccessManagement.AddColumnToAccess("error", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+                SRL.AccessManagement.AddColumnToAccess("status", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+
+                DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
+                var list_ = SRL.Convertor.ConvertDataTableToList<EditWarehouseByIdClass>(dt);
+                var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
+
+
+                SRL.ActionManagement.MethodCall.Parallel.ParallelCall<EditWarehouseByIdClass>(list, paralel.ToString(),
+                    StartEditWarehouseById, null, call_error, final_call_back, null, table_name, access_file_name, api_key);
+
+
             }
 
             public class BaseValueTypes
@@ -404,7 +421,9 @@ namespace SRL
                 HttpError,
                 WarhouseNotFound,
                 MultiFoundSetId,
-                NotUniqueFound
+                NotUniqueFound,
+                PostCodeConflict,
+                IdConflict
             }
             public class SearchResult
             {
@@ -453,7 +472,8 @@ namespace SRL
                 {
                     public string account_status { get; set; }
                     public string postal_code { get; set; }
-                    public List<Person> contractors { get; set; }
+                    public string contractor_name { get; set; }
+
                     public string org_creator_national_id { get; set; }
                     public string name { get; set; }
                     public string id { get; set; }
@@ -462,6 +482,8 @@ namespace SRL
                     public List<string> activity_sector { get; set; }
                     public string type { get; set; }
                     public string[] st { get; set; }
+
+                    public string contractor_national_id { get; set; }
 
                 }
 
@@ -515,14 +537,14 @@ namespace SRL
                 var list_ = SRL.Convertor.ConvertDataTableToList<AddressUpdator>(dt);
                 var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
 
-                SRL.AccessManagement.ExecuteToAccess("update " + table_name + " set id=Trim(id)", access_file_name);
+                SRL.AccessManagement.ExecuteToAccess("update " + table_name + " set war_id=Trim(war_id)", access_file_name);
 
                 SRL.ActionManagement.MethodCall.Parallel.ParallelCall<AddressUpdator>(list, paralel.ToString(),
                     UpdateWarehouseAddressParallel, null, call_error, call_back, null, table_name, access_file_name, api_key);
             }
             public class AddressUpdator
             {
-                public string id { get; set; }
+                public string war_id { get; set; }
                 public string postal_code { get; set; }
                 public string error { get; set; }
                 public string status { get; set; }
@@ -538,19 +560,19 @@ namespace SRL
                 foreach (var item in list)
                 {
                     string query = "";
-                    if (string.IsNullOrWhiteSpace(item.id))
+                    if (string.IsNullOrWhiteSpace(item.war_id))
                     {
-                        query = $"update {table_name} set status='OK', error='id is null'  where id='' or id is null";
+                        query = $"update {table_name} set status='OK', error='id is null'  where war_id='' or war_id is null";
                     }
                     else
                     {
                         AddressUpdator war = new AddressUpdator();
-                        UpdateWarehouseAddress(api_key, item.id, item.postal_code, (error) =>
+                        UpdateWarehouseAddress(api_key, item.war_id, item.postal_code, (error) =>
                            {
-                               query = $"update { table_name } set status='NOK' , error='{ error}' where id='{ item.id }'";
-                           }, (address) =>
+                               query = $"update { table_name } set status='NOK' , error='{ error}' where war_id='{ item.war_id }'";
+                           }, () =>
                            {
-                               query = $"update { table_name } set status='OK', address='{address.address}' where id='{ item.id }'";
+                               query = $"update { table_name } set status='OK' where war_id='{ item.war_id }'";
 
                            });
 
@@ -641,22 +663,21 @@ namespace SRL
                 }
             }
 
+
             public class VirtClass
             {
                 public string id { get; set; }
                 public string contractor_national_id { get; set; }
+                public string contractor_name { get; set; }
                 public string name { get; set; }
-                public string warehouse_id { get; set; }
-                public string account_status { get; set; }
+                public bool is_contractor { get; set; }
                 public string postal_code { get; set; }
-                public string org_creator_national_id { get; set; }
-                public ST st { get; set; }
-            }
-            public class ST
-            {
+                public string account_status { get; set; }
                 public string province { get; set; }
                 public string township { get; set; }
                 public string city { get; set; }
+                public string full_address { get; set; }
+                public object keeper_status { get; set; }
             }
             public class EstelamAccessFile
             {
@@ -764,7 +785,7 @@ namespace SRL
                     public int ErrorCode { get; set; }
                     public string ErrorMessage { get; set; }
                     public string Location { get; set; }
-                    public int LocationCode { get; set; }
+                    public string LocationCode { get; set; }
                     public string LocationType { get; set; }
                     public string PostCode { get; set; }
                     public string State { get; set; }
@@ -807,7 +828,7 @@ namespace SRL
                         HttpResponseMessage response = new HttpResponseMessage();
                         string message = "";
                         SRL.Projects.Nwms.ComplexByPostCodeResult war =
-                        SRL.Projects.Nwms.GetComplexByPostalCode(item.postal_code, api_key, true, "https", out message);
+                        SRL.Projects.Nwms.GetComplexByPostalCode(item.postal_code, api_key, "https", out message);
                         string query = "";
                         if (response.StatusCode == System.Net.HttpStatusCode.OK)
                         {
@@ -815,7 +836,7 @@ namespace SRL
                             {
                                 query = "update " + table_name + " set status='OK' , exist_anbar='" + war.warehouse_server + "' , correct='" + war.postal_code_server + "' "
                                     + " , province='" + war.province + "'  , township='" + war.township + "'  , city='" + war.city + "'"
-                                    + "  , address='" + war.full_address + "'"
+                                    + "  , address='" + war.address + "'"
                                     + " where postal_code='" + item.postal_code + "' ;";
 
                             }
@@ -891,19 +912,13 @@ namespace SRL
                     foreach (var item in list)
                     {
                         if (item.status == "OK") continue;
-                        var time = new System.Diagnostics.Stopwatch();
-                        time.Start();
                         var result = EstelamFromPostESBServer(client, item.PostCode, service_password);
-                        time.Stop();
-                        var sec = time.Elapsed.TotalSeconds;
-                        time = new System.Diagnostics.Stopwatch();
-                        time.Start();
+
                         try
                         {
                             string address = "";
-
+                            string query = "";
                             if (result.ErrorCode == 0)
-
                             {
                                 address += "استان " + result.State.Trim() + "- شهرستان " + result.TownShip.Trim() + "- بخش " + result.Zone.Trim() + "- " + result.LocationType.Trim() + " " + result.Location.Trim()
                                 + "- " + result.Parish.Trim() + "- " + result.PreAvenue.Trim() + "- " + result.Avenue.Trim();
@@ -917,13 +932,23 @@ namespace SRL
                                     address = address.Replace("  ", " ");
                                 }
 
+                                query = $"update { table_name } set status='OK', correct='{ (result.ErrorCode == 0 ? "true" : "false") }',"
+                                + $"ErrorCode={ result.ErrorCode } , ErrorMessage='{ result.ErrorMessage }', "
+                       + $" Location='{ result.Location }' , LocationCode='{ result.LocationCode }' "
+                                + $" , LocationType='{ result.LocationType}'  , State='{ result.State }'  , TownShip='{ result.TownShip }'"
+                                + $"  , Village='{ result.Village }' , Address='{ address }'  where PostCode='{ item.PostCode }' ";
+                            }
+                            else
+                            {
+                                query = $"update { table_name } set status='NOK', "
+                              + $"ErrorCode={ result.ErrorCode } , ErrorMessage='{ result.ErrorMessage }', "
+                     + $" Location='{ result.Location }' , LocationCode='{ result.LocationCode }' "
+                              + $" , LocationType='{ result.LocationType}'  , State='{ result.State }'  , TownShip='{ result.TownShip }'"
+                              + $"  , Village='{ result.Village }' , Address='{ address }'  where PostCode='{ item.PostCode }' ";
                             }
 
-                            string query = "update " + table_name + " set status='OK', correct='" + (result.ErrorCode == 0 ?
-                       "true" : "false") + "', ErrorCode=" + result.ErrorCode + " , ErrorMessage='" + result.ErrorMessage + "', "
-                       + " Location='" + result.Location + "' , LocationCode=" + result.LocationCode + " "
-                                + " , LocationType='" + result.LocationType + "'  , State='" + result.State + "'  , TownShip='" + result.TownShip + "'"
-                                + "  , Village='" + result.Village + "' , Address='" + address + "'  where PostCode='" + item.PostCode + "' ";
+
+
 
                             var exce = SRL.AccessManagement.ExecuteToAccess(query, file_full_path);
 
@@ -934,9 +959,9 @@ namespace SRL
                             string query = "update " + table_name + " set  status='" + ex.Message + "' where ID=" + item.ID + " ;";
                             SRL.AccessManagement.ExecuteToAccess(query, file_full_path);
                         }
-                        time.Stop();
-                        sec = time.Elapsed.TotalSeconds;
-                        time = new System.Diagnostics.Stopwatch();
+
+
+
                     }
                 }
                 public static void EstelamByNationalCode(string file_full_path, string table_name, string api_key, string parallel, Action callback, Action<Exception> call_error, UserRoleType role_type)
@@ -953,18 +978,12 @@ namespace SRL
                     catch (Exception ex)
                     {
                     }
-                    SRL.Database.SqliteEF base_value_db = new SRL.Database.SqliteEF($"Data Source={ Path.Combine(SRL.FileManagement.GetCurrentDirectory(), "BaseValues.sqlite")};Version=3;");
-                    List<BaseValueTB> types = base_value_db.Where<BaseValueTB>(new List<SRL.Database.SqliteEF.WhereClause>() {
-                            new SRL.Database.SqliteEF.WhereClause { key = nameof(BaseValueTB.type), opt = "=", value = SRL.Projects.Nwms.BaseValueTypes.Base.warehouse_types.ToString() } }).ToList();
-                    List<BaseValueTB> orgs = base_value_db.Where<BaseValueTB>(new List<SRL.Database.SqliteEF.WhereClause>() {
-                            new SRL.Database.SqliteEF.WhereClause { key = nameof(BaseValueTB.type), opt = "=", value = SRL.Projects.Nwms.BaseValueTypes.Base.org_creators.ToString() } }).ToList();
-
 
                     DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
 
                     List<NationalCodeEstelamInput> list = SRL.Convertor.ConvertDataTableToList<NationalCodeEstelamInput>(table).Where(x => x.status != "OK").ToList();
                     SRL.ActionManagement.MethodCall.Parallel.ParallelCall<NationalCodeEstelamInput>(list, parallel, EstelamByNationalCodeParallel, null,
-                        call_error, callback, null, api_key, table_name, file_full_path, types, orgs);
+                        call_error, callback, null, api_key, table_name, file_full_path);
 
                 }
 
@@ -973,8 +992,6 @@ namespace SRL
                     string api_key = args[0].ToString();
                     string table_name = args[1].ToString();
                     string file_full_path = args[2].ToString();
-                    List<BaseValueTB> types = (List<BaseValueTB>)args[3];
-                    List<BaseValueTB> orgs = (List<BaseValueTB>)args[4];
 
                     foreach (var item in list)
                     {
@@ -991,26 +1008,27 @@ namespace SRL
                         {
                             if (war.Any())
                             {
-                                var warehouse = war[0];
-                                var contractor_has = warehouse.contractors?.Where(x => x.national_id == item.national_code);
-                                if (contractor_has?.Count() > 0)
-                                {
-                                    var contractor = contractor_has.First();
-                                    query = $"update {table_name} set status='OK' , correct='true' ,name_family='{contractor.name}', exist_anbar='{war.Count}', war_id='{warehouse.id}', " +
-                                        $"postal_code='{warehouse.postal_code}', name='{warehouse.name}', type='{types.Where(x => x.code == warehouse.type).DefaultIfEmpty(new BaseValueTB { title = "" }).FirstOrDefault().title}', " +
-                                        $"isic='{string.Join(", ", warehouse.activity_sector)}', creator='{orgs.Where(x => x.code == warehouse.org_creator_national_id).DefaultIfEmpty(new BaseValueTB { title = "" }).FirstOrDefault().title}'  where national_code='{item.national_code}' ;";
-                                }
-                                else
-                                {
-                                    query = $"update {table_name} set status='OK' , correct='true' , exist_anbar='{war.Count}', war_id='{warehouse.id}', " +
-                                       $"postal_code='{warehouse.postal_code}', name='{warehouse.name}', type='{types.Where(x => x.code == warehouse.type).DefaultIfEmpty(new BaseValueTB { title = "" }).FirstOrDefault().title}', " +
-                                       $"isic='{string.Join(", ", warehouse.activity_sector)}', creator='{orgs.Where(x => x.code == warehouse.org_creator_national_id).DefaultIfEmpty(new BaseValueTB { title = "" }).FirstOrDefault().title}'  where national_code='{item.national_code}' ;";
 
+                                var warehouse = war.First();
+
+                                query = $"update {table_name} set status='OK' , correct='true' ,name_family='{warehouse.contractor_name}', exist_anbar='true', war_id='{warehouse.id}', " +
+                                    $"postal_code='{warehouse.postal_code}', name='{warehouse.name}', type='{warehouse.type}', " +
+                                    $"isic='{string.Join(", ", warehouse.activity_sector)}', creator='{warehouse.org_creator_national_id}'  where ID={item.ID} ; ";
+
+                                if (war.Count > 1)
+                                {
+                                    war.RemoveAt(0);
+                                    foreach (var war_item in war)
+                                    {
+                                        query += $"insert into {table_name} (statuscorrect, name_family,exist_anbar ,war_id, postal_code, name,type,isic,creator)" +
+                                            $" values ('OK' ,'true','{warehouse.contractor_name}', 'true', '{warehouse.id}','{warehouse.postal_code}','{warehouse.name}', " +
+                                            $" '{warehouse.type}','{string.Join(", ", warehouse.activity_sector)}','{warehouse.org_creator_national_id}') ; ";
+                                    }
                                 }
                             }
                             else
                             {
-                                query = "update " + table_name + $" set  status='OK', exist_anbar='0' where national_code='{item.national_code}' ;";
+                                query = "update " + table_name + $" set  status='OK', exist_anbar='false' where national_code='{item.national_code}' ;";
                             }
 
                         }
@@ -1021,8 +1039,6 @@ namespace SRL
                         }
 
                         SRL.AccessManagement.ExecuteToAccess(query, file_full_path);
-
-
 
                     }
                 }
@@ -1042,7 +1058,7 @@ namespace SRL
                     SRL.AccessManagement.AddColumnToAccess("ErrorCode", "table1", SRL.AccessManagement.AccessDataType.integer, file_full_path);
                     SRL.AccessManagement.AddColumnToAccess("ErrorMessage", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
                     SRL.AccessManagement.AddColumnToAccess("Location", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
-                    SRL.AccessManagement.AddColumnToAccess("LocationCode", "table1", SRL.AccessManagement.AccessDataType.integer, file_full_path);
+                    SRL.AccessManagement.AddColumnToAccess("LocationCode", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
                     SRL.AccessManagement.AddColumnToAccess("LocationType", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
                     SRL.AccessManagement.AddColumnToAccess("State", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
                     SRL.AccessManagement.AddColumnToAccess("TownShip", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
@@ -1125,7 +1141,6 @@ namespace SRL
                 }
 
             }
-
             public class PostCodeEstelamResult
             {
                 public long ID { get; set; }
@@ -1177,11 +1192,12 @@ namespace SRL
                     if (item.status == "OK") continue;
 
                     string message = "";
+                    int count = 0;
                     input["postal_code"] = item.postal_code;
                     System.Data.OleDb.OleDbParameter[] parameters = null;
 
-                    var war = SRL.Projects.Nwms.SearchWarehouseBySize(api_key,0,1, input,"https", ref message);
-                    
+                    var war = SRL.Projects.Nwms.SearchWarehouseBySize(api_key, 0, 1, input, "https", ref count, ref message);
+
                     string query = "";
                     if (war == null)
                     {
@@ -1201,7 +1217,7 @@ namespace SRL
 
 
                     }
-                    
+
                     SRL.AccessManagement.ExecuteToAccess(query, file_full_path, parameters);
 
                 }
@@ -1227,30 +1243,6 @@ namespace SRL
                 input["contractors"] = contractors;
                 return PutWarehouse(api_key, warehouse.id, input, protocol, out error);
             }
-            public static bool DeleteOwner(string api_key, string national_id, ComplexByPostCodeResult complex, string protocol, ref string result)
-            {
-                var new_owners = new ComplexOwnerClass();
-                new_owners.agent = new ComplexOwnerClass.person();
-                foreach (var item in complex?.owners)
-                {
-                    if (item.national_id == national_id) continue;
-                    new_owners.owners.Add(new ComplexOwnerClass.person { national_id = item.national_id, name = item.name });
-                }
-                if (complex?.agent?.national_id == national_id || complex?.agent?.national_id == null)
-                {
-                    bool any_owner = new_owners.owners.Any();
-                    new_owners.agent.national_id = any_owner ? new_owners.owners.First().national_id : "0000000000";
-                    new_owners.agent.name = any_owner ? new_owners.owners.First().name : "UNKNOWN";
-                }
-                else
-                {
-                    bool has_agent = !(complex?.agent == null);
-                    new_owners.agent.national_id = has_agent ? complex.agent.national_id : "0000000000";
-                    new_owners.agent.name = has_agent ? complex.agent.name : "UNKNOWN";
-
-                }
-                return SetOwners(api_key, new_owners, complex.id, protocol, ref result);
-            }
 
             public static bool DeleteWarehouse(string api_key, string war_id, string protocol, ref string mes)
             {
@@ -1268,34 +1260,28 @@ namespace SRL
                 public int identificationType { get; set; }
                 public string identificationNo { get; set; }
             }
-
-            public static List<CardexResult> GetCardex(string api_key, string contractor_national_id, int start, int size, CardexFilter filters, string protocol, ref string result)
+            public static List<CardexResultNew> GetCardexNew(string api_key, string contractor_national_id, int start, int size, CardexFilter filters, string protocol, ref string result)
             {
                 result = "";
                 using (HttpClient client = new HttpClient())
                 {
                     client.BaseAddress = new Uri($"{ protocol}://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/cardex/_search/");
-                    Dictionary<string, object> input = new Dictionary<string, object>();
                     Dictionary<string, object> filter = new Dictionary<string, object>();
-                    input["filter"] = filter;
-                    if (filters != null)
-                    {
-                        if (!string.IsNullOrWhiteSpace(filters.warehouse_id)) filter["warehouse_id"] = filters.warehouse_id;
-                        if (!string.IsNullOrWhiteSpace(filters.user_id)) filter["user_id"] = filters.user_id;
-                        if (!string.IsNullOrWhiteSpace(filters.good_id)) filter["good_id"] = filters.good_id;
-                        if (!string.IsNullOrWhiteSpace(filters.postal_code)) filter["additional_data.postal_code"] = filters.postal_code;
-                        if (!string.IsNullOrWhiteSpace(filters.province)) filter["additional_data.province"] = filters.province;
-                        if (!string.IsNullOrWhiteSpace(filters.township)) filter["additional_data.township"] = filters.township;
-                        if (!string.IsNullOrWhiteSpace(filters.city)) filter["additional_data.city"] = filters.city;
 
-                    }
+                    if (!string.IsNullOrWhiteSpace(filters.warehouse_id)) filter["warehouse_id"] = filters.warehouse_id;
+                    if (!string.IsNullOrWhiteSpace(filters.user_id)) filter["user_id"] = filters.user_id;
+                    if (!string.IsNullOrWhiteSpace(filters.good_id)) filter["good_id"] = new List<string> { filters.good_id }.ToArray();
+                    if (!string.IsNullOrWhiteSpace(filters.postal_code)) filter["postal_code"] = filters.postal_code;
+                    if (!string.IsNullOrWhiteSpace(filters.province)) filter["province"] = filters.province;
+                    if (!string.IsNullOrWhiteSpace(filters.township)) filter["township"] = filters.township;
+                    if (!string.IsNullOrWhiteSpace(filters.city)) filter["city"] = filters.city;
 
-                    HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
+                    HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", filter).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
                         var data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
-                        List<CardexResult> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<CardexResult>>(data);
+                        List<CardexResultNew> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<CardexResultNew>>(data);
                         return list;
                     }
                     else
@@ -1305,32 +1291,29 @@ namespace SRL
                     }
                 }
             }
-            public static List<CardexResult> SearchCardex(string api_key, int start, int size, CardexFilter filters, string protocol, ref string result)
+            public static List<CardexResultNew> SearchCardexNew(string api_key, int start, int size, CardexFilter filters, string protocol, ref string result)
             {
                 result = "";
                 using (HttpClient client = new HttpClient())
                 {
                     client.BaseAddress = new Uri($"{ protocol}://app.nwms.ir/v2/b2b-api/{api_key}/admin/cardex/_search/");
-                    Dictionary<string, object> input = new Dictionary<string, object>();
                     Dictionary<string, object> filter = new Dictionary<string, object>();
-                    input["filter"] = filter;
-                    if (filters != null)
-                    {
-                        if (!string.IsNullOrWhiteSpace(filters.warehouse_id)) filter["warehouse_id"] = filters.warehouse_id;
-                        if (!string.IsNullOrWhiteSpace(filters.user_id)) filter["user_id"] = filters.user_id;
-                        if (!string.IsNullOrWhiteSpace(filters.good_id)) filter["good_id"] = filters.good_id;
-                        if (!string.IsNullOrWhiteSpace(filters.postal_code)) filter["additional_data.postal_code"] = filters.postal_code;
-                        if (!string.IsNullOrWhiteSpace(filters.province)) filter["additional_data.province"] = filters.province;
-                        if (!string.IsNullOrWhiteSpace(filters.township)) filter["additional_data.township"] = filters.township;
-                        if (!string.IsNullOrWhiteSpace(filters.city)) filter["additional_data.city"] = filters.city;
-                    }
 
-                    HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
+                    if (!string.IsNullOrWhiteSpace(filters.warehouse_id)) filter["warehouse_id"] = filters.warehouse_id;
+                    if (!string.IsNullOrWhiteSpace(filters.user_id)) filter["user_id"] = filters.user_id;
+                    if (!string.IsNullOrWhiteSpace(filters.good_id)) filter["good_id"] =new List<string> { filters.good_id }.ToArray();
+                    if (!string.IsNullOrWhiteSpace(filters.postal_code)) filter["postal_code"] = filters.postal_code;
+                    if (!string.IsNullOrWhiteSpace(filters.province)) filter["province"] = filters.province;
+                    if (!string.IsNullOrWhiteSpace(filters.township)) filter["township"] = filters.township;
+                    if (!string.IsNullOrWhiteSpace(filters.city)) filter["city"] = filters.city; 
+                    if (!string.IsNullOrWhiteSpace(filters.account_status)) filter["account_status"] = filters.account_status; 
+
+                    HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", filter).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
                         var data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
-                        List<CardexResult> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<CardexResult>>(data);
+                        List<CardexResultNew> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<CardexResultNew>>(data);
                         return list;
                     }
                     else
@@ -1366,31 +1349,23 @@ namespace SRL
             public class ComplexByPostCodeResult
             {
 
+                public int error_code { get; set; }
+                public string error_message { get; set; }
                 public bool warehouse_server { get; set; }
-                public bool postal_code_server { get; set; }
+                public bool? postal_code_server { get; set; }
                 public string postal_code { get; set; }
                 public string province { get; set; }
                 public string village { get; set; }
                 public string township { get; set; }
                 public string city { get; set; }
-                public string full_address { get; set; }
+                public string address { get; set; }
 
                 public string name { get; set; }
                 public string id { get; set; }
                 public string org_creator_national_id { get; set; }
                 public string gov_wh_number { get; set; }
-
-                public Agent agent { get; set; }
-                public List<Owner> owners { get; set; }
                 public List<Warehouse> warehouses { get; set; }
 
-                public class Agent
-                {
-                    public string name { get; set; }
-                    public string id { get; set; }
-                    public string national_id { get; set; }
-                    public string mobile { get; set; }
-                }
 
 
                 public class Warehouse
@@ -1404,14 +1379,6 @@ namespace SRL
                     public List<string> activity_sector { get; set; }
                     public List<string> supervisor_org { get; set; }
                     public List<Contractor> contractors { get; set; }
-                }
-
-                public class Owner
-                {
-
-                    public string name { get; set; }
-                    public string national_id { get; set; }
-                    public string mobile { get; set; }
                 }
 
                 public class Contractor
@@ -1546,7 +1513,6 @@ namespace SRL
                 public string account_status { get; set; }
                 public string alivestatus { get; set; }
 
-                public string password { get; set; }
                 public string creator_national_id { get; set; }
                 public string lastname { get; set; }
                 public object SSNN_serial { get; set; }
@@ -1725,30 +1691,119 @@ namespace SRL
                 public string Location { get; set; }
             }
 
-            public class AnbarOperation
+
+
+            public class AdditionalData
+            {
+                public string good_owneragent { get; set; }
+                public string owner_phone { get; set; }
+                public double? bol_date { get; set; }
+                public string bol_tid { get; set; }
+                public string bol_series { get; set; }
+                public string bol_serial { get; set; }
+                public string draft_tid { get; set; }
+                public double? draft_date { get; set; }
+                public string org_creator_nationa_id { get; set; }
+                public string postal_code { get; set; }
+
+
+
+            }
+
+            public class ReceiptItem
+            {
+                public string good_id { get; set; }
+                public string good_desc { get; set; }
+                public string measurement_unit { get; set; }
+                public double count { get; set; }
+                public string production_type { get; set; }
+                public double? total_weight { get; set; }
+                public string package_type { get; set; }
+                public double? package_count { get; set; }
+                public double? item_value { get; set; }
+                public string location { get; set; }
+                public double? production_date { get; set; }
+                public double? expire_date { get; set; }
+                public string description { get; set; }
+                public List<object> receipt_shares = new List<object>();
+                public List<object> tracking_list = new List<object>();
+
+            }
+
+            public class SimpleReceipt
+            {
+                public string number { get; set; }
+                public string owner { get; set; }
+                public Nullable<double> rcp_date { get; set; }
+                public string warehouse_id { get; set; }
+                public string postal_code { get; set; }
+                public string contractor_national_id { get; set; }
+                public string vehicle_number { get; set; }
+                public string driver_national_id { get; set; }
+                public string driver { get; set; }
+                public AdditionalData additional_data { get; set; }
+                public List<ReceiptItem> receipt_items = new List<ReceiptItem>();
+                public string rcp_creator { get; set; }
+                public double? create_date { get; set; }
+                public string id { get; set; }
+                public string status { get; set; }//TEMPORARY,PERMANENT,CANCELED  
+                public string warehouse_parent_id { get; set; }// warehouse_id
+
+
+            }
+
+            public class SearchReceiptResult
+            {
+                public string number { get; set; }
+                public string owner { get; set; }
+                public string owner_name { get; set; }
+                public string rcp_date { get; set; }
+                public string warehouse_id { get; set; }
+                public string postal_code { get; set; }
+                public string contractor_national_id { get; set; }
+                public string vehicle_number { get; set; }
+                public string driver_national_id { get; set; }
+                public string driver { get; set; }
+                public AdditionalData additional_data { get; set; }
+                public List<ReceiptItem> receipt_items = new List<ReceiptItem>();
+                public string rcp_creator { get; set; }
+                public string create_date { get; set; }
+                public string id { get; set; }
+                public string status { get; set; }//TEMPORARY,PERMANENT,CANCELED  
+                public string warehouse_parent_id { get; set; }// warehouse_id
+
+
+            }
+
+
+            public class SimpleReceipt2
             {
 
-                public class AdditionalData
+                public string number { get; set; }
+                public string owner { get; set; }
+                public string rcp_date { get; set; }
+                public string warehouse_id { get; set; }
+                public string postal_code { get; set; }
+                public string contractor_national_id { get; set; }
+                public string vehicle_number { get; set; }
+                public string driver_national_id { get; set; }
+                public string driver { get; set; }
+                public List<ReceiptItem2> receipt_items = new List<ReceiptItem2>();
+                public string rcp_creator { get; set; }
+                public double? create_date { get; set; }
+                public string id { get; set; }
+                public string status { get; set; }//TEMPORARY,PERMANENT,CANCELED   
+
+                public string bol_date { get; set; }
+                public string bol_tid { get; set; }
+                public string bol_series { get; set; }
+                public string bol_serial { get; set; }
+                //  public string draft_tid { get; set; }
+                //   public double? draft_date { get; set; }
+
+
+                public class ReceiptItem2
                 {
-                    public string good_owneragent { get; set; }
-                    public string owner_phone { get; set; }
-                    public double? bol_date { get; set; }
-                    public string bol_tid { get; set; }
-                    public string bol_series { get; set; }
-                    public string bol_serial { get; set; }
-                    public string draft_tid { get; set; }
-                    public double? draft_date { get; set; }
-                    public string org_creator_nationa_id { get; set; }
-                    public string postal_code { get; set; }
-
-
-
-                }
-
-                public class ReceiptItem
-                {
-                    public string category_id { get; set; }
-                    public string taxonomy_id { get; set; }
                     public string good_id { get; set; }
                     public string good_desc { get; set; }
                     public string measurement_unit { get; set; }
@@ -1762,476 +1817,604 @@ namespace SRL
                     public double? production_date { get; set; }
                     public double? expire_date { get; set; }
                     public string description { get; set; }
-                    public List<object> receipt_shares = new List<object>();
-                    public List<object> tracking_list = new List<object>();
 
                 }
 
-                public class SimpleReceipt
+            }
+            public class SimpleGoodIssueNew
+            {
+                public string vehicle_number { get; set; }
+                public string number { get; set; }
+                public string warehouse_id { get; set; }
+                public string postal_code { get; set; }
+                public string owner { get; set; }
+                public string keeper { get; set; }
+                public string goods_issue_date { get; set; }
+                public string driver_national_id { get; set; }
+                public string driver { get; set; }
+                public List<GoodsIssueItem> goods_issue_items = new List<GoodsIssueItem>();
+                public string goods_issue_creator { get; set; }
+                public string create_date { get; set; }
+                public string id { get; set; }
+                public string contractor { get; set; }
+                public string status { get; set; }//TEMPORARY,PERMANENT,CANCELED 
+                public string warehouse_parent_id { get; set; }// warehouse_id
+
+
+            }
+            public class SimpleGoodIssue
+            {
+                public string vehicle_number { get; set; }
+                public string number { get; set; }
+                public string warehouse_id { get; set; }
+                public string postal_code { get; set; }
+                public string owner { get; set; }
+                public string keeper { get; set; }
+                public double goods_issue_date { get; set; }
+                public string driver_national_id { get; set; }
+                public string driver { get; set; }
+                public AdditionalData additional_data { get; set; } = new AdditionalData();
+                public List<GoodsIssueItem> goods_issue_items = new List<GoodsIssueItem>();
+                public string goods_issue_creator { get; set; }
+                public double? create_date { get; set; }
+                public string id { get; set; }
+                public string contractor { get; set; }
+                public string status { get; set; }//TEMPORARY,PERMANENT,CANCELED 
+                public string warehouse_parent_id { get; set; }// warehouse_id
+
+
+            }
+            public class SimpleGoodIssue2
+            {
+                public string vehicle_number { get; set; }
+                public string number { get; set; }
+                public string warehouse_id { get; set; }
+                public string postal_code { get; set; }
+                public string owner { get; set; }
+                public string goods_issue_date { get; set; }
+                public string driver_national_id { get; set; }
+                public string driver { get; set; }
+                public List<GoodsIssueItem2> goods_issue_items = new List<GoodsIssueItem2>();
+                public string goods_issue_creator { get; set; }
+                public double? create_date { get; set; }
+                public string id { get; set; }
+                public string contractor { get; set; }
+                public string contractor_national_id { get; set; }
+                public string status { get; set; }//TEMPORARY,PERMANENT,CANCELED 
+                public string warehouse_parent_id { get; set; }// warehouse_id
+
+                public class GoodsIssueItem2
                 {
-                    public string number { get; set; }
-                    public string owner_name { get; set; }
-                    public string owner { get; set; }
-                    public Nullable<double> rcp_date { get; set; }
-                    public string warehouse_id { get; set; }//virt_id
-                    public string postal_code { get; set; }
-                    public string doc_type { get; set; }
-                    public string vehicle_number { get; set; }
-                    public string driver_national_id { get; set; }
-                    public string driver { get; set; }
-                    public string insurance_name { get; set; }
-                    public double? insurance_date { get; set; }
-                    public string insurance_number { get; set; }
-                    public double? weight_impure { get; set; }
-                    public double? weight_pure { get; set; }
-                    public AdditionalData additional_data { get; set; }
-                    public List<ReceiptItem> receipt_items = new List<ReceiptItem>();
-                    public string rcp_creator { get; set; }
-                    public double? create_date { get; set; }
-                    public string id { get; set; }
-                    public string contractor { get; set; }
-                    public string status { get; set; }//TEMPORARY,PERMANENT,CANCELED  
-                    public string warehouse_parent_id { get; set; }// warehouse_id
-
-
-                }
-
-                public class SimpleGoodIssue
-                {
-                    public string doc_type { get; set; }
-                    public double? weight_pure { get; set; }
-                    public string vehicle_number { get; set; }
-                    public string number { get; set; }
-                    public string warehouse_id { get; set; }
-                    public string postal_code { get; set; }
-                    public string owner { get; set; }
-                    public string keeper { get; set; }
-                    public double goods_issue_date { get; set; }
-                    public double? weight_impure { get; set; }
-                    public string driver_national_id { get; set; }
-                    public string driver { get; set; }
-                    public string insurance_name { get; set; }
-                    public double? insurance_date { get; set; }
-                    public string insurance_number { get; set; }
-                    public string owner_name { get; set; }
-                    public AdditionalData additional_data { get; set; } = new AdditionalData();
-                    public List<GoodsIssueItem> goods_issue_items = new List<GoodsIssueItem>();
-                    public string goods_issue_creator { get; set; }
-                    public double? create_date { get; set; }
-                    public string id { get; set; }
-                    public string contractor { get; set; }
-                    public string status { get; set; }//TEMPORARY,PERMANENT,CANCELED 
-                    public string warehouse_parent_id { get; set; }// warehouse_id
-
-
-                }
-
-                public class GoodsIssueItem
-                {
-                    public string category_id { get; set; }
-                    public string taxonomy_id { get; set; }
                     public string good_id { get; set; }
                     public string good_desc { get; set; }
                     public string measurement_unit { get; set; }
                     public double count { get; set; }
                     public string production_type { get; set; }
-                    public double? total_weight { get; set; }
-                    public string package_type { get; set; }
-                    public double? package_count { get; set; }
-                    public double? production_date { get; set; }
                     public double? expire_date { get; set; }
                     public string location { get; set; }
 
                 }
 
 
-                public static bool Receipt(string api_key, string contractor_national_id, AnbarOperation.SimpleReceipt simple_receipt, string protocol, out string id, ref object input_sent)
+            }
+
+            public class GoodsIssueItem
+            {
+                public string good_id { get; set; }
+                public string good_desc { get; set; }
+                public string measurement_unit { get; set; }
+                public double count { get; set; }
+                public string production_type { get; set; }
+                public double? total_weight { get; set; }
+                public string package_type { get; set; }
+                public double? package_count { get; set; }
+                public double? production_date { get; set; }
+                public double? expire_date { get; set; }
+                public string location { get; set; }
+
+            }
+
+
+            public static bool Receipt(string api_key, string contractor_national_id, SimpleReceipt2 simple_receipt, string protocol, out string id, ref object input_sent)
+            {
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
+                input_sent = simple_receipt;
+
+                input_sent = SRL.Json.RemoveEmptyKeys(simple_receipt, true, true);
+                HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/receipt/simple", input_sent).Result;
+
+                id = response.Content.ReadAsStringAsync().Result;
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
                 {
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    input_sent = simple_receipt;
-
-                    input_sent = SRL.Json.RemoveEmptyKeys(simple_receipt, true, true);
-                    HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/receipt/simple", input_sent).Result;
-
-                    id = response.Content.ReadAsStringAsync().Result;
-                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                    {
-                        id = SRL.Json.IsJson(id) ? id : response.StatusCode.ToString();
-                        return false;
-                    }
-                    else
-                    {
-                        //ثبت سند بصورت موقت انجام شد
-                        Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(id);
-                        id = output["id"].ToString();
-                        int version = int.Parse(output["version"].ToString());
-                        return true;
-                    }
-
-
+                    id = SRL.Json.IsJson(id) ? id : response.StatusCode.ToString();
+                    return false;
                 }
-                public static bool ReceiptFinal(string api_key, string contractor_national_id, AnbarOperation.SimpleReceipt simple_receipt, string protocol, bool final_if_EXISTS, out string id, ref object input_sent)
+                else
                 {
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    input_sent = simple_receipt;
+                    //ثبت سند بصورت موقت انجام شد
+                    Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(id);
+                    id = output["id"].ToString();
+                    // int version = int.Parse(output["version"].ToString());
+                    return true;
+                }
 
-                    input_sent = SRL.Json.RemoveEmptyKeys(simple_receipt, true, true);
-                    HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/receipt/receipt_finalize", input_sent).Result;
 
-                    id = response.Content.ReadAsStringAsync().Result;
-                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+            }
+            public static bool ReceiptFinal(string api_key, string contractor_national_id, SimpleReceipt simple_receipt, string protocol, bool final_if_EXISTS, bool authToken, ref string id_if_exists, out string id, ref object input_sent)
+            {
+                return ReceiptFinalObjective(api_key, contractor_national_id, simple_receipt, protocol, final_if_EXISTS, authToken, ref id_if_exists, out id, ref input_sent);
+            }
+
+            public static bool ReceiptFinal(string api_key, string contractor_national_id, SimpleReceipt2 simple_receipt, string protocol, bool final_if_EXISTS, bool authToken, ref string id_if_exists, out string id, ref object input_sent)
+            {
+                return ReceiptFinalObjective(api_key, contractor_national_id, simple_receipt, protocol, final_if_EXISTS, authToken, ref id_if_exists, out id, ref input_sent);
+            }
+
+            public static bool ReceiptFinalObjective(string api_key, string contractor_national_id, dynamic simple_receipt, string protocol, bool final_if_EXISTS, bool authToken, ref string id_if_exists, out string id, ref object input_sent)
+            {
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+
+                string base_address = $"{protocol}://app.nwms.ir/v2/";
+                string url = "";
+                if (authToken)
+                {
+                    SRL.Web.AddAuthTokenToRestHeader(client, api_key);
+                    base_address += "admin/receipt/";
+                    url = "receipt_finalize";
+                }
+                else
+                {
+                    base_address += $"b2b-api-imp/";
+                    url = api_key + "/" + contractor_national_id + "/receipt/receipt_finalize";
+                }
+
+                client.BaseAddress = new Uri(base_address);
+                input_sent = simple_receipt;
+
+                input_sent = SRL.Json.RemoveEmptyKeys(simple_receipt, true, true);
+                HttpResponseMessage response = client.PostAsJsonAsync(url, input_sent).Result;
+
+                id = response.Content.ReadAsStringAsync().Result;
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    if (SRL.Json.IsJson(id))
                     {
-                        id = SRL.Json.IsJson(id) ? id : response.StatusCode.ToString();
-                        if (id == @"{""number"": ""EXISTS_BEFORE""}" && final_if_EXISTS)
+                        var json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(id);
+                        if (json.ContainsKey("number") ? json["number"] == "EXISTS_BEFORE" : false)
                         {
-                            var filters = new SearchFilters { number = simple_receipt.number };
-                            if (!string.IsNullOrWhiteSpace(simple_receipt.postal_code)) filters.postal_code = simple_receipt.postal_code;
-                            else if (!string.IsNullOrWhiteSpace(simple_receipt.warehouse_id)) filters.warehouse_id = simple_receipt.warehouse_id;
-                            var list = SearchReceipt(api_key, 0, 1, filters, protocol, ref id);
-                            if (list == null)
+                            id_if_exists = json["id"].ToString();
+                            if (final_if_EXISTS)
                             {
-                                return false;
-                            }
-                            else if (!list.Any())
-                            {
-                                return false;
-                            }
-                            else
-                            {
-                                string to_final = list.First().id;
-                                if (FinalizeReceipt(to_final, api_key, contractor_national_id, protocol, out id))
+                                var filters = new SearchFilters { number = simple_receipt.number };
+                                if (!string.IsNullOrWhiteSpace(simple_receipt.postal_code)) filters.postal_code = simple_receipt.postal_code;
+                                else if (!string.IsNullOrWhiteSpace(simple_receipt.warehouse_id)) filters.warehouse_id = simple_receipt.warehouse_id;
+                                var list = SearchReceipt(api_key, 0, 1, filters, protocol, ref id);
+                                if (list == null)
                                 {
-                                    id = to_final;
-                                    return true;
+                                    return false;
+                                }
+                                else if (!list.Any())
+                                {
+                                    return false;
                                 }
                                 else
                                 {
-                                    if (id == @"{""status"": ""already permanent""}")
+                                    string to_final = list.First().id;
+                                    if (FinalizeReceipt(to_final, api_key, contractor_national_id, protocol, out id))
                                     {
                                         id = to_final;
                                         return true;
                                     }
-                                    else return false;
+                                    else
+                                    {
+                                        if (id == @"{""status"": ""already permanent""}")
+                                        {
+                                            id = to_final;
+                                            return true;
+                                        }
+                                        else return false;
+                                    }
                                 }
-                            }
 
+                            }
+                            else return false;
                         }
                         else return false;
                     }
                     else
                     {
-                        //ثبت سند بصورت موقت انجام شد
-                        Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(id);
-                        id = output["id"].ToString();
-                        int version = int.Parse(output["version"].ToString());
-                        return true;
+                        id = response.StatusCode.ToString();
+                        return false;
                     }
+                }
+                else
+                {
+                    //ثبت سند بصورت موقت انجام شد
+                    Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(id);
+                    id = output["id"].ToString();
+                    return true;
+                }
+            }
 
+
+            public static bool HavaleFinal(string api_key, string contractor_national_id, SimpleGoodIssue simple_havale, string protocol, bool authToken, out string result, ref object sent_data)
+            {
+                return HavaleFinalObjective(api_key, contractor_national_id, simple_havale, protocol, authToken, out result, ref sent_data);
+
+            }
+
+            public static bool HavaleFinal(string api_key, string contractor_national_id, SimpleGoodIssue2 simple_havale, string protocol, bool authToken, out string result, ref object sent_data)
+            {
+                return HavaleFinalObjective(api_key, contractor_national_id, simple_havale, protocol, authToken, out result, ref sent_data);
+
+            }
+
+            public static bool HavaleFinalObjective(string api_key, string contractor_national_id, dynamic simple_havale, string protocol, bool authToken, out string result, ref object sent_data)
+            {
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+
+                string base_address = $"{protocol}://app.nwms.ir/v2/";
+                string url = "";
+                if (authToken)
+                {
+                    SRL.Web.AddAuthTokenToRestHeader(client, api_key);
+                    base_address += "admin/goods_issue/";
+                    url = "goods_issue_finalize";
+                }
+                else
+                {
+                    base_address += $"b2b-api-imp/";
+                    url = api_key + "/" + contractor_national_id + "/goods_issue/goods_issue_finalize";
+                }
+
+                client.BaseAddress = new Uri(base_address);
+
+
+                sent_data = simple_havale;
+                sent_data = SRL.Json.RemoveEmptyKeys(simple_havale, true, true);
+                HttpResponseMessage response = client.PostAsJsonAsync(url, sent_data).Result;
+
+                result = response.Content.ReadAsStringAsync().Result;
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                    return false;
+                }
+                else
+                {
+                    Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                    string id = output["id"].ToString();
+                    result = id;
+                    return true;
+                }
+
+            }
+
+
+
+
+            public static SimpleReceipt CreateSimpleReceipt(string postal_code, string warehouse_id)
+            {
+                SimpleReceipt simple_receipt = new SimpleReceipt();
+                //شماره داخلی رسید - این شماره توسط انبار وارد می شود و باید غیرتکراری باشد  *
+                simple_receipt.number = Guid.NewGuid().ToString();
+                //تاریخ صدور رسید از نوع epoch:*
+                //تاریخ صدور باید به میلادی تبدیل و سپس از 1970/1/1 کم شود و تعداد ثانیه ها بدست آید
+                simple_receipt.rcp_date = (new System.Globalization.PersianCalendar().ToDateTime(1396, 8, 15, 0, 0, 0, 0) - new DateTime(1970, 1, 1)).TotalSeconds;
+
+                //کد پستی انبار*
+                simple_receipt.postal_code = postal_code;
+
+
+                //در صورتی که برای کدملی و کدپستی بیش از یک انبار وجود داشته باشد باید متغیر زیر که کدانبار می باشد
+                //ارسال گردد. در صورتی که یک انبار ثبت شده است همان کدپستی کافی است
+                if (!string.IsNullOrWhiteSpace(warehouse_id)) simple_receipt.warehouse_id = warehouse_id;
+
+                //نوع رسید*
+                //0 برای بدون مرجع
+                //1 برای بارنامه
+                //2 برای حواله
+                //simple_receipt.doc_type = "0";
+                //کدملی راننده:*
+                simple_receipt.driver_national_id = "";
+                //نام و نام خانوادگی راننده:
+                simple_receipt.driver = "سهیل رمضان زاده";
+                //شماره پلاک*
+                simple_receipt.vehicle_number = "45ب874ایران65";
+
+                //کدملی یا شناسه ملی مالک کالا:*
+                simple_receipt.owner = "";
+                //نام کامل مالک کالا حقیقی یا حقوقی
+                //simple_receipt.owner_name = "سهیل رمضان زاده";
+
+
+
+                //اقلام کالایی رسید بصورت زیر بدست می آید
+                ReceiptItem receipt_item = new ReceiptItem();
+                //شناسه کالا:*
+                receipt_item.good_id = "0002";
+                //واحد اندازگیری:
+                // 0002	کیلوگرم	برای
+                //0003	مثقال	برای مثقال
+                //0004	لیتر	برای
+                //0005	تن	برای
+                //0001	برای عدد
+                //؟
+                receipt_item.measurement_unit = "0001";
+                //مقدار برحسب واحد اندازه گیری:*
+                receipt_item.count = 10;
+                //نوع بسته بندی:
+                //002	کارتن	
+                //001	پاکت	
+                //003	پالت	
+                //004	قراصه	
+                //005	گونی	
+                //006	بدون بسته بندی	
+                //007	فلّه
+                receipt_item.package_type = "002";
+                //تعداد بسته
+                receipt_item.package_count = 2;
+
+                receipt_item.location = "محل نگهداری";
+                //تاریخ تولید epoch:
+                receipt_item.production_date = 1324499400;
+                //تاریخ انقضا epoch:*
+                //باید بعد از زمان جاری و بعد از تاریخ تولید باشد
+                receipt_item.expire_date = 1684771400;
+                //وزن کل ردیف کالا به کیلوگرم
+                receipt_item.total_weight = 5000;
+
+                //می تواند چندین ریف کالایی در یک سند افزود
+                simple_receipt.receipt_items.Add(receipt_item);
+
+                //اطلاعات اختیاری:
+                AdditionalData additional_data = new AdditionalData();
+                additional_data.good_owneragent = "نام و نام خانوادگی نماینده مالک";
+                additional_data.owner_phone = "تلفن مالک یا نماینده مالک";
+
+                simple_receipt.additional_data = additional_data;
+
+                return simple_receipt;
+
+
+            }
+
+            public static bool FinalizeReceipt(string id, string api_key, string contractor_national_id, string protocol, out string result_final)
+            {
+
+                //جهت نهایی سازی سند:
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
+                HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/receipt/" + id + "/finalize", null).Result;
+
+                result_final = response_final.Content.ReadAsStringAsync().Result;
+                if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    result_final = SRL.Json.IsJson(result_final) ? result_final : response_final.StatusCode.ToString();
+                    return false;
+                }
+                else
+                {//در این صورت سند قطعی شده است
+                    Dictionary<string, object> output_final = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result_final);
+                    string status = output_final["status"].ToString(); // status == "PERMANENT"
+                    if (status == "PERMANENT") return true;
+                    else return false;
 
                 }
 
-                public static SimpleReceipt CreateSimpleReceipt(string postal_code, string warehouse_id)
+            }
+
+            private void btnHavale_Click(object sender, EventArgs e)
+            {//متد ثبت موقت حواله
+                HttpResponseMessage response = SendGoodIssueSimple("https");
+                string result = response.Content.ReadAsStringAsync().Result;
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
                 {
-                    AnbarOperation.SimpleReceipt simple_receipt = new AnbarOperation.SimpleReceipt();
-                    //شماره داخلی رسید - این شماره توسط انبار وارد می شود و باید غیرتکراری باشد  *
-                    simple_receipt.number = Guid.NewGuid().ToString();
-                    //تاریخ صدور رسید از نوع epoch:*
-                    //تاریخ صدور باید به میلادی تبدیل و سپس از 1970/1/1 کم شود و تعداد ثانیه ها بدست آید
-                    simple_receipt.rcp_date = (new System.Globalization.PersianCalendar().ToDateTime(1396, 8, 15, 0, 0, 0, 0) - new DateTime(1970, 1, 1)).TotalSeconds;
-
-                    //کد پستی انبار*
-                    simple_receipt.postal_code = postal_code;
-
-
-                    //در صورتی که برای کدملی و کدپستی بیش از یک انبار وجود داشته باشد باید متغیر زیر که کدانبار می باشد
-                    //ارسال گردد. در صورتی که یک انبار ثبت شده است همان کدپستی کافی است
-                    if (!string.IsNullOrWhiteSpace(warehouse_id)) simple_receipt.warehouse_id = warehouse_id;
-
-                    //نوع رسید*
-                    //0 برای بدون مرجع
-                    //1 برای بارنامه
-                    //2 برای حواله
-                    simple_receipt.doc_type = "0";
-                    //کدملی راننده:*
-                    simple_receipt.driver_national_id = "";
-                    //نام و نام خانوادگی راننده:
-                    simple_receipt.driver = "سهیل رمضان زاده";
-                    //شماره پلاک*
-                    simple_receipt.vehicle_number = "45ب874ایران65";
-                    //تاریخ صدور بیمه
-                    simple_receipt.insurance_date = 1640118600;
-                    //نام بیمه نامه
-                    simple_receipt.insurance_name = "بیمه آسیا";
-                    //شماره بیمه نامه
-                    simple_receipt.insurance_number = "1254";
-                    //کدملی یا شناسه ملی مالک کالا:*
-                    simple_receipt.owner = "";
-                    //نام کامل مالک کالا حقیقی یا حقوقی
-                    simple_receipt.owner_name = "سهیل رمضان زاده";
-                    //وزن بار بهمراه ناوگان- وزن ناخالص به کیلوگرم*
-                    simple_receipt.weight_impure = 2500;
-                    //وزن بار بدون ناوگان-وزن خالص به کیلوگرم*
-                    simple_receipt.weight_pure = 500;
-
-                    //اقلام کالایی رسید بصورت زیر بدست می آید
-                    AnbarOperation.ReceiptItem receipt_item = new AnbarOperation.ReceiptItem();
-                    //شناسه کالا:*
-                    receipt_item.good_id = "0002";
-                    //واحد اندازگیری:
-                    // 0002	کیلوگرم	برای
-                    //0003	مثقال	برای مثقال
-                    //0004	لیتر	برای
-                    //0005	تن	برای
-                    //0001	برای عدد
-                    //؟
-                    receipt_item.measurement_unit = "0001";
-                    //مقدار برحسب واحد اندازه گیری:*
-                    receipt_item.count = 10;
-                    //نوع بسته بندی:
-                    //002	کارتن	
-                    //001	پاکت	
-                    //003	پالت	
-                    //004	قراصه	
-                    //005	گونی	
-                    //006	بدون بسته بندی	
-                    //007	فلّه
-                    receipt_item.package_type = "002";
-                    //تعداد بسته
-                    receipt_item.package_count = 2;
-
-                    receipt_item.location = "محل نگهداری";
-                    //تاریخ تولید epoch:
-                    receipt_item.production_date = 1324499400;
-                    //تاریخ انقضا epoch:*
-                    //باید بعد از زمان جاری و بعد از تاریخ تولید باشد
-                    receipt_item.expire_date = 1684771400;
-                    //وزن کل ردیف کالا به کیلوگرم
-                    receipt_item.total_weight = 5000;
-
-                    //می تواند چندین ریف کالایی در یک سند افزود
-                    simple_receipt.receipt_items.Add(receipt_item);
-
-                    //اطلاعات اختیاری:
-                    AnbarOperation.AdditionalData additional_data = new AnbarOperation.AdditionalData();
-                    additional_data.good_owneragent = "نام و نام خانوادگی نماینده مالک";
-                    additional_data.owner_phone = "تلفن مالک یا نماینده مالک";
-
-                    simple_receipt.additional_data = additional_data;
-
-                    return simple_receipt;
-
+                    Console.WriteLine(result);
 
                 }
-
-                public static bool FinalizeReceipt(string id, string api_key, string contractor_national_id, string protocol, out string result_final)
+                else
                 {
-
+                    //ثبت سند بصورت موقت انجام شد
+                    Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                    string id = output["id"].ToString();
+                    int version = int.Parse(output["version"].ToString());
                     //جهت نهایی سازی سند:
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/receipt/" + id + "/finalize", null).Result;
-
-                    result_final = response_final.Content.ReadAsStringAsync().Result;
+                    HttpResponseMessage response_final = FinalizeGoodIsuue(id, "https");
+                    string result_final = response_final.Content.ReadAsStringAsync().Result;
                     if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
                     {
-                        result_final = SRL.Json.IsJson(result_final) ? result_final : response_final.StatusCode.ToString();
-                        return false;
+                        Console.WriteLine(result_final);
                     }
                     else
                     {//در این صورت سند قطعی شده است
                         Dictionary<string, object> output_final = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result_final);
                         string status = output_final["status"].ToString(); // status == "PERMANENT"
-                        if (status == "PERMANENT") return true;
-                        else return false;
-
                     }
-
                 }
 
-                private void btnHavale_Click(object sender, EventArgs e)
-                {//متد ثبت موقت حواله
-                    HttpResponseMessage response = SendGoodIssueSimple("https");
-                    string result = response.Content.ReadAsStringAsync().Result;
-                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                    {
-                        Console.WriteLine(result);
+            }
 
-                    }
-                    else
-                    {
-                        //ثبت سند بصورت موقت انجام شد
-                        Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                        string id = output["id"].ToString();
-                        int version = int.Parse(output["version"].ToString());
-                        //جهت نهایی سازی سند:
-                        HttpResponseMessage response_final = FinalizeGoodIsuue(id, "https");
-                        string result_final = response_final.Content.ReadAsStringAsync().Result;
-                        if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
-                        {
-                            Console.WriteLine(result_final);
-                        }
-                        else
-                        {//در این صورت سند قطعی شده است
-                            Dictionary<string, object> output_final = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result_final);
-                            string status = output_final["status"].ToString(); // status == "PERMANENT"
-                        }
-                    }
+            private HttpResponseMessage FinalizeGoodIsuue(string id, string protocol)
+            {
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
+                return client.PostAsync("2050130000/2050130000/goods_issue/" + id + "/finalize", null).Result;
+            }
 
-                }
+            private HttpResponseMessage SendGoodIssueSimple(string protocol)
+            {
+                SimpleGoodIssue simple_good_issue = new SimpleGoodIssue();
+                //شماره داخلی حواله- این شماره توسط انبار وارد می شود و باید غیرتکراری باشد  *
+                //simple_good_issue.number = Guid.NewGuid().ToString();
+                ////تاریخ صدور رسید از نوع epoch:*
+                ////تاریخ صدور باید به میلادی تبدیل و سپس از 1970/1/1 کم شود و تعداد ثانیه ها بدست آید
+                //simple_good_issue.goods_issue_date = (new System.Globalization.PersianCalendar().ToDateTime(1395, 12, 2, 14, 12, 01, 0) - new DateTime(1970, 1, 1)).TotalSeconds;
 
-                private HttpResponseMessage FinalizeGoodIsuue(string id, string protocol)
+                ////کد پستی انبار*
+                //simple_good_issue.postal_code = "5691947637";
+                ////در صورتی که برای کدملی و کدپستی بیش از یک انبار وجود داشته باشد باید متغیر زیر که کدانبار می باشد
+                ////ارسال گردد. در صورتی که یک انبار ثبت شده است همان کدپستی کافی است
+                ////simple_receipt.warehouse_id = "a8647d57dd784867ba5c172eb59156f4";
+
+                ////نوع رسید*
+                ////0 برای بدون مرجع
+                ////1 برای رسید
+                ////2 برای معرفی نامه
+                //simple_good_issue.doc_type = "0";
+                ////کدملی انباردار
+                //simple_good_issue.keeper = "";
+                ////کدملی راننده:*
+                //simple_good_issue.driver_national_id = "";
+                ////نام و نام خانوادگی راننده:
+                //simple_good_issue.driver = "سهیل رمضان زاده";
+                ////شماره پلاک*
+                //simple_good_issue.vehicle_number = "45ب874ایران65";
+                ////تاریخ صدور بیمه
+                //simple_good_issue.insurance_date = 1640118600;
+                ////نام بیمه نامه
+                //simple_good_issue.insurance_name = "بیمه آسیا";
+                ////شماره بیمه نامه
+                //simple_good_issue.insurance_number = "1254";
+                ////کدملی یا شناسه ملی مالک کالا:*
+                //simple_good_issue.owner = "2050130351";
+                ////نام کامل مالک کالا حقیقی یا حقوقی
+                //simple_good_issue.owner_name = "سهیل رمضان زاده";
+                ////وزن بار بهمراه ناوگان- وزن ناخالص به کیلوگرم*
+                //simple_good_issue.weight_impure = 2500;
+                ////وزن بار بدون ناوگان-وزن خالص به کیلوگرم*
+                //simple_good_issue.weight_pure = 500;
+
+                ////اقلام کالایی حواله بصورت زیر بدست می آید
+                //AnbarOperation.GoodsIssueItem good_issue_item = new GoodsIssueItem();
+                ////شناسه کالا:*
+                //good_issue_item.good_id = "0002";
+                ////واحد اندازگیری:
+                //// 0002	کیلوگرم	برای
+                ////0003	مثقال	برای مثقال
+                ////0004	لیتر	برای
+                ////0005	تن	برای
+                ////0001	برای عدد
+                ////؟
+                //good_issue_item.measurement_unit = "0001";
+                ////مقدار برحسب واحد اندازه گیری:*
+                //good_issue_item.count = 10;
+                ////نوع بسته بندی:
+                ////002	کارتن	
+                ////001	پاکت	
+                ////003	پالت	
+                ////004	قراصه	
+                ////005	گونی	
+                ////006	بدون بسته بندی	
+                ////007	فلّه
+                //good_issue_item.package_type = "002";
+                ////تعداد بسته
+                //good_issue_item.package_count = 2;
+
+                //good_issue_item.location = "محل نگهداری";
+                ////تاریخ تولید epoch:
+                //good_issue_item.production_date = 1324499400;
+                ////تاریخ انقضا epoch:*
+                ////باید بعد از زمان جاری و بعد از تاریخ تولید باشد
+                //good_issue_item.expire_date = 1684771400;
+                ////وزن کل ردیف کالا به کیلوگرم
+                //good_issue_item.total_weight = 5000;
+
+                ////می تواند چندین ریف کالایی در یک سند افزود
+                //simple_good_issue.goods_issue_items.Add(good_issue_item);
+
+
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
+                string input = JsonConvert.SerializeObject(simple_good_issue, Formatting.Indented);
+                return client.PostAsJsonAsync("2050130000/2050130000/goods_issue/simple", simple_good_issue).Result;
+            }
+
+            public static bool Havale(string api_key, string contractor_national_id, SimpleGoodIssue2 simple_havale, string protocol, out string result, ref object sent_data)
+            {
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
+                sent_data = simple_havale;
+                sent_data = SRL.Json.RemoveEmptyKeys(simple_havale, true, true);
+                HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/goods_issue/simple", sent_data).Result;
+
+                result = response.Content.ReadAsStringAsync().Result;
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
                 {
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    return client.PostAsync("2050130000/2050130000/goods_issue/" + id + "/finalize", null).Result;
+                    result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                    return false;
+                }
+                else
+                {
+                    //ثبت سند بصورت موقت انجام شد
+                    Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                    string id = output["id"].ToString();
+                    int version = int.Parse(output["version"].ToString());
+                    result = id;
+                    return true;
                 }
 
-                private HttpResponseMessage SendGoodIssueSimple(string protocol)
+            }
+
+            public static bool FinalizeGoodIssue(string id, string api_key, string contractor_national_id, string protocol, out string finalization)
+            {
+                //جهت نهایی سازی سند:
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
+                HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/goods_issue/" + id + "/finalize", null).Result;
+
+                finalization = response_final.Content.ReadAsStringAsync().Result;
+                if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
                 {
-                    AnbarOperation.SimpleGoodIssue simple_good_issue = new AnbarOperation.SimpleGoodIssue();
-                    //شماره داخلی حواله- این شماره توسط انبار وارد می شود و باید غیرتکراری باشد  *
-                    //simple_good_issue.number = Guid.NewGuid().ToString();
-                    ////تاریخ صدور رسید از نوع epoch:*
-                    ////تاریخ صدور باید به میلادی تبدیل و سپس از 1970/1/1 کم شود و تعداد ثانیه ها بدست آید
-                    //simple_good_issue.goods_issue_date = (new System.Globalization.PersianCalendar().ToDateTime(1395, 12, 2, 14, 12, 01, 0) - new DateTime(1970, 1, 1)).TotalSeconds;
-
-                    ////کد پستی انبار*
-                    //simple_good_issue.postal_code = "5691947637";
-                    ////در صورتی که برای کدملی و کدپستی بیش از یک انبار وجود داشته باشد باید متغیر زیر که کدانبار می باشد
-                    ////ارسال گردد. در صورتی که یک انبار ثبت شده است همان کدپستی کافی است
-                    ////simple_receipt.warehouse_id = "a8647d57dd784867ba5c172eb59156f4";
-
-                    ////نوع رسید*
-                    ////0 برای بدون مرجع
-                    ////1 برای رسید
-                    ////2 برای معرفی نامه
-                    //simple_good_issue.doc_type = "0";
-                    ////کدملی انباردار
-                    //simple_good_issue.keeper = "";
-                    ////کدملی راننده:*
-                    //simple_good_issue.driver_national_id = "";
-                    ////نام و نام خانوادگی راننده:
-                    //simple_good_issue.driver = "سهیل رمضان زاده";
-                    ////شماره پلاک*
-                    //simple_good_issue.vehicle_number = "45ب874ایران65";
-                    ////تاریخ صدور بیمه
-                    //simple_good_issue.insurance_date = 1640118600;
-                    ////نام بیمه نامه
-                    //simple_good_issue.insurance_name = "بیمه آسیا";
-                    ////شماره بیمه نامه
-                    //simple_good_issue.insurance_number = "1254";
-                    ////کدملی یا شناسه ملی مالک کالا:*
-                    //simple_good_issue.owner = "2050130351";
-                    ////نام کامل مالک کالا حقیقی یا حقوقی
-                    //simple_good_issue.owner_name = "سهیل رمضان زاده";
-                    ////وزن بار بهمراه ناوگان- وزن ناخالص به کیلوگرم*
-                    //simple_good_issue.weight_impure = 2500;
-                    ////وزن بار بدون ناوگان-وزن خالص به کیلوگرم*
-                    //simple_good_issue.weight_pure = 500;
-
-                    ////اقلام کالایی حواله بصورت زیر بدست می آید
-                    //AnbarOperation.GoodsIssueItem good_issue_item = new AnbarOperation.GoodsIssueItem();
-                    ////شناسه کالا:*
-                    //good_issue_item.good_id = "0002";
-                    ////واحد اندازگیری:
-                    //// 0002	کیلوگرم	برای
-                    ////0003	مثقال	برای مثقال
-                    ////0004	لیتر	برای
-                    ////0005	تن	برای
-                    ////0001	برای عدد
-                    ////؟
-                    //good_issue_item.measurement_unit = "0001";
-                    ////مقدار برحسب واحد اندازه گیری:*
-                    //good_issue_item.count = 10;
-                    ////نوع بسته بندی:
-                    ////002	کارتن	
-                    ////001	پاکت	
-                    ////003	پالت	
-                    ////004	قراصه	
-                    ////005	گونی	
-                    ////006	بدون بسته بندی	
-                    ////007	فلّه
-                    //good_issue_item.package_type = "002";
-                    ////تعداد بسته
-                    //good_issue_item.package_count = 2;
-
-                    //good_issue_item.location = "محل نگهداری";
-                    ////تاریخ تولید epoch:
-                    //good_issue_item.production_date = 1324499400;
-                    ////تاریخ انقضا epoch:*
-                    ////باید بعد از زمان جاری و بعد از تاریخ تولید باشد
-                    //good_issue_item.expire_date = 1684771400;
-                    ////وزن کل ردیف کالا به کیلوگرم
-                    //good_issue_item.total_weight = 5000;
-
-                    ////می تواند چندین ریف کالایی در یک سند افزود
-                    //simple_good_issue.goods_issue_items.Add(good_issue_item);
-
-
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    string input = JsonConvert.SerializeObject(simple_good_issue, Formatting.Indented);
-                    return client.PostAsJsonAsync("2050130000/2050130000/goods_issue/simple", simple_good_issue).Result;
+                    finalization = SRL.Json.IsJson(finalization) ? finalization : response_final.StatusCode.ToString();
+                    return false;
                 }
-
-                public static bool Havale(string api_key, string contractor_national_id, AnbarOperation.SimpleGoodIssue simple_havale, string protocol, out string result, ref object sent_data)
-                {
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    sent_data = simple_havale;
-                    sent_data = SRL.Json.RemoveEmptyKeys(simple_havale, true, true);
-                    HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/goods_issue/simple", sent_data).Result;
-
-                    result = response.Content.ReadAsStringAsync().Result;
-                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                    {
-                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
-                        return false;
-                    }
-                    else
-                    {
-                        //ثبت سند بصورت موقت انجام شد
-                        Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                        string id = output["id"].ToString();
-                        int version = int.Parse(output["version"].ToString());
-                        result = id;
-                        return true;
-                    }
+                else
+                {//در این صورت سند قطعی شده است
+                    Dictionary<string, object> output_final = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(finalization);
+                    string status = output_final["status"].ToString(); // status == "PERMANENT"
+                    if (status == "PERMANENT") return true;
+                    else return false;
 
                 }
+            }
 
-                public static bool HavaleFinal(string api_key, string contractor_national_id, AnbarOperation.SimpleGoodIssue simple_havale, string protocol, out string result, ref object sent_data)
+            public static bool ExchangePre(string api_key, string contractor_national_id, ExchangeInput deal, string protocol, out string result)
+            {
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
+                object input = deal;
+                if (string.IsNullOrWhiteSpace(deal.goods_issue.warehouse_id))
                 {
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    sent_data = simple_havale;
-                    sent_data = SRL.Json.RemoveEmptyKeys(simple_havale, true, true);
-                    HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/goods_issue/goods_issue_finalize", sent_data).Result;
-
-                    result = response.Content.ReadAsStringAsync().Result;
-                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                    {
-                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
-                        return false;
-                    }
-                    else
-                    {
-                        Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                        string id = output["id"].ToString();
-                        int version = int.Parse(output["version"].ToString());
-                        result = id;
-                        return true;
-                    }
-
+                    input = SRL.Json.RemoveEmptyKeys(deal, true, true);
                 }
-                public static bool FinalizeGoodIssue(string id, string api_key, string contractor_national_id, string protocol, out string finalization)
+                HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/exchange", input).Result;
+
+                result = response.Content.ReadAsStringAsync().Result;
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
                 {
-                    //جهت نهایی سازی سند:
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                    result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                    return false;
+                }
+                else
+                {
+                    //ثبت سند بصورت موقت انجام شد
+                    Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                    string id = output["op_id"].ToString();
+                    result = id;
+                    return true;
+                }
+            }
+
+            public static bool FinalizeExchange(string id, string api_key, string contractor_national_id, string protocol, out string finalization)
+            {
+                //جهت نهایی سازی سند:
+                using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
+                {
+
                     client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/goods_issue/" + id + "/finalize", null).Result;
+                    HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/exchange/" + id + "/finalize", null).Result;
 
                     finalization = response_final.Content.ReadAsStringAsync().Result;
                     if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
@@ -2240,355 +2423,364 @@ namespace SRL
                         return false;
                     }
                     else
-                    {//در این صورت سند قطعی شده است
-                        Dictionary<string, object> output_final = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(finalization);
-                        string status = output_final["status"].ToString(); // status == "PERMANENT"
-                        if (status == "PERMANENT") return true;
-                        else return false;
-
+                    {
+                        return true;
                     }
                 }
+            }
 
-                public static bool ExchangePre(string api_key, string contractor_national_id, AnbarOperation.ExchangeInput deal, string protocol, out string result)
+            public static bool CancelReceipt(string id, string api_key, string contractor, string protocol, bool authToken, out string result_final)
+            {
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                string base_address = $"{protocol}://app.nwms.ir/v2/";
+                string url = "";
+                if (authToken)
                 {
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    object input = deal;
-                    if (string.IsNullOrWhiteSpace(deal.goods_issue.warehouse_id))
-                    {
-                        input = SRL.Json.RemoveEmptyKeys(deal, true, true);
-                    }
-                    HttpResponseMessage response = client.PostAsJsonAsync(api_key + "/" + contractor_national_id + "/exchange", input).Result;
+                    SRL.Web.AddAuthTokenToRestHeader(client, api_key);
+                    base_address += "admin/receipt/";
+                    url = $"{id}/cancel";
+                }
+                else
+                {
+                    base_address += $"b2b-api-imp/";
+                    url = $"{api_key}/{contractor}/receipt/{id}/cancel";
+                }
+                client.BaseAddress = new Uri(base_address);
+                HttpResponseMessage response_final = client.PostAsync(url, null).Result;
+                result_final = response_final.Content.ReadAsStringAsync().Result;
+                if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    result_final = SRL.Json.IsJson(result_final) ? result_final : response_final.StatusCode.ToString();
+                    return false;
+                }
+                else return true;
+            }
 
+            public static bool CancelHavale(string id, string api_key, string contractor, string protocol, bool authToken, out string result_final)
+            {
+
+                System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+                string base_address = $"{protocol}://app.nwms.ir/v2/";
+                string url = "";
+                if (authToken)
+                {
+                    SRL.Web.AddAuthTokenToRestHeader(client, api_key);
+                    base_address += "admin/goods_issue/";
+                    url = $"{id}/cancel";
+                }
+                else
+                {
+                    base_address += $"b2b-api-imp/";
+                    url = $"{api_key}/{contractor}/goods_issue/{id}/cancel";
+                }
+
+                client.BaseAddress = new Uri(base_address);
+                HttpResponseMessage response_final = client.PostAsync(url, null).Result;
+
+                result_final = response_final.Content.ReadAsStringAsync().Result;
+                if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    result_final = SRL.Json.IsJson(result_final) ? result_final : response_final.StatusCode.ToString();
+                    return false;
+                }
+                else return true;
+            }
+
+            public static List<SimpleReceipt> GetReceiptList(string api_key, string contractor_national_id, int start, int size, SearchFilters _filters, string protocol, ref string result)
+            {
+                using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
+                {
+                    Dictionary<string, object> input = new Dictionary<string, object>();
+
+                    Dictionary<string, object> filter = new Dictionary<string, object>();
+                    input["filter"] = filter;
+                    if (_filters != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(_filters.number)) filter["number"] = _filters.number;
+                        if (!string.IsNullOrWhiteSpace(_filters.owner)) filter["owner"] = _filters.owner;
+                        if (_filters.status != OptStatus.None) filter["status"] = _filters.status.ToString();
+                        if (_filters.date_from != null || _filters.date_to != null)
+                        {
+                            Dictionary<string, object> date_filter = new Dictionary<string, object>();
+                            if (_filters.date_from != null) date_filter["$gte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_from);
+                            if (_filters.date_to != null) date_filter["$lte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_to);
+                            filter["rcp_date"] = date_filter;
+                        }
+                    }
+                    if (string.IsNullOrWhiteSpace(contractor_national_id))
+                    {
+                        string virt = "";
+                        List<ContractorListClass> cons = new List<ContractorListClass>();
+                        GetVirtualWarehouse(api_key, "", ref contractor_national_id, "", _filters.postal_code, protocol, out virt, ref cons);
+                    }
+
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/receipt/_search/");
+                    HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        return null;
+                    }
+                    else
+                    {
+                        string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+                        List<SimpleReceipt> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SimpleReceipt>>(data);
+                        return list;
+                    }
+                }
+            }
+            public static SimpleReceipt GetReceipt(string api_key, string id, string protocol, ref string result)
+            {
+                using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
+                {
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{api_key}/admin/receipt/");
+                    HttpResponseMessage response = client.GetAsync($"{id}").Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        return null;
+                    }
+                    else
+                    {
+                        SimpleReceipt recid = Newtonsoft.Json.JsonConvert.DeserializeObject<SimpleReceipt>(result);
+                        return recid;
+                    }
+                }
+            }
+            public static List<SearchReceiptResult> SearchReceipt(string api_key, int start, int size, SearchFilters _filters, string protocol, ref string result)
+            {
+                using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
+                {
+                    Dictionary<string, object> input = new Dictionary<string, object>();
+                    if (_filters != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(_filters.number)) input["number"] = _filters.number;
+                        if (!string.IsNullOrWhiteSpace(_filters.owner)) input["owner"] = _filters.owner;
+                        if (_filters.status != OptStatus.None) input["status"] = _filters.status.ToString();
+
+                        if (_filters.date_from != null || _filters.date_to != null)
+                        {
+                            if (_filters.date_from != null) input["rcp_date_from"] = SRL.Convertor.EnglishToPersianDate((DateTime)_filters.date_from);
+                            if (_filters.date_to != null) input["rcp_date_to"] = SRL.Convertor.EnglishToPersianDate((DateTime)_filters.date_to);
+
+                        }
+                        if (!string.IsNullOrWhiteSpace(_filters.postal_code)) input["postal_code"] = _filters.postal_code;
+                        if (!string.IsNullOrWhiteSpace(_filters.province)) input["province"] = _filters.province;
+                        if (!string.IsNullOrWhiteSpace(_filters.warehouse_id)) input["warehouse_id"] = _filters.warehouse_id;
+                    }
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{api_key}/admin/receipt/_search/");
+                    HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode != System.Net.HttpStatusCode.OK)
                     {
                         result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
-                        return false;
+                        return null;
                     }
                     else
                     {
-                        //ثبت سند بصورت موقت انجام شد
-                        Dictionary<string, object> output = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                        string id = output["op_id"].ToString();
-                        result = id;
-                        return true;
+                        string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+                        List<SearchReceiptResult> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchReceiptResult>>(data);
+                        return list;
                     }
-                }
-
-                public static bool FinalizeExchange(string id, string api_key, string contractor_national_id, string protocol, out string finalization)
-                {
-                    //جهت نهایی سازی سند:
-                    using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
-                    {
-
-                        client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                        HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor_national_id + "/exchange/" + id + "/finalize", null).Result;
-
-                        finalization = response_final.Content.ReadAsStringAsync().Result;
-                        if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
-                        {
-                            finalization = SRL.Json.IsJson(finalization) ? finalization : response_final.StatusCode.ToString();
-                            return false;
-                        }
-                        else
-                        {
-                            return true;
-                        }
-                    }
-                }
-
-                public static bool CancelReceipt(string id, string api_key, string contractor, string protocol, out string result_final)
-                {
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor + "/receipt/" + id + "/cancel", null).Result;
-
-                    result_final = response_final.Content.ReadAsStringAsync().Result;
-                    if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
-                    {
-                        result_final = SRL.Json.IsJson(result_final) ? result_final : response_final.StatusCode.ToString();
-                        return false;
-                    }
-                    else
-                    {
-                        Dictionary<string, object> output_final = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result_final);
-                        string status = output_final["status"].ToString();
-                        if (status == "CANCELED") return true;
-                        else return false;
-
-                    }
-                }
-
-                public static bool CancelHavale(string id, string api_key, string contractor, string protocol, out string result_final)
-                {
-                    System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/");
-                    HttpResponseMessage response_final = client.PostAsync(api_key + "/" + contractor + "/goods_issue/" + id + "/cancel", null).Result;
-
-                    result_final = response_final.Content.ReadAsStringAsync().Result;
-                    if (response_final.StatusCode != System.Net.HttpStatusCode.OK)
-                    {
-                        result_final = SRL.Json.IsJson(result_final) ? result_final : response_final.StatusCode.ToString();
-                        return false;
-                    }
-                    else
-                    {
-                        Dictionary<string, object> output_final = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result_final);
-                        string status = output_final["status"].ToString();
-                        if (status == "CANCELED") return true;
-                        else return false;
-
-                    }
-                }
-
-                public static List<SimpleReceipt> GetReceiptList(string api_key, string contractor_national_id, int start, int size, SearchFilters _filters, string protocol, ref string result)
-                {
-                    using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
-                    {
-                        Dictionary<string, object> input = new Dictionary<string, object>();
-
-                        Dictionary<string, object> filter = new Dictionary<string, object>();
-                        input["filter"] = filter;
-                        if (_filters != null)
-                        {
-                            if (!string.IsNullOrWhiteSpace(_filters.number)) filter["number"] = _filters.number;
-                            if (!string.IsNullOrWhiteSpace(_filters.owner)) filter["owner"] = _filters.owner;
-                            if (_filters.status != OptStatus.None) filter["status"] = _filters.status.ToString();
-                            if (_filters.date_from != null || _filters.date_to != null)
-                            {
-                                Dictionary<string, object> date_filter = new Dictionary<string, object>();
-                                if (_filters.date_from != null) date_filter["$gte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_from);
-                                if (_filters.date_to != null) date_filter["$lte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_to);
-                                filter["rcp_date"] = date_filter;
-                            }
-                        }
-                        if (string.IsNullOrWhiteSpace(contractor_national_id))
-                        {
-                            string virt = "";
-                            List<ContractorListClass> cons = new List<ContractorListClass>();
-                            GetVirtualWarehouse(api_key, "", ref contractor_national_id, "", _filters.postal_code, protocol, false, out virt, ref cons);
-                        }
-
-                        client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/receipt/_search/");
-                        HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
-                        result = response.Content.ReadAsStringAsync().Result;
-
-                        if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                        {
-                            result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
-                            return null;
-                        }
-                        else
-                        {
-                            string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
-                            List<SimpleReceipt> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SimpleReceipt>>(data);
-                            return list;
-                        }
-                    }
-                }
-                public static List<SimpleReceipt> SearchReceipt(string api_key, int start, int size, SearchFilters _filters, string protocol, ref string result)
-                {
-                    using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
-                    {
-                        Dictionary<string, object> input = new Dictionary<string, object>();
-
-                        Dictionary<string, object> filter = new Dictionary<string, object>();
-                        input["filter"] = filter;
-                        if (_filters != null)
-                        {
-                            if (!string.IsNullOrWhiteSpace(_filters.number)) filter["number"] = _filters.number;
-                            if (!string.IsNullOrWhiteSpace(_filters.owner)) filter["owner"] = _filters.owner;
-                            if (_filters.status != OptStatus.None) filter["status"] = _filters.status.ToString();
-
-                            if (_filters.date_from != null || _filters.date_to != null)
-                            {
-                                Dictionary<string, object> date_filter = new Dictionary<string, object>();
-                                if (_filters.date_from != null) date_filter["$gte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_from);
-                                if (_filters.date_to != null) date_filter["$lte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_to);
-                                filter["rcp_date"] = date_filter;
-                            }
-                            if (!string.IsNullOrWhiteSpace(_filters.postal_code)) filter["additional_data.postal_code"] = _filters.postal_code;
-                            if (!string.IsNullOrWhiteSpace(_filters.province)) filter["additional_data.province"] = _filters.province;
-                            if (!string.IsNullOrWhiteSpace(_filters.city)) filter["additional_data.city"] = _filters.city;
-                            if (!string.IsNullOrWhiteSpace(_filters.warehouse_id)) filter["warehouse_id"] = _filters.warehouse_id;
-                        }
-                        client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{api_key}/admin/receipt/_search/");
-                        HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
-                        result = response.Content.ReadAsStringAsync().Result;
-
-                        if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                        {
-                            result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
-                            return null;
-                        }
-                        else
-                        {
-                            string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
-                            List<SimpleReceipt> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SimpleReceipt>>(data);
-                            return list;
-                        }
-                    }
-                }
-
-                public static List<SimpleGoodIssue> GetHavaleList(string api_key, string contractor_national_id, int start, int size, SearchFilters _filters, string protocol, ref string result)
-                {
-                    using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
-                    {
-                        Dictionary<string, object> input = new Dictionary<string, object>();
-
-                        Dictionary<string, object> filter = new Dictionary<string, object>();
-                        input["filter"] = filter;
-                        if (_filters != null)
-                        {
-                            if (!string.IsNullOrWhiteSpace(_filters.number)) filter["number"] = _filters.number;
-                            if (!string.IsNullOrWhiteSpace(_filters.owner)) filter["owner"] = _filters.owner;
-                            if (_filters.status != OptStatus.None) filter["status"] = _filters.status.ToString();
-                            if (_filters.date_from != null || _filters.date_to != null)
-                            {
-                                Dictionary<string, object> date_filter = new Dictionary<string, object>();
-                                if (_filters.date_from != null) date_filter["$gte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_from);
-                                if (_filters.date_to != null) date_filter["$lte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_to);
-                                filter["goods_issue_date"] = date_filter;
-                            }
-                        }
-                        if (string.IsNullOrWhiteSpace(contractor_national_id))
-                        {
-                            string virt = "";
-                            List<ContractorListClass> cons = new List<ContractorListClass>();
-                            GetVirtualWarehouse(api_key, "", ref contractor_national_id, "", _filters.postal_code, protocol, false, out virt, ref cons);
-                        }
-                        client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/goods_issue/_search/");
-                        HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
-                        result = response.Content.ReadAsStringAsync().Result;
-                        if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                        {
-                            result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
-                            return null;
-                        }
-                        else
-                        {
-                            string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
-                            List<SimpleGoodIssue> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SimpleGoodIssue>>(data);
-                            return list;
-                        }
-                    }
-                }
-                public static List<SimpleGoodIssue> SearchHavale(string api_key, int start, int size, SearchFilters _filters, string protocol, ref string result)
-                {
-
-                    using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
-                    {
-                        Dictionary<string, object> input = new Dictionary<string, object>();
-
-                        Dictionary<string, object> filter = new Dictionary<string, object>();
-                        input["filter"] = filter;
-                        if (_filters != null)
-                        {
-                            if (!string.IsNullOrWhiteSpace(_filters.number)) filter["number"] = _filters.number;
-                            if (!string.IsNullOrWhiteSpace(_filters.owner)) filter["owner"] = _filters.owner;
-                            if (_filters.status != OptStatus.None) filter["status"] = _filters.status.ToString();
-                            if (_filters.date_from != null || _filters.date_to != null)
-                            {
-                                Dictionary<string, object> date_filter = new Dictionary<string, object>();
-                                if (_filters.date_from != null) date_filter["$gte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_from);
-                                if (_filters.date_to != null) date_filter["$lte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_to);
-                                filter["goods_issue_date"] = date_filter;
-                            }
-                            if (!string.IsNullOrWhiteSpace(_filters.postal_code)) filter["additional_data.postal_code"] = _filters.postal_code;
-                            if (!string.IsNullOrWhiteSpace(_filters.province)) filter["additional_data.province"] = _filters.province;
-                            if (!string.IsNullOrWhiteSpace(_filters.city)) filter["additional_data.city"] = _filters.city;
-                            if (!string.IsNullOrWhiteSpace(_filters.warehouse_id)) filter["warehouse_id"] = _filters.warehouse_id;
-                        }
-                        client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{api_key}/admin/goods_issue/_search/");
-                        HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
-                        result = response.Content.ReadAsStringAsync().Result;
-                        if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                        {
-                            result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
-                            return null;
-                        }
-                        else
-                        {
-                            string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
-                            List<SimpleGoodIssue> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SimpleGoodIssue>>(data);
-                            return list;
-                        }
-                    }
-                }
-                public class ExchangeInput
-                {
-                    public GoodsIssue goods_issue { get; set; } = new GoodsIssue();
-                    public Receipt receipt { get; set; } = new Receipt();
-
-                    public class GoodsIssueItem
-                    {
-                        public string good_id { get; set; }
-                        public string measurement_unit { get; set; }
-                        public int count { get; set; }
-                        public List<ReceiptShare> receipt_shares { get; set; } = new List<ReceiptShare>();
-
-                    }
-
-                    public class Receipt
-                    {
-                        public string number { get; set; }
-                        public string owner { get; set; }
-                        public double rcp_date { get; set; }
-                        [DefaultValue("")]
-                        public string warehouse_id { get; set; }
-                        public string postal_code { get; set; }
-                        public List<ReceiptItem> receipt_items { get; set; } = new List<ReceiptItem>();
-                    }
-                    public class GoodsIssue
-                    {
-                        public double goods_issue_date { get; set; }
-                        public string owner { get; set; }
-                        [DefaultValue("")]
-                        public string warehouse_id { get; set; }
-                        public string postal_code { get; set; }
-                        public List<GoodsIssueItem> goods_issue_items { get; set; } = new List<GoodsIssueItem>();
-                    }
-
-                    public class ReceiptItem
-                    {
-                        public string category_id { get; set; }
-                        public string taxonomy_id { get; set; }
-                        public string good_id { get; set; }
-                        public string measurement_unit { get; set; }
-                        public int count { get; set; }
-                        public int total_weight { get; set; }
-                        public string package_type { get; set; }
-                        public int package_count { get; set; }
-                        public int production_date { get; set; }
-                    }
-                    public class ReceiptShare
-                    {
-                        public int count { get; set; }
-                        public string receipt_item_id { get; set; }
-                    }
-                }
-                public enum OptStatus
-                {
-                    None,
-                    TEMPORARY,
-                    PERMANENT,
-                    CANCELED
-                }
-
-                public class SearchFilters
-                {
-                    public string number { get; set; }
-                    public string warehouse_id { get; set; }//virt_id
-                    public string postal_code { get; set; }
-                    public string province { get; set; }
-                    public string city { get; set; }
-                    public string owner { get; set; }
-                    public DateTime? date_from { get; set; } = null;
-                    public DateTime? date_to { get; set; } = null;
-                    public OptStatus status { get; set; } = OptStatus.None;
                 }
             }
+
+            public static List<SimpleGoodIssue> GetHavaleList(string api_key, string contractor_national_id, int start, int size, SearchFilters _filters, string protocol, ref string result)
+            {
+                using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
+                {
+                    Dictionary<string, object> input = new Dictionary<string, object>();
+
+                    Dictionary<string, object> filter = new Dictionary<string, object>();
+                    input["filter"] = filter;
+                    if (_filters != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(_filters.number)) filter["number"] = _filters.number;
+                        if (!string.IsNullOrWhiteSpace(_filters.owner)) filter["owner"] = _filters.owner;
+                        if (_filters.status != OptStatus.None) filter["status"] = _filters.status.ToString();
+                        if (_filters.date_from != null || _filters.date_to != null)
+                        {
+                            Dictionary<string, object> date_filter = new Dictionary<string, object>();
+                            if (_filters.date_from != null) date_filter["$gte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_from);
+                            if (_filters.date_to != null) date_filter["$lte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_to);
+                            filter["goods_issue_date"] = date_filter;
+                        }
+                    }
+                    if (string.IsNullOrWhiteSpace(contractor_national_id))
+                    {
+                        string virt = "";
+                        List<ContractorListClass> cons = new List<ContractorListClass>();
+                        GetVirtualWarehouse(api_key, "", ref contractor_national_id, "", _filters.postal_code, protocol, out virt, ref cons);
+                    }
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/{api_key}/{contractor_national_id}/goods_issue/_search/");
+                    HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        return null;
+                    }
+                    else
+                    {
+                        string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+                        List<SimpleGoodIssue> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SimpleGoodIssue>>(data);
+                        return list;
+                    }
+                }
+            }
+            public static List<SimpleGoodIssue> SearchHavale(string api_key, int start, int size, SearchFilters _filters, string protocol, ref string result)
+            {
+
+                using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
+                {
+                    Dictionary<string, object> input = new Dictionary<string, object>();
+
+                    Dictionary<string, object> filter = new Dictionary<string, object>();
+                    input["filter"] = filter;
+                    if (_filters != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(_filters.number)) filter["number"] = _filters.number;
+                        if (!string.IsNullOrWhiteSpace(_filters.owner)) filter["owner"] = _filters.owner;
+                        if (_filters.status != OptStatus.None) filter["status"] = _filters.status.ToString();
+                        if (_filters.date_from != null || _filters.date_to != null)
+                        {
+                            Dictionary<string, object> date_filter = new Dictionary<string, object>();
+                            if (_filters.date_from != null) date_filter["$gte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_from);
+                            if (_filters.date_to != null) date_filter["$lte"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_to);
+                            filter["goods_issue_date"] = date_filter;
+                        }
+                        if (!string.IsNullOrWhiteSpace(_filters.postal_code)) filter["additional_data.postal_code"] = _filters.postal_code;
+                        if (!string.IsNullOrWhiteSpace(_filters.province)) filter["additional_data.province"] = _filters.province;
+                        if (!string.IsNullOrWhiteSpace(_filters.city)) filter["additional_data.city"] = _filters.city;
+                        if (!string.IsNullOrWhiteSpace(_filters.warehouse_id)) filter["warehouse_id"] = _filters.warehouse_id;
+                    }
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{api_key}/admin/goods_issue/_search/");
+                    HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", input).Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        return null;
+                    }
+                    else
+                    {
+                        string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+                        List<SimpleGoodIssue> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SimpleGoodIssue>>(data);
+                        return list;
+                    }
+                }
+            }
+            public static List<SimpleGoodIssueNew> SearchHavaleNew(string api_key, int start, int size, SearchFilters _filters, string protocol, ref string result)
+            {
+
+                using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient())
+                {
+                    Dictionary<string, object> filter = new Dictionary<string, object>();
+                    if (_filters != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(_filters.number)) filter["number"] = _filters.number;
+                        if (!string.IsNullOrWhiteSpace(_filters.owner)) filter["owner"] = _filters.owner;
+                        if (_filters.status != OptStatus.None) filter["status"] = _filters.status.ToString();
+                        if (_filters.date_from != null) filter["create_date_from"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_from);
+                        if (_filters.date_to != null) filter["create_date_to"] = SRL.Convertor.EnglishDateTimeToUnixEpoch((DateTime)_filters.date_to);
+                        if (!string.IsNullOrWhiteSpace(_filters.postal_code)) filter["postal_code"] = _filters.postal_code;
+                        if (!string.IsNullOrWhiteSpace(_filters.province)) filter["province"] = _filters.province;
+                        if (!string.IsNullOrWhiteSpace(_filters.city)) filter["city"] = _filters.city;
+                        if (!string.IsNullOrWhiteSpace(_filters.warehouse_id)) filter["warehouse_id"] = _filters.warehouse_id;
+                    }
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{api_key}/admin/goods_issue/_search/");
+                    HttpResponseMessage response = client.PostAsJsonAsync($"{start}/{size}", filter).Result;
+                    result = response.Content.ReadAsStringAsync().Result;
+                    if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
+                        return null;
+                    }
+                    else
+                    {
+                        string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+                        List<SimpleGoodIssueNew> list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SimpleGoodIssueNew>>(data);
+                        return list;
+                    }
+                }
+            }
+            public class ExchangeInput
+            {
+                public GoodsIssue goods_issue { get; set; } = new GoodsIssue();
+                public Receipt receipt { get; set; } = new Receipt();
+
+                public class GoodsIssueItem
+                {
+                    public string good_id { get; set; }
+                    public string measurement_unit { get; set; }
+                    public int count { get; set; }
+                    public List<ReceiptShare> receipt_shares { get; set; } = new List<ReceiptShare>();
+
+                }
+
+                public class Receipt
+                {
+                    public string number { get; set; }
+                    public string owner { get; set; }
+                    public double rcp_date { get; set; }
+                    [DefaultValue("")]
+                    public string warehouse_id { get; set; }
+                    public string postal_code { get; set; }
+                    public List<ReceiptItem> receipt_items { get; set; } = new List<ReceiptItem>();
+                }
+                public class GoodsIssue
+                {
+                    public double goods_issue_date { get; set; }
+                    public string owner { get; set; }
+                    [DefaultValue("")]
+                    public string warehouse_id { get; set; }
+                    public string postal_code { get; set; }
+                    public List<GoodsIssueItem> goods_issue_items { get; set; } = new List<GoodsIssueItem>();
+                }
+
+                public class ReceiptItem
+                {
+                    public string category_id { get; set; }
+                    public string taxonomy_id { get; set; }
+                    public string good_id { get; set; }
+                    public string measurement_unit { get; set; }
+                    public int count { get; set; }
+                    public int total_weight { get; set; }
+                    public string package_type { get; set; }
+                    public int package_count { get; set; }
+                    public int production_date { get; set; }
+                }
+                public class ReceiptShare
+                {
+                    public int count { get; set; }
+                    public string receipt_item_id { get; set; }
+                }
+            }
+            public enum OptStatus
+            {
+                None,
+                TEMPORARY,
+                PERMANENT,
+                CANCELED
+            }
+
+            public class SearchFilters
+            {
+                public string number { get; set; }
+                public string warehouse_id { get; set; }//virt_id
+                public string postal_code { get; set; }
+                public string province { get; set; }
+                public string city { get; set; }
+                public string owner { get; set; }
+                public DateTime? date_from { get; set; } = null;
+                public DateTime? date_to { get; set; } = null;
+                public OptStatus status { get; set; } = OptStatus.None;
+            }
+
 
 
             public class ContractorListClass
@@ -2745,9 +2937,9 @@ namespace SRL
                 [Required]
                 public string type { get; set; }
                 [Required]
-                public List<string> activity_sector { get; set; } = new List<string>();
+                public string activity_sector { get; set; }
                 [Required]
-                public List<string> supervisor_org { get; set; } = new List<string>();
+                public string supervisor_org { get; set; }
                 [DefaultValue("")]
                 public string gov_warehouse_no { get; set; }
 
@@ -2755,7 +2947,15 @@ namespace SRL
                 public string birth_date { get; set; }
                 public bool on_error_data_send_sms_to_user { get; set; } = false;
 
+                [Required]
+                public string building_type { get; set; }
+                [Required]
+                public string goods_type { get; set; }
+                [Required]
+                public string contractor_expire_date { get; set; }
 
+                public string unit_type { get; set; }
+                public string unit_group { get; set; }
             }
             public class RegWarehouseOut
             {
@@ -2769,6 +2969,8 @@ namespace SRL
                 public string user_last_name { get; set; }
                 public string complex_id { get; set; }
                 public string company_name { get; set; }
+                public string error_message { get; set; }
+                public int error_code { get; set; }
             }
             public static RegWarehouseOut RegWarehouse(string api_key, RegWarehouseInput input_, string protocol, ref string result, ref object sent_data, string prefix = "app")
             {
@@ -3360,99 +3562,6 @@ namespace SRL
                 }
             }
 
-            public static bool SetOwners(string api_key, ComplexOwnerClass complexOwnerClass, string complex_id, string protocol, ref string result)
-            {
-                result = "";
-                if (complexOwnerClass.owners.Count < 1)
-                {
-                    return DeleteAllOwners(api_key, complex_id, protocol);
-                }
-
-                using (HttpClient client = new HttpClient())
-                {
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
-                    HttpResponseMessage response = client.PutAsJsonAsync(complex_id, complexOwnerClass).Result;
-                    result = response.Content.ReadAsStringAsync().Result;
-                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                    {
-                        return true;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-            }
-            public static bool SetOwnersByPostcode(string api_key, ComplexOwnerClass complexOwnerClass, string postal_code, string protocol, ref string result)
-            {
-                string com_id = SearchComplex(new Dictionary<string, object> { ["account_status"] = "1", ["postal_code"] = postal_code }, api_key, protocol).First().id;
-                return SetOwners(api_key, complexOwnerClass, com_id, protocol, ref result);
-            }
-            public static bool AddOwner(string api_key, string national_id, string name, ComplexByPostCodeResult complex, string protocol)
-            {
-                ComplexOwnerClass complexOwnerClass = new ComplexOwnerClass();
-                bool exist = false;
-                foreach (var item in complex.owners)
-                {
-                    exist = item.national_id == national_id;
-                    complexOwnerClass.owners.Add(new ComplexOwnerClass.person { national_id = item.national_id, name = item.name });
-                }
-                if (!exist)
-                {
-                    complexOwnerClass.owners.Add(new ComplexOwnerClass.person { national_id = national_id, name = name });
-                }
-                if (complex.agent != null)
-                {
-                    if (complex.agent.national_id != "0000000000")
-                    {
-                        complexOwnerClass.agent.national_id = complex.agent.national_id;
-                        complexOwnerClass.agent.name = complex.agent.name;
-                    }
-                    else
-                    {
-                        complexOwnerClass.agent.national_id = national_id;
-                        complexOwnerClass.agent.name = name;
-                    }
-                }
-                else
-                {
-                    complexOwnerClass.agent.national_id = national_id;
-                    complexOwnerClass.agent.name = name;
-                }
-
-                using (HttpClient client = new HttpClient())
-                {
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/complex/");
-                    HttpResponseMessage response = client.PutAsJsonAsync(complex.id, complexOwnerClass).Result;
-                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                    {
-                        return true;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-            }
-
-            public static bool SetContractors(string api_key, List<ContractorListClass> contractors, string warehouse_id, string protocol)
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
-                    Dictionary<string, object> input = new Dictionary<string, object>();
-                    input["contractors"] = contractors;
-                    HttpResponseMessage response = client.PutAsJsonAsync(warehouse_id, input).Result;
-                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                    {
-                        return true;
-
-                    }
-                    else return false;
-
-                }
-
-            }
             public static bool AddContractor(string api_key, string national_id, string name, GetWarehouseClass warehouse, string protocol)
             {
                 List<ContractorListClass> contractors = new List<ContractorListClass>();
@@ -3483,59 +3592,6 @@ namespace SRL
 
             }
 
-            public static NwmsResultType GetVirtualWarehouseWithPost(string api_key, string warehouse_id, string postal_code, string contractor_national_id, string contractor_co_national_id, string protocol, out string result)
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api-imp/" + api_key + "/" + contractor_national_id + "/virt_warehouse/");
-                    HttpResponseMessage response = client.GetAsync("_all").Result;
-                    result = response.Content.ReadAsStringAsync().Result;
-                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                    {
-                        string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
-                        List<VirtClass> virt = Newtonsoft.Json.JsonConvert.DeserializeObject<List<VirtClass>>(data);
-                        string contractor = string.IsNullOrWhiteSpace(contractor_co_national_id) ? contractor_national_id : contractor_co_national_id;
-                        if (string.IsNullOrWhiteSpace(warehouse_id))
-                        {
-                            var query = virt.Where(x => (x.postal_code == postal_code && x.contractor_national_id == contractor) && x.account_status == "1");
-                            if (query.Count() == 1)
-                            {
-                                result = query.First().id;
-                                return NwmsResultType.OK;
-                            }
-                            else if (query.Count() > 1)
-                            {
-                                return NwmsResultType.MultiFoundSetId;
-                            }
-                            else
-                            {
-                                return NwmsResultType.WarhouseNotFound;
-                            }
-                        }
-                        else
-                        {
-                            var query = virt.Where(x => ((x.warehouse_id == warehouse_id && x.contractor_national_id == contractor) || x.id == warehouse_id) && x.account_status == "1");
-                            if (query.Any())
-                            {
-                                result = query.First().id;
-                                return NwmsResultType.OK;
-                            }
-                            else
-                            {
-                                return NwmsResultType.WarhouseNotFound;
-                            }
-                        }
-
-                    }
-                    else
-                    {
-                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
-                        return NwmsResultType.HttpError;
-                    }
-
-                }
-
-            }
             public static List<VirtClass> GetAllVirtWarehouse(string api_key, string contractor_national_id, string protocol, ref string result)
             {
                 using (HttpClient client = new HttpClient())
@@ -3547,7 +3603,7 @@ namespace SRL
 
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
-                        string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+                        string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["warehouses"].ToString();
                         List<VirtClass> virts = Newtonsoft.Json.JsonConvert.DeserializeObject<List<VirtClass>>(data);
                         return virts;
                     }
@@ -3561,8 +3617,11 @@ namespace SRL
             }
 
             public static NwmsResultType GetVirtualWarehouse(string api_key, string warehouse_id, ref string contractor_national_id, string contractor_co_national_id,
-               string postal_code, string protocol, bool only_contractor, out string virt_result, ref List<ContractorListClass> contractors)
+               string postal_code, string protocol, out string virt_result, ref List<ContractorListClass> contractors)
             {
+                if (warehouse_id != null) if (warehouse_id?.Length == 32)
+                        warehouse_id = $"{warehouse_id.Substring(0, 8)}-{warehouse_id.Substring(8, 4)}-{warehouse_id.Substring(12, 4)}-{warehouse_id.Substring(16, 4)}-{warehouse_id.Substring(20, 12)}";
+
                 contractors = new List<ContractorListClass>();
                 //try get contractor_national_id if empty
 
@@ -3576,82 +3635,9 @@ namespace SRL
                         var anbar_co = GetCompanyInAnbar(api_key, contractor_national_id, contractor_co_national_id, protocol, out company, out virt_result);
                         if (anbar_co == GetCompanyInAnbarResult.OK || anbar_co == GetCompanyInAnbarResult.OKNotInCeos)
                         {
-                            contractor_national_id = company.ceo.national_id;
+                            contractor_national_id = company.ceo_national_id;
                         }
                     }
-                    //from warehouse_id
-                    if (only_contractor == false) if (string.IsNullOrWhiteSpace(contractor_national_id) && !string.IsNullOrWhiteSpace(warehouse_id))
-                        {
-                            var warehouse = GetWarehouse(api_key, warehouse_id, protocol, out virt_result);
-                            if (warehouse?.contractors?.Count() > 0)
-                            {
-
-                                if (warehouse.contractors.Select(x => x.national_id)?.Distinct()?.Count() == 1)
-                                {
-                                    contractor_national_id = warehouse.contractors.Select(x => x.national_id).First();
-                                    //if it is company
-                                    if (contractor_national_id.Length == 11)
-                                    {
-                                        var anbar_co = GetCompanyInAnbar(api_key, "", contractor_national_id, protocol, out company, out virt_result);
-                                        if (anbar_co == GetCompanyInAnbarResult.OK || anbar_co == GetCompanyInAnbarResult.OKNotInCeos)
-                                        {
-                                            contractor_national_id = company.ceo.national_id;
-                                        }
-                                        else
-                                        {
-                                            contractor_national_id = "";
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    foreach (var item in warehouse.contractors)
-                                    {
-                                        contractors.Add(new ContractorListClass { name = item.name, national_id = item.national_id });
-                                    }
-                                    virt_result = "";
-                                    return NwmsResultType.NotUniqueFound;
-                                }
-                            }
-                        }
-                    //from postal_code
-                    if (only_contractor == false) if (string.IsNullOrWhiteSpace(contractor_national_id) && !string.IsNullOrWhiteSpace(postal_code))
-                        {
-                            var complex = GetComplexByPostalCode(postal_code, api_key, true, protocol, out virt_result);
-                            if (complex != null)
-                            {
-                                if (complex?.warehouses?.Count < 1 || complex?.warehouses == null)
-                                {
-                                    return NwmsResultType.WarhouseNotFound;
-                                }
-                                else if (complex?.warehouses?.SelectMany(x => x.contractors)?.Select(y => y.national_id)?.Distinct()?.Count() == 1)
-                                {
-                                    contractor_national_id = complex.warehouses.SelectMany(x => x.contractors).Select(y => y.national_id).First();
-                                    //if it is company
-                                    if (contractor_national_id.Length == 11)
-                                    {
-                                        var anbar_co = GetCompanyInAnbar(api_key, "", contractor_national_id, protocol, out company, out virt_result);
-                                        if (anbar_co == GetCompanyInAnbarResult.OK || anbar_co == GetCompanyInAnbarResult.OKNotInCeos)
-                                        {
-                                            contractor_national_id = company.ceo.national_id;
-                                        }
-                                        else
-                                        {
-                                            contractor_national_id = "";
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    foreach (var item in complex?.warehouses?.SelectMany(x => x.contractors))
-                                    {
-                                        contractors.Add(new ContractorListClass { name = item.name, national_id = item.national_id });
-                                    }
-                                    virt_result = "";
-                                    return NwmsResultType.NotUniqueFound;
-                                }
-                            }
-                        }
                     if (string.IsNullOrWhiteSpace(contractor_national_id))
                     {
                         virt_result = "";
@@ -3671,15 +3657,25 @@ namespace SRL
                     }
                     else if (virt.Count == 1)
                     {
-                        virt_result = virt.First().id;
-                        return NwmsResultType.OK;
+                        var virt_first = virt.First();
+                        if (!string.IsNullOrWhiteSpace(postal_code) && postal_code != virt_first.postal_code)
+                        {
+                            virt_result = virt_first.postal_code;
+                            return NwmsResultType.PostCodeConflict;
+                        }
+                        else
+                        {
+                            virt_result = virt_first.id;
+                            return NwmsResultType.OK;
+
+                        }
                     }
                     else
                     {
                         string contractor = string.IsNullOrWhiteSpace(contractor_co_national_id) ? contractor_national_id : contractor_co_national_id;
                         if (!string.IsNullOrWhiteSpace(warehouse_id))
                         {
-                            var query_exact = virt.Where(x => ((x.warehouse_id == warehouse_id && x.contractor_national_id == contractor) || x.id == warehouse_id) && x.account_status != "3");
+                            var query_exact = virt.Where(x => (x.id == warehouse_id) && x.account_status != "3");
                             if (query_exact.Any())
                             {
                                 var first_wirt = query_exact.First();
@@ -3698,6 +3694,7 @@ namespace SRL
                 {
                     return NwmsResultType.HttpError;
                 }
+
 
             }
 
@@ -3817,6 +3814,7 @@ namespace SRL
                 using (HttpClient client = new HttpClient())
                 {
                     client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/");
+
                     HttpResponseMessage response = client.PutAsJsonAsync(warehouse_id, body_json).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -3863,12 +3861,11 @@ namespace SRL
                 }
             }
 
-            public static ShahkarOutputClass CallShahkar(string client_id, string national_id, string mobile, string basic_auth_value = "c2FuYXRfbWFkYW5fZ3NiOjcxc2RsdTU2")
+            public static ShahkarOutputClass CallShahkar(string client_id, string national_id, string mobile, string basic_auth_value)
             {
                 HttpClient client = new HttpClient();
                 client.BaseAddress = new Uri("https://sr-cix.ntsw.ir/");
                 ShahkarInputClass input = new ShahkarInputClass();
-
                 input.identificationNo = national_id;
                 input.identificationType = 0;
                 var date = DateTime.Now;
@@ -3876,7 +3873,6 @@ namespace SRL
                 string time = String.Format("{0:yyyy}{0:MM}{0:dd}{0:HH}{0:mm}{0:ss}{0:FFFFFF}", date);
 
                 string id = client_id + time;
-
                 input.requestId = id;
                 input.serviceNumber = mobile;
                 input.serviceType = 2;
@@ -3888,12 +3884,10 @@ namespace SRL
 
                 return output;
             }
-            
+
             public static List<SearchResult.SearchWarehouseResult> SearchWarehouse(Dictionary<string, object> input_json, string api_key, int? from_, int? size_, string protocol, ref string result)
             {
                 List<SearchResult.SearchWarehouseResult> warehouses = new List<SearchResult.SearchWarehouseResult>();
-                HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/_search/");
                 List<SearchResult.SearchWarehouseResult> warehouse_list = new List<SearchResult.SearchWarehouseResult>();
                 int from = 0;
                 if (from_ != null) from = (int)from_;
@@ -3901,8 +3895,8 @@ namespace SRL
                 {
                     int size = 10;
                     if (size_ != null) size = (int)size_;
-
-                    warehouse_list = SearchWarehouseBySize(api_key, from, size, input_json, protocol, ref result);
+                    int count = 0;
+                    warehouse_list = SearchWarehouseBySize(api_key, from, size, input_json, protocol, ref count, ref result);
                     if (warehouse_list == null) return null;
 
                     warehouses.AddRange(warehouse_list);
@@ -3912,14 +3906,14 @@ namespace SRL
                 return warehouses;
             }
 
-            public static List<SearchResult.SearchWarehouseResult> SearchWarehouseBySize(string api_key, int from, int size, Dictionary<string, object> input_json, string protocol, ref string result)
+            public static List<SearchResult.SearchWarehouseResult> SearchWarehouseBySize(string api_key, int from, int size, Dictionary<string, object> input_json, string protocol, ref int count, ref string result)
             {
                 List<SearchResult.SearchWarehouseResult> warehouses = new List<SearchResult.SearchWarehouseResult>();
                 HttpClient client = new HttpClient();
                 client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/warehouse/_search/");
 
-
                 HttpResponseMessage response = client.PostAsJsonAsync(from + $"/{size}", input_json).Result;
+
                 result = response.Content.ReadAsStringAsync().Result;
                 if (response.StatusCode != System.Net.HttpStatusCode.OK)
                 {
@@ -3929,8 +3923,9 @@ namespace SRL
 
                 Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
                 string data = result_json["data"].ToString();
+                count = int.Parse(result_json["count"].ToString());
                 warehouses = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SearchResult.SearchWarehouseResult>>(data);
-                 
+
                 return warehouses;
             }
             public static List<SearchResult.SearchGoodResult> SearchGoods(string api_key, string protocol, out string result, Dictionary<string, object> input_json = null)
@@ -3999,7 +3994,23 @@ namespace SRL
 
                 }
             }
+            public static SearchResult.SearchUserResult GetUser(string api_key, string national_id, string protocol, ref string error)
+            {
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                input["national_id"] = national_id;
+                List<SearchResult.SearchUserResult> list = SearchUserBySize(input, api_key, 0, 1, protocol, out error);
+                if (list == null)
+                {
+                    return null;
+                }
+                else if (list.Count == 0)
+                {
+                    error = @"""national_id"":""not_found""";
+                    return null;
+                }
+                else return list[0];
 
+            }
             public static List<SearchResult.SearchUserResult> GetAnbarUser(Dictionary<string, object> input_json, string api_key, string protocol, out string result)
             {
                 result = "";
@@ -4010,7 +4021,6 @@ namespace SRL
                 int from = 0;
                 do
                 {
-
                     HttpResponseMessage response = client.PostAsJsonAsync(from + "/10", input_json).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode != System.Net.HttpStatusCode.OK)
@@ -4031,37 +4041,26 @@ namespace SRL
 
                 return users;
             }
-            public static AnbarUserClass GetAnbarUserPass(string national_id, string api_key, string protocol, ref string result)
-            {
-                AnbarUserClass user = GetAnbarUser(national_id, api_key, protocol, out result);
-                if (user == null) return null;
 
-                string pass = GetUserPass(user.userid, api_key, protocol, ref result);
-                if (string.IsNullOrWhiteSpace(pass)) return null;
-                user.password = pass;
-                return user;
-            }
-
-            public static string GetUserPass(string userid, string api_key, string protocol, ref string result)
+            public static bool? CheckUserPass(string api_key, string national_id, string password, string protocol, ref string result)
             {
                 result = "";
                 using (HttpClient client = new HttpClient())
                 {
+                    Dictionary<string, object> input = new Dictionary<string, object>();
+                    input["national_id"] = national_id;
+                    input["password"] = password;
                     client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/users/");
-                    HttpResponseMessage response = client.GetAsync(userid).Result;
+                    HttpResponseMessage response = client.PostAsJsonAsync("check-password", input).Result;
                     result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
-                        var user = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
-                        if (user["account_status"].ToString() == "1")
+                        var rez = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                        if (rez.ContainsKey("ok"))
                         {
-                            return user["password"].ToString();
+                            return (bool)rez["ok"];
                         }
-                        else
-                        {
-                            result = @"{""user"":""not_active_found""}";
-                            return "";
-                        }
+                        else return null;
                     }
                     else
                     {
@@ -4082,7 +4081,7 @@ namespace SRL
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
                         AnbarUserClass user = Newtonsoft.Json.JsonConvert.DeserializeObject<AnbarUserClass>(result);
-                        if (user.account_status == "1")
+                        if (user.account_status != "3")
                         {
                             user_result.result_type = AnbarUserClassResult.ResultType.OK;
                             user_result.user = user;
@@ -4125,7 +4124,7 @@ namespace SRL
                 return user_list;
             }
 
-            public static List<SearchResult.SearchComplexResult> SearchComplex(Dictionary<string, object> input_json, string api_key, string protocol)
+            public static List<SearchResult.SearchComplexResult> SearchComplex(Dictionary<string, object> input_json, string api_key, string protocol, ref string result)
             {
                 List<SearchResult.SearchComplexResult> complexes = new List<SearchResult.SearchComplexResult>();
                 HttpClient client = new HttpClient();
@@ -4136,12 +4135,13 @@ namespace SRL
                 do
                 {
                     HttpResponseMessage response = client.PostAsJsonAsync(from + "/10", input_json).Result;
+                    result = response.Content.ReadAsStringAsync().Result;
                     if (response.StatusCode != System.Net.HttpStatusCode.OK)
                     {
+                        result = SRL.Json.IsJson(result) ? result : response.StatusCode.ToString();
                         return null;
                     }
 
-                    string result = response.Content.ReadAsStringAsync().Result;
                     Dictionary<string, object> result_json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
                     string data = result_json["data"].ToString();
                     if (string.IsNullOrWhiteSpace(data)) break;
@@ -4336,7 +4336,9 @@ namespace SRL
                     public string user_id { get; set; }
                     public string key { get; set; }
                     public string title { get; set; }
-                    public string user_national_id { get; set; }
+                    public string national_id { get; set; }
+                    public string account_status { get; set; }
+
                 }
             }
             public static List<BaseValueData> GetOrgCreators(string api_key, BaseValueTypes.Base base_type, string protocol, out string result)
@@ -4344,7 +4346,7 @@ namespace SRL
                 using (HttpClient client = new HttpClient())
                 {
                     List<BaseValueData> base_values = new List<BaseValueData>();
-                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{ api_key }/json_store/b2b_api_key/_search/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/{ api_key }/admin/json_store/b2b_api_key/_search/");
                     int from = 0;
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     Dictionary<string, object> filter = new Dictionary<string, object>();
@@ -4357,7 +4359,9 @@ namespace SRL
                         result = response.Content.ReadAsStringAsync().Result;
                         if (response.StatusCode == System.Net.HttpStatusCode.OK)
                         {
-                            string data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result)["data"].ToString();
+                            Dictionary<string, object> json = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(result);
+                            long count = (long)json["count"];
+                            string data = json["data"].ToString();
                             each_org_creators = Newtonsoft.Json.JsonConvert.DeserializeObject<List<OrgCreator>>(data);
                             all_org_creators.AddRange(each_org_creators);
                         }
@@ -4371,20 +4375,10 @@ namespace SRL
 
                     } while (each_org_creators.Count == 100);
 
-                    foreach (var item in all_org_creators)
+                    foreach (var item in all_org_creators.Where(x => x.json_data.account_status != "3"))
                     {
-                        AnbarUserClassResult user = GetUserData(item.json_data.user_id, api_key, protocol);
-                        switch (user.result_type)
-                        {
-                            case AnbarUserClassResult.ResultType.OK:
-                                base_values.Add(new BaseValueData { key = user.user.national_id, value = SRL.Json.ClassObjectToJson(new Dictionary<string, object> { ["title"] = item.json_data.title }) });
-                                break;
-                            case AnbarUserClassResult.ResultType.Error:
-                                result = user.error;
-                                return null;
-                            case AnbarUserClassResult.ResultType.Inactive:
-                                continue;
-                        }
+                        base_values.Add(new BaseValueData { key = item.json_data.national_id, value = SRL.Json.ClassObjectToJson(new Dictionary<string, object> { ["title"] = item.json_data.title }) });
+
                     }
                     return base_values;
                 }
@@ -4644,7 +4638,7 @@ namespace SRL
                 }
 
             }
-            public static ComplexByPostCodeResult GetComplexByPostalCode(string postal_code, string api_key, bool remove_unknown, string protocol, out string result, string prefix = "app")
+            public static ComplexByPostCodeResult GetComplexByPostalCode(string postal_code, string api_key, string protocol, out string result, string prefix = "app")
             {
                 ComplexByPostCodeResult estelam_result = new ComplexByPostCodeResult();
 
@@ -4657,26 +4651,6 @@ namespace SRL
                     if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
                         estelam_result = Newtonsoft.Json.JsonConvert.DeserializeObject<ComplexByPostCodeResult>(result);
-
-                        if (remove_unknown)
-                        {
-                            if (estelam_result.owners != null)
-                            {
-                                var un = estelam_result.owners.Where(x => x.national_id == "0000000000");
-                                if (un.Any())
-                                {
-                                    estelam_result.owners.Remove(un.First());
-                                }
-                            }
-                            if (estelam_result.agent != null)
-                            {
-                                if (estelam_result.agent.national_id == "0000000000")
-                                {
-                                    estelam_result.agent = null;
-                                }
-                            }
-                        }
-
                         return estelam_result;
                     }
                     else
@@ -4783,14 +4757,16 @@ namespace SRL
                 }
             }
 
-            public static bool CreateApiKey(string api_key, string userid, string title, string key, string protocol, out string result)
+            public static bool CreateApiKey(string api_key, string userid, string national_id, string account_status, string title, string key, string protocol, out string result)
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri($"{protocol}://admin-app.nwms.ir/v2/b2b-api/" + api_key + "/json_store/");
+                    client.BaseAddress = new Uri($"{protocol}://app.nwms.ir/v2/b2b-api/" + api_key + "/admin/json_store/");
                     Dictionary<string, object> input = new Dictionary<string, object>();
                     Dictionary<string, object> user_key = new Dictionary<string, object>();
                     user_key["user_id"] = userid;
+                    user_key["national_id"] = national_id;
+                    user_key["account_status"] = account_status;
                     user_key["title"] = title;
                     user_key["key"] = key;
                     input["json_data"] = user_key;
@@ -5008,6 +4984,125 @@ namespace SRL
                     SRL.AccessManagement.ExecuteToAccess(query, access_file_name);
                 }
             }
+            private static void StartEditWarehouseById(List<EditWarehouseByIdClass> list, BackgroundWorker worker, params object[] args)
+            {
+                string table_name = args[0].ToString();
+                string access_file_name = args[1].ToString();
+                string api_key = args[2].ToString();
+
+                foreach (var item in list)
+                {
+                    string query = "";
+
+
+                    string result = "";
+                    Dictionary<string, object> input = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(item.input);
+                    var is_ok = SRL.Projects.Nwms.PutWarehouse(api_key, item.warehouse_id, input, "https", out result);
+
+                    if (is_ok)
+                        query = $"update {table_name} set status='OK'  where warehouse_id='{item.warehouse_id}'";
+                    else
+                        query = $"update {table_name} set status='NOK', error='{result}'  where warehouse_id='{item.warehouse_id}'";
+
+                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name);
+                }
+            }
+            private static void StartTrashInactiveWarehouseByPostcodeNa(List<EditWarehouseByPostcodeNaClass> list, BackgroundWorker worker, params object[] args)
+            {
+                string table_name = args[0].ToString();
+                string access_file_name = args[1].ToString();
+                string api_key = args[2].ToString();
+
+                foreach (var item in list)
+                {
+                    string query = "";
+
+
+                    string result = "";
+                    Dictionary<string, object> search = new Dictionary<string, object>();
+                    search["postal_code"] = item.postal_code;
+                    search["person"] = SRL.Convertor.NationalId(item.national_id);
+                    search["account_status"] = "3";
+
+                    var warehouses = SRL.Projects.Nwms.SearchWarehouse(search, api_key, null, null, "https", ref result);
+
+                    if (warehouses == null)
+                    {
+                        query = $"update {table_name} set status='NOK', error='{result}'  where postal_code='{item.postal_code}' and national_id='{item.national_id}' ";
+                    }
+                    else if (warehouses.Count == 0)
+                    {
+                        query = $"update {table_name} set status='OK', error='واحدی با این مشخصات یافت نشد'  where postal_code='{item.postal_code}' and national_id='{item.national_id}' ";
+                    }
+                    else
+                    {
+                        var war = warehouses.First();
+
+                        Dictionary<string, object> input = new Dictionary<string, object>();
+                        input["account_status"] = "4";
+                        var is_ok = SRL.Projects.Nwms.PutWarehouse(api_key, war.id, input, "https", out result);
+
+                        if (is_ok)
+                            query = $"update {table_name} set status='OK'  where postal_code='{item.postal_code}' and national_id='{item.national_id}' ";
+                        else
+                            query = $"update {table_name} set status='NOK', error='{result}'  where postal_code='{item.postal_code}' and national_id='{item.national_id}' ";
+
+                    }
+                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name);
+                }
+            }
+            private static void StartEditWarehouseByPostcodeNa(List<EditWarehouseByPostcodeNaClass> list, BackgroundWorker worker, params object[] args)
+            {
+                string table_name = args[0].ToString();
+                string access_file_name = args[1].ToString();
+                string api_key = args[2].ToString();
+
+                foreach (var item in list)
+                {
+                    string query = "";
+
+
+                    string result = "";
+                    Dictionary<string, object> search = new Dictionary<string, object>();
+                    search["postal_code"] = item.postal_code;
+                    search["person"] = item.national_id;
+
+                    var warehouses = SRL.Projects.Nwms.SearchWarehouse(search, api_key, null, null, "https", ref result);
+
+                    if (warehouses == null)
+                    {
+                        query = $"update {table_name} set status='NOK', error='{result}'  where postal_code='{item.postal_code}' and national_id='{item.national_id}' ";
+                    }
+                    else if (warehouses.Count == 0)
+                    {
+                        query = $"update {table_name} set status='OK', error='واحدی با این مشخصات یافت نشد'  where postal_code='{item.postal_code}' and national_id='{item.national_id}' ";
+                    }
+                    else
+                    {
+                        foreach (var war in warehouses)
+                        {
+                            if (warehouses.Where(x => x.postal_code == war.postal_code && x.contractor_national_id == war.contractor_national_id && x.account_status != "4").Count() == 0)
+                            {
+                                query = $"update {table_name} set status='OK', error='واحد حذف شده است'  where postal_code='{item.postal_code}' and national_id='{item.national_id}' ";
+                            }
+                            else
+                            {
+                                if (war.account_status == "4") continue;
+                                Dictionary<string, object> input = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(item.input);
+                                var is_ok = SRL.Projects.Nwms.PutWarehouse(api_key, war.id, input, "https", out result);
+
+                                if (is_ok)
+                                    query = $"update {table_name} set status='OK'  where postal_code='{item.postal_code}' and national_id='{item.national_id}' ";
+                                else
+                                    query = $"update {table_name} set status='NOK', error='{result}'  where postal_code='{item.postal_code}' and national_id='{item.national_id}' ";
+                            }
+                        }
+
+
+                    }
+                    SRL.AccessManagement.ExecuteToAccess(query, access_file_name);
+                }
+            }
 
             public static void DeleteComplexByIdGroup(string api_key, string access_file_name, string table_name, int paralel, Action<Exception> call_error, Action final_call_back)
             {
@@ -5023,9 +5118,101 @@ namespace SRL
                 SRL.ActionManagement.MethodCall.Parallel.ParallelCall<DeleteComplexByIdClass>(list, paralel.ToString(),
                     StartDeleteComplexById, null, call_error, final_call_back, null, table_name, access_file_name, api_key);
             }
+            public static void TrashInactiveWarehouseByPostcodeNa(string api_key, string access_file_name, string table_name, int paralel, Action<Exception> call_error, Action final_call_back)
+            {
+                SRL.AccessManagement.AddColumnToAccess("error", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+                SRL.AccessManagement.AddColumnToAccess("status", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+
+                DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
+                var list_ = SRL.Convertor.ConvertDataTableToList<EditWarehouseByPostcodeNaClass>(dt);
+                var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
+
+
+                SRL.ActionManagement.MethodCall.Parallel.ParallelCall<EditWarehouseByPostcodeNaClass>(list, paralel.ToString(),
+                    StartTrashInactiveWarehouseByPostcodeNa, null, call_error, final_call_back, null, table_name, access_file_name, api_key);
+
+
+            }
+            public static void EditWarehouseByPostcodeNa(string api_key, string access_file_name, string table_name, int paralel, Action<Exception> call_error, Action final_call_back)
+            {
+                SRL.AccessManagement.AddColumnToAccess("error", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+                SRL.AccessManagement.AddColumnToAccess("status", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+
+                DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
+                var list_ = SRL.Convertor.ConvertDataTableToList<EditWarehouseByPostcodeNaClass>(dt);
+                var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
+
+
+                SRL.ActionManagement.MethodCall.Parallel.ParallelCall<EditWarehouseByPostcodeNaClass>(list, paralel.ToString(),
+                    StartEditWarehouseByPostcodeNa, null, call_error, final_call_back, null, table_name, access_file_name, api_key);
+
+
+            }
+
+            public static void CheckShahkarByAccess(string file_full_path, string table_name, string api_key, string client, string basic, Action callback, Action<Exception> errorCall)
+            {
+                SRL.AccessManagement.AddColumnToAccess("status", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
+                SRL.AccessManagement.AddColumnToAccess("error", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
+                SRL.AccessManagement.AddColumnToAccess("is_match", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
+                SRL.AccessManagement.AddColumnToAccess("result", "table1", SRL.AccessManagement.AccessDataType.nvarcharmax, file_full_path);
+
+                DataTable table = SRL.AccessManagement.GetDataTableFromAccess(file_full_path, table_name);
+
+                List<CheckShahkarClass> list = SRL.Convertor.ConvertDataTableToList<CheckShahkarClass>(table).Where(x => x.status != "OK").ToList();
+
+                foreach (var item in list)
+                {
+                    var rez = CallShahkar(client, item.national_id, item.mobile, basic);
+                    string sql = "";
+                    if (rez.response == 200)
+                    {
+                        sql = $"update table1 set status='OK', is_match='true' where ID={item.ID}";
+                    }
+                    else if (rez.response == 600)
+                    {
+                        sql = $"update table1 set status='OK', is_match='false' where ID={item.ID}";
+
+                    }
+                    else
+                    {
+                        sql = $"update table1 set status='OK',result='{rez.result}',  error='{rez.response}-{rez.comment}' where ID={item.ID}";
+                    }
+
+                    SRL.AccessManagement.ExecuteToAccess(sql, file_full_path);
+
+                }
+
+
+            }
+            public class CheckShahkarClass
+            {
+                public long ID { get; set; }
+                public string mobile { get; set; }
+                public string national_id { get; set; }
+                public string error { get; set; }
+                public string status { get; set; }
+                public string is_match { get; set; }
+                public string result { get; set; }
+            }
+
             public class DeleteComplexByIdClass
             {
                 public string complex_id { get; set; }
+                public string error { get; set; }
+                public string status { get; set; }
+            }
+            public class EditWarehouseByIdClass
+            {
+                public string warehouse_id { get; set; }
+                public string input { get; set; }
+                public string error { get; set; }
+                public string status { get; set; }
+            }
+            public class EditWarehouseByPostcodeNaClass
+            {
+                public string postal_code { get; set; }
+                public string national_id { get; set; }
+                public string input { get; set; }
                 public string error { get; set; }
                 public string status { get; set; }
             }
@@ -5054,64 +5241,26 @@ namespace SRL
                 public string province { get; set; }
                 public string township { get; set; }
                 public string city { get; set; }
-
+                public string account_status { get; set; }
             }
-
-            public class CardexResult
+            
+            public class CardexResultNew
             {
                 public string user_id { get; set; }
-                public string data_owner { get; set; }
                 public string good_id { get; set; }
                 public string good_desc { get; set; }
-                public Creator creator { get; set; }
                 public double? removable_count { get; set; }
-                public double? total_count { get; set; }
                 public string warehouse_id { get; set; }
-                public double? modify_date { get; set; }
-                public AdditionalData additional_data { get; set; }
-                public double? create_date { get; set; }
+                public string modify_date { get; set; }
+                public string create_date { get; set; }
                 public object modifier { get; set; }
                 public string id { get; set; }
                 public string production_type { get; set; }
-
-                public class AdditionalData
-                {
-                    public object province { get; set; }
-                    public object city { get; set; }
-                    public object township { get; set; }
-                    public string postal_code { get; set; }
-                    public string org_creator_nationa_id { get; set; }
-                }
-
-                public class Creator
-                {
-                    public object create_date { get; set; }
-                    public string national_id { get; set; }
-                    public string modifier_national_id { get; set; }
-                    public object phonenumber { get; set; }
-                    public string account_status { get; set; }
-                    public string alivestatus { get; set; }
-                    public object password { get; set; }
-                    public string creator_national_id { get; set; }
-                    public string lastname { get; set; }
-                    public object SSNN_serial { get; set; }
-                    public string email { get; set; }
-                    public object files { get; set; }
-                    public string firstname { get; set; }
-                    public string using_two_phase_password { get; set; }
-                    public string SSNN_no { get; set; }
-                    public object address { get; set; }
-                    public string postalcode { get; set; }
-                    public object org_creator_national_id { get; set; }
-                    public string birthepoch { get; set; }
-                    public object user_national_card_image { get; set; }
-                    public object user_profile_image { get; set; }
-                    public string mobile { get; set; }
-                    public string gender { get; set; }
-                    public string userid { get; set; }
-                    public string fathername { get; set; }
-                }
-
+                public string account_status { get; set; }
+                public object province { get; set; }
+                public object city { get; set; }
+                public object township { get; set; }
+                public string postal_code { get; set; }
             }
         }
 
