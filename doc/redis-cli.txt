@@ -1,0 +1,23 @@
+﻿1-to use redis first install Redis-x64-3.2.100.msi with default values and port.enable add to environment.
+2-redis service will start in widows service
+3- write "redis-cli" in cmd to go to redis db. default db (db 0) will open. "connect ip port" to connect another redis
+4-redis ip and port will be shown. write "ping" to get pong if all thing OK
+5-set key value. get key.type key."hgetall key" if type is hash. del key."hget key data" for hash data part
+6- "client list" 
+7-config get databases."info keyspaces" to list dbs."select 0"  "select 2"   to select a db
+8- "keys *" show all keys.
+9-in VS: install packages: Microsoft.Extensions.Caching.Redis   Microsoft.Extensions.Caching.Abstractions
+10-add this code to ConfigureServices method in Startup class:
+services.AddDistributedRedisCache(option =>
+            {
+                option.Configuration = "127.0.0.1";
+              //  option.InstanceName = "master";
+            });
+11- in controller class add:
+private readonly IDistributedCache _distributedCache;
+12- add "IDistributedCache distributedCache" to  controller constructor method parameter input and this to method:
+_distributedCache = distributedCache;
+13- use redis db in a method:
+_distributedCache.SetString("test1","value1");
+ var val = _distributedCache.GetString("test1");
+14-

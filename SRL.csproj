@@ -307,6 +307,7 @@
     <Content Include="content\select2-bootstrap.min.css" />
     <Content Include="content\select2.min.css" />
     <Content Include="content\SRL.css" />
+    <None Include="doc\redis-cli.txt" />
     <Content Include="html\leaflet.html" />
     <Content Include="my_reference\EntityFramework.dll" />
     <Content Include="my_reference\ExcelLibrary.dll" />

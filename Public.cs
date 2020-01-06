@@ -1583,13 +1583,13 @@ namespace SRL
 
                     else
                     {
-                        if (call_back != null) SRL.ActionManagement.MethodCall.MethodInvoker(call_back);
+                        if (call_back != null) MethodInvoker(call_back);
                     }
                 };
 
                 bg.DoWork += (s, e) =>
                 {
-                    SRL.ActionManagement.MethodCall.MethodInvoker(function);
+                    MethodInvoker(function);
                 };
 
                 bg.RunWorkerAsync();
@@ -1629,17 +1629,17 @@ namespace SRL
                 bool error_called = false;
                 System.Threading.ThreadStart starter = new System.Threading.ThreadStart(() =>
                 {
-                    if(error_call !=null)
+                    if (error_call != null)
                     {
                         try
-                        { 
+                        {
                             act();
                         }
                         catch (Exception ex)
                         {
                             error_called = true;
                             error_call(ex);
-                        } 
+                        }
                     }
                     else
                     {
@@ -1649,7 +1649,7 @@ namespace SRL
                     );
                 starter += () =>
                 {
-                    if (call_back != null && error_called==false)
+                    if (call_back != null && error_called == false)
                     {
                         call_back();
                     }
@@ -1768,7 +1768,7 @@ namespace SRL
             DescriptionAttribute[] attributes = (DescriptionAttribute[])enum_value.GetType().GetField(enum_value.ToString()).GetCustomAttributes(typeof(DescriptionAttribute), false);
             return attributes.Length > 0 ? attributes[0].Description : string.Empty;
         }
-        public static IEnumerable<string> CheckValidationAttribute(object o)
+        public static IEnumerable<string> CheckValidationAttribute(object o, List<string> ignore_fields=null)
         {
             List<string> errors = new List<string>();
             IEnumerable<PropertyDescriptor> prop_des = TypeDescriptor.GetProperties(o.GetType()).Cast<PropertyDescriptor>();
@@ -1784,6 +1784,10 @@ namespace SRL
                 }).ToList();
             foreach (var item in validations)
             {
+                if(ignore_fields!=null)
+                {
+                    if (ignore_fields.Contains(item.Name)) continue;
+                }
                 string error = item.ErrorMessage;
                 string attr_name = (item as dynamic).TypeId.Name;
                 if (error != null)
@@ -3362,6 +3366,42 @@ namespace SRL
 
         public class DataGridViewTool
         {
+            public static void CellButtonClick(BunifuCustomDataGrid dgv, Action<object, DataGridViewCellEventArgs> action)
+            {
+                dgv.CellContentClick += (sender, cellevent) =>
+                {
+                    var senderGrid = (DataGridView)sender;
+
+                    if (senderGrid.Columns[cellevent.ColumnIndex] is DataGridViewButtonColumn &&
+                        cellevent.RowIndex >= 0)
+                    {
+                        action(sender, cellevent);
+                    }
+                };
+            }
+
+            public static void DeleteDataSourceItem<SourceType>(DataGridView dgv, int row_index, string key)
+            {
+                List<SourceType> list = new List<SourceType>();
+                List<SourceType> new_list = new List<SourceType>();
+                BindingSource source = new BindingSource();
+
+                if (dgv.DataSource != null)
+                {
+                    source = (BindingSource)dgv.DataSource;
+                    list = (List<SourceType>)source.DataSource;
+
+                    foreach (var new_item in list)
+                    {
+                        if (list.IndexOf(new_item) == row_index) continue;
+                        new_list.Add(new_item);
+                    }
+                    source.DataSource = new_list;
+                    dgv.DataSource = source;
+                    source.ResetBindings(false);
+                }
+            }
+
             public static List<T> GetColumnList<T>(DataGridViewSelectedRowCollection dgv_rows, string column_name)
             {
                 List<T> list = new List<T>();
@@ -3372,6 +3412,39 @@ namespace SRL
                 }
                 return list;
             }
+
+            public static List<T> GetDataSourceBinded<T>(DataGridView dgv)
+            {
+                if (dgv.RowCount > 0)
+                {
+                    BindingSource source = (BindingSource)dgv.DataSource;
+                    List<T> list = (List<T>)source.DataSource;
+                    return list;
+                }
+                else
+                {
+                    return null;
+                }
+
+            }
+
+
+            public static void InsertDataSourceItem<SourceType>(DataGridView dgv, SourceType item)
+            {
+                List<SourceType> list = new List<SourceType>();
+                BindingSource source = new BindingSource();
+
+                if (dgv.DataSource != null)
+                {
+                    source = (BindingSource)dgv.DataSource;
+                    list = (List<SourceType>)source.DataSource;
+                }
+                list.Add(item);
+                source.DataSource = list;
+                dgv.DataSource = source;
+                source.ResetBindings(false);
+            }
+
             public class DataGridViewWithPaging
             {
 
@@ -3428,9 +3501,9 @@ namespace SRL
 
                     dataGridView1 = dgv;
                     if (controlFirst_ != null) controlFirst_.Click += btnFirst_Click;
-                    if(controlPrevious_!=null) controlPrevious_.Click += btnPrevious_Click;
-                   if(controlNext_ !=null) controlNext_.Click += btnNext_Click;
-                    if(controlLast_!=null) controlLast_.Click += btnLast_Click;
+                    if (controlPrevious_ != null) controlPrevious_.Click += btnPrevious_Click;
+                    if (controlNext_ != null) controlNext_.Click += btnNext_Click;
+                    if (controlLast_ != null) controlLast_.Click += btnLast_Click;
                     txtPaging = tbpaging_;
 
                 }
@@ -3452,7 +3525,7 @@ namespace SRL
                         dt.ImportRow(item);
                     }
 
-                    if(txtPaging !=null) txtPaging.Text = string.Format("Page {0} Of {1} Pages", pageNumber, (DataSource.Rows.Count / PageSize) + 1);
+                    if (txtPaging != null) txtPaging.Text = string.Format("Page {0} Of {1} Pages", pageNumber, (DataSource.Rows.Count / PageSize) + 1);
                     return dt;
                 }
                 public void DataBind(DataTable dataTable)
@@ -3715,25 +3788,6 @@ namespace SRL
                 public object Value { get; set; }
             }
 
-            /// <summary>
-            /// this method make app slow. use it in your app rather than reference from SRL.
-            /// in your enumerable_data_source first write Text then Value like : .Select(x=>new{Text="text" , Value=10})
-            /// </summary>
-            /// <typeparam name="ValueT"></typeparam>
-            /// <param name="cb"></param>
-            /// <param name="enumerable_data_source">enumerable_data_source is IEnumerable query of  new {string Text=?, object Value=? }</param>
-            /// <param name="empty_row_value">empty row is added to top</param>
-            public static void ComboBoxDataBind<ValueT>(ComboBox cb, IEnumerable<dynamic> enumerable_data_source, ValueT empty_row_value)
-            {
-                var data_source = enumerable_data_source.OrderBy(x => x.Text).ToList();
-                // cb.Items.Clear();
-                cb.DataSource = null;
-                cb.DisplayMember = "Text";
-                cb.ValueMember = "Value";
-                data_source.Insert(0, new { Text = "", Value = empty_row_value });
-                cb.DataSource = data_source;
-
-            }
 
             public static void Align(ComboBox cbKalaGroup)
             {
@@ -3770,6 +3824,28 @@ namespace SRL
                         e.Graphics.DrawString(cbx.Items[e.Index].ToString(), cbx.Font, brush, e.Bounds, sf);
                     }
                 }
+            }
+
+
+            /// <summary>
+            /// bind Array of {key(string), value (object)} list to combo box
+            /// </summary>
+            /// <param name="cb"></param>
+            /// <param name="array_list">IEnumeable().ToArray() of {key(string), value (object)} list</param>
+            public static void ComboBoxDataBind(ComboBox cb, object[] array_list)
+            {
+                //ComboBoxDataBind(cbGoods, goods.Select(x => new { key = x.name, value = x.id }).ToArray());
+                cb.DataSource = null;
+                cb.DisplayMember = "key";
+                cb.ValueMember = "value";
+                cb.DataSource = array_list;
+            }
+
+            public static void LoadComboWithDic(ComboBox cb, Dictionary<string, string> comboSource)
+            {
+                cb.DataSource = new BindingSource(comboSource, null);
+                cb.DisplayMember = "Value";
+                cb.ValueMember = "Key";
             }
         }
 
@@ -5139,7 +5215,7 @@ namespace SRL
                         binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
                         break;
                     case 2:
-                        binding.Security.Mode = BasicHttpSecurityMode.TransportWithMessageCredential; 
+                        binding.Security.Mode = BasicHttpSecurityMode.TransportWithMessageCredential;
                         break;
                 }
                 soap_client.Endpoint.Binding = binding;
@@ -5616,7 +5692,7 @@ namespace SRL
 
             return date_list;
         }
-        public static string EnglishToPersianDate(DateTime d, string format= "{0}/{1}/{2}")
+        public static string EnglishToPersianDate(DateTime d, string format = "{0}/{1}/{2}")
         {
             PersianCalendar pc = new PersianCalendar();
             string month = pc.GetMonth(d).ToString();
@@ -5782,7 +5858,23 @@ namespace SRL
 
         public static T StringToEnum<T>(string enum_str)
         {
-            return (T)Enum.Parse(typeof(T), enum_str, true);
+            var r = (T)Enum.Parse(typeof(T), enum_str, true);
+            return r;
+
+        }
+        public static bool StringToEnum<T>(string enum_str, out T enum_)
+        {
+            enum_ = default(T);
+            try
+            {
+                var r = (T)Enum.Parse(typeof(T), enum_str, true);
+                enum_ = r;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
 
         }
 
@@ -5814,7 +5906,7 @@ namespace SRL
         {
             return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(input);
         }
-        public static string ClassObjectToJson(object obj, Newtonsoft.Json.Formatting format = Newtonsoft.Json.Formatting.Indented)
+        public static string ClassObjectToJson(object obj, Newtonsoft.Json.Formatting format)
         {
             if (obj == null) return null;
             try
@@ -5834,6 +5926,11 @@ namespace SRL
 
 
         }
+        public static string ClassObjectToJson(object obj)
+        {
+            return ClassObjectToJson(obj, Newtonsoft.Json.Formatting.Indented);
+        }
+
         public static bool IsJson(string input)
         {
             input = input.Trim();
