@@ -27,9 +27,10 @@ namespace SRL
         WinLoginUser win_login_user { get; set; }
         long? edit_id;
         string permission_entity;
+        bool unique_user_name;
         Security.HashAlgoritmType password_type;
 
-        public WinLoginProfile(DbContext db_, string personnel_entity_, Color btn_color, WinLoginUser win_login_user_, ProfileMode profile_mode_, Security.HashAlgoritmType password_type_, long? edit_id_, string permission_entity_)
+        public WinLoginProfile(DbContext db_, string personnel_entity_, Color btn_color, WinLoginUser win_login_user_, ProfileMode profile_mode_, Security.HashAlgoritmType password_type_, long? edit_id_, string permission_entity_, bool uniqe_user_name_)
         {
             /* use:
             SRL.WinLoginProfile profile = new SRL.WinLoginProfile(Publics.dbGlobal, typeof(Personnel).Name, Publics.srl_session, Color.Blue,
@@ -46,6 +47,7 @@ namespace SRL
             win_login_user = win_login_user_;
             edit_id = edit_id_;
             password_type = password_type_;
+            unique_user_name = uniqe_user_name_;
 
             foreach (var item in SRL.ChildParent.GetAllChildrenControls(this).OfType<Button>())
             {
@@ -100,10 +102,10 @@ namespace SRL
             if (err != "") MessageBox.Show(err);
         }
 
-        public void AddNewUser()
+        public void AddNewUser(bool unique)
         {
             long? user_id_dup = null;
-            if (!CheckUsernameUnique(out user_id_dup)) return;
+            if (unique && !CheckUsernameUnique(out user_id_dup)) return;
 
             string sql = "insert into " + personnel_entity + "(name,family,username,password, role)" +
                      " values ('" + tbname.Text + "','" + tbFamily.Text + "','" + tbUsername.Text + "','" + SRL.Security.GetHashString(tbPass.Text, password_type) + "','" + cbRole.Text + "')";
@@ -192,8 +194,7 @@ namespace SRL
             res = srl_valid.CheckAllField(new List<Control> { tbname, tbFamily, tbUsername, tbPass, cbRole });
             if (res)
             {
-                AddNewUser();
-
+                AddNewUser(unique_user_name); 
             }
         }
 

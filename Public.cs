@@ -51,6 +51,7 @@ using System.ServiceModel.Security;
 using System.Drawing.Imaging;
 using System.ServiceProcess;
 using Newtonsoft.Json;
+using System.Net;
 
 namespace SRL
 {
@@ -1119,7 +1120,7 @@ namespace SRL
         public class EventLogs
         {
             static System.Diagnostics.EventLog eventLog1 = new System.Diagnostics.EventLog();
-            public static void WriteEventLog(string mes, EventLogEntryType type = EventLogEntryType.Information, string eventSourceName = "NwmsInterfaceErrorSource", string logName = "srNwmsInterface")
+            public static void WriteEventLog(string mes, int event_id, EventLogEntryType type = EventLogEntryType.Information, string eventSourceName = "NwmsInterfaceErrorSource", string logName = "srNwmsInterface")
             {
                 if (!System.Diagnostics.EventLog.SourceExists(eventSourceName))
                 {
@@ -1132,7 +1133,7 @@ namespace SRL
                 eventLog1.Source = eventSourceName;
                 eventLog1.Log = logName;
 
-                eventLog1.WriteEntry(mes, type);
+                eventLog1.WriteEntry(mes, type, event_id);
 
             }
 
@@ -1223,6 +1224,49 @@ namespace SRL
                     error += "\n";
                 }
                 return error;
+            }
+            public static string CreateHttpRequestExMes(HttpRequestException requestException)
+            {
+                string error = $"\n {requestException.GetType().Name}: {requestException.Message}";
+                if (requestException.InnerException is WebException && ((WebException)requestException.InnerException).Status == WebExceptionStatus.NameResolutionFailure)
+                {
+                    error += "\n" + $"{requestException.InnerException.GetType().Name}: {requestException.InnerException.Message}";
+                }
+                else if (requestException.InnerException != null)
+                {
+                    error += "\n InnerException " + CreateErrorMessage(requestException.InnerException);
+                }
+
+                return error;
+            }
+            public static string CreateAggregateExceptionMessage(AggregateException ae)
+            {
+                string error = "";
+                foreach (var ex in ae.InnerExceptions)
+                    error += "\n" + $"{ex.GetType().Name}: {ex.Message}";
+
+                return error;
+            }
+
+
+            public static string CreateExactErrorMessage(Exception ex)
+            {
+                var type_ = ex.GetType().Name;
+                switch (type_)
+                {
+                    case nameof(AggregateException):
+                        return CreateAggregateExceptionMessage((AggregateException)ex);
+                        break;
+                    case nameof(HttpRequestException):
+                        return CreateHttpRequestExMes((HttpRequestException)ex);
+                        break;
+                    case nameof(DbEntityValidationException):
+                        return CreateDbEntityExceptionMessage((DbEntityValidationException)ex);
+                        break;
+                    default:
+                        return CreateErrorMessage(ex);
+                        break;
+                }
             }
         }
         public class Captcha
@@ -1554,7 +1598,7 @@ namespace SRL
             public static BackgroundWorker RunAsyncByWorker(Action function, Action call_back, Action<Exception> error_call, ProgressBar progress_bar, ProgressBarStyle bar_style)
             {
                 BackgroundWorker bg = new BackgroundWorker();
-
+                var error_called = false;
                 if (progress_bar != null)
                 {
 
@@ -1576,20 +1620,29 @@ namespace SRL
                         progress_bar.Parent.Visible = false;
                     }
 
-                    if (e1.Error != null)
+                    if (error_called == false)
                     {
-                        if (error_call != null) error_call(e1.Error);
-                    }
+                        if (e1.Error != null)
+                        {
+                            if (error_call != null) error_call(e1.Error);
+                        }
 
-                    else
-                    {
-                        if (call_back != null) MethodInvoker(call_back);
+
+                        else
+                        {
+                            if (call_back != null) MethodInvoker(call_back);
+                        }
                     }
                 };
 
                 bg.DoWork += (s, e) =>
                 {
+
                     MethodInvoker(function);
+
+                    //   function();
+
+
                 };
 
                 bg.RunWorkerAsync();
@@ -1658,6 +1711,7 @@ namespace SRL
                 System.Threading.Thread th = new System.Threading.Thread(starter);
                 th.Start();
             }
+
             public static int CallTry(Action act, int counter, Action call_error = null)
             {
                 for (int i = 0; i < counter; i++)
@@ -1768,7 +1822,7 @@ namespace SRL
             DescriptionAttribute[] attributes = (DescriptionAttribute[])enum_value.GetType().GetField(enum_value.ToString()).GetCustomAttributes(typeof(DescriptionAttribute), false);
             return attributes.Length > 0 ? attributes[0].Description : string.Empty;
         }
-        public static IEnumerable<string> CheckValidationAttribute(object o, List<string> ignore_fields=null)
+        public static IEnumerable<string> CheckValidationAttribute(object o, List<string> ignore_fields = null)
         {
             List<string> errors = new List<string>();
             IEnumerable<PropertyDescriptor> prop_des = TypeDescriptor.GetProperties(o.GetType()).Cast<PropertyDescriptor>();
@@ -1784,7 +1838,7 @@ namespace SRL
                 }).ToList();
             foreach (var item in validations)
             {
-                if(ignore_fields!=null)
+                if (ignore_fields != null)
                 {
                     if (ignore_fields.Contains(item.Name)) continue;
                 }
@@ -4184,12 +4238,14 @@ namespace SRL
             {
                 this.Text = title;
 
-                this.StartPosition = FormStartPosition.CenterScreen;
 
                 var borders = GetFormBorderSizes(this);
                 if (back_color != null) this.BackColor = (Color)back_color;
                 this.Width = width_ + borders.right + borders.left;
                 this.Height = height_ + borders.top + borders.bottom;
+
+                this.StartPosition = FormStartPosition.CenterScreen;
+                this.CenterToScreen();
 
                 SRL.WinTools.AddChildToParentControlsAliagn(this, user_control);
             }
@@ -4957,6 +5013,7 @@ namespace SRL
 
             return "true";
 
+
         }
 
         public static void AddRowToDataTable(DataTable dt, Dictionary<string, object> item)
@@ -5101,6 +5158,27 @@ namespace SRL
         }
 
     }
+    public class Console_
+    {
+        public static string WritePassword()
+        {
+            string pass = "";
+            do
+            {
+                ConsoleKeyInfo key = Console.ReadKey(true);
+                if (key.Key != ConsoleKey.Enter)
+                {
+                    pass += key.KeyChar;
+                    Console.Write("*");
+                }
+                else
+                {
+                    break;
+                }
+            } while (true);
+            return pass;
+        }
+    }
     public class Web
     {
 
@@ -5230,6 +5308,30 @@ namespace SRL
             return client;
 
         }
+
+        public static void AddBasicAuthToRestHeader(HttpClient client, string keyvalue)
+        {
+            // string keyvalue = $"{""}:{""}";
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(keyvalue);
+            string basic = $"Basic {System.Convert.ToBase64String(plainTextBytes)}";
+            client.DefaultRequestHeaders.Add("Authorization", basic);
+        }
+        public static void AddToRestHeader(HttpClient client, string key, string value)
+        {
+            client.DefaultRequestHeaders.Add(key, value);
+        }
+        public static void AddAuthTokenToRestHeader(HttpClient client, string token)
+        {
+
+            AddToRestHeader(client, "AuthToken", token);
+
+        }
+        public static void AddHostToRestHeader(HttpClient client, string host)
+        {
+
+            AddToRestHeader(client, "Host", host);
+
+        }
     }
     public class Convertor
     {
@@ -5301,17 +5403,9 @@ namespace SRL
 
             public static DataTable CopyToDataTable<T>(IEnumerable<T> source)
             {
-                try
-                {
 
-                    return new ObjectShredder<T>().Shred(source, null, null);
 
-                }
-                catch (Exception es)
-                {
-                    MessageBox.Show(es.Message);
-                    return null;
-                }
+                return new ObjectShredder<T>().Shred(source, null, null);
             }
 
             public static DataTable CopyToDataTable<T>(IEnumerable<T> source,
@@ -5480,7 +5574,7 @@ namespace SRL
                             _ordinalMap.Add(f.Name, dc.Ordinal);
                         }
                     }
-                    foreach (PropertyInfo p in type.GetProperties())
+                    foreach (PropertyInfo p in type?.GetProperties())
                     {
 
                         if (!_ordinalMap.ContainsKey(p.Name))
@@ -5990,6 +6084,25 @@ namespace SRL
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, serializer);
             Newtonsoft.Json.Linq.JObject conv = Newtonsoft.Json.Linq.JObject.Parse(json);
             return conv;
+        }
+
+        public static string EnumToJson(Type enum_type)
+        {
+            //enum_type=typeof(EnumTypeName)
+
+            var ret = "{";
+            int first = 0;
+            foreach (var val in Enum.GetValues(enum_type))
+            {
+                if (first != 0) ret += ",";
+                var name = Enum.GetName(enum_type, val);
+
+                ret += $"\n \"{ name}\" : \"{((int)val).ToString()}\"";
+                first++;
+            }
+            ret += " \n }";
+            return ret;
+
         }
 
     }
@@ -6942,7 +7055,10 @@ namespace SRL
             autonumberlong = 5,
 
             [Description("Date/Time")]
-            datetime = 6
+            datetime = 6,
+
+            [Description("YESNO")]
+            YESNO = 7
         }
 
         /// <summary>
@@ -6969,12 +7085,17 @@ namespace SRL
                 string header_checked = SRL.KeyValue.CheckDataTableHeaders(table, main_headers, check_type);
                 if (header_checked == "true")
                 {
-                    dgv.DataSource = table;
+                    if (dgv != null)
+                    {
+                        dgv.DataSource = table;
 
-                    if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+                        if (lblCount != null) lblCount.Text = dgv.RowCount.ToString();
+                    }
                 }
-
-                else MessageBox.Show(header_checked);
+                else
+                {
+                    MessageBox.Show(header_checked);
+                }
                 ofDialog.FileName = "";
                 return table;
 
@@ -6986,6 +7107,27 @@ namespace SRL
                 MessageBox.Show("LoadDGVFromAccess " + ex.Message);
                 throw;
             }
+        }
+        public static DataTable GetDataTableFromAccess(OpenFileDialog ofDialog, string[] main_headers, SRL.KeyValue.DataTableHeaderCheckType check_type, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
+        {
+            if (!System.IO.File.Exists(ofDialog.FileName))
+            {
+                ofDialog.Filter = "Access files|*.accdb";
+                if (ofDialog.ShowDialog() != DialogResult.OK || ofDialog.FileName == "") return null;
+            }
+            string file_full_path = ofDialog.FileName;
+            //            ofDialog.FileName = "";
+            DataTable table = GetDataTableFromAccess(file_full_path, table_name);
+            if (table == null) return null;
+
+            string header_checked = SRL.KeyValue.CheckDataTableHeaders(table, main_headers, check_type);
+            if (header_checked != "true")
+            {
+                return null;
+            }
+            return table;
+
+
         }
 
         public static DataTable GetDataTableFromAccess(string file_full_path, string table_name, string provider = "Microsoft.ACE.OLEDB.12.0")
@@ -7037,7 +7179,7 @@ namespace SRL
             {
                 string type = SRL.ClassManagement.GetEnumDescription<AccessDataType>(type_enum);
                 string query = "alter table " + table_name + " add " + column_name + " " + type;
-                return ExecuteToAccess(query, file_full_path, provider);
+                return ExecuteToAccess(query, file_full_path, null, provider);
             }
             else return -1;
 
@@ -7059,13 +7201,18 @@ namespace SRL
             return modal;
         }
 
-        public static int ExecuteToAccess(string query, string file_full_path, string provider = "Microsoft.ACE.OLEDB.12.0")
+        public static int ExecuteToAccess(string query, string file_full_path, OleDbParameter[] parameters = null, string provider = "Microsoft.ACE.OLEDB.12.0")
         {
+            //parameters = new OleDbParameter[]{ new OleDbParameter("@title", "")};
             string strProvider = @"Provider = " + provider + "; Data Source = " + file_full_path;
 
             using (OleDbConnection con = new OleDbConnection(strProvider))
             {
                 OleDbCommand cmd = new OleDbCommand(query, con);
+                if (parameters != null)
+                {
+                    cmd.Parameters.AddRange(parameters);
+                }
                 con.Open();
                 cmd.CommandType = CommandType.Text;
                 int res = cmd.ExecuteNonQuery();
@@ -7140,6 +7287,141 @@ namespace SRL
             SRL.AccessManagement.ExecuteToAccess($"CREATE INDEX {index_name} ON {table_name}({column_name})", file_full_path);
 
 
+        }
+
+        public static void SendSmsFromAccess(string access_file_name, string table_name, int paralel, bool text_from_file, string static_content, Action<Exception> error_call, Action final_call_back, string api_key, Label progress_label)
+        {
+            SRL.AccessManagement.AddColumnToAccess("status", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+            SRL.AccessManagement.AddColumnToAccess("error", table_name, SRL.AccessManagement.AccessDataType.nvarcharmax, access_file_name);
+            SRL.AccessManagement.ExecuteToAccess("update " + table_name + " set mobile=Trim(mobile)", access_file_name);
+            SRL.AccessManagement.ExecuteToAccess($"update {table_name} set status='OK', error='mobile is null'  where mobile is null", access_file_name);
+            SRL.AccessManagement.ExecuteToAccess($"update {table_name} set status='OK', error='mobile is null'  where mobile =''", access_file_name);
+
+            DataTable dt = SRL.AccessManagement.GetDataTableFromAccess(access_file_name, table_name);
+            var list_ = SRL.Convertor.ConvertDataTableToList<SendSms>(dt);
+            var list = list_.Where(x => x.status == "" || x.status == null || x.status != "OK").ToList();
+
+            SRL.ActionManagement.MethodCall.Parallel.ParallelCall<SendSms>(list, paralel.ToString(),
+                ParallelAccessSendSms, null, error_call, final_call_back, progress_label, table_name, access_file_name, text_from_file, static_content, api_key);
+
+        }
+
+        private static void ParallelAccessSendSms(List<SendSms> list, BackgroundWorker worker, params object[] args)
+        {
+            string table_name = args[0].ToString();
+            string access_file_name = args[1].ToString();
+            bool text_from_file = (bool)args[2];
+            string static_content = args[3].ToString();
+            string api_key = args[4].ToString();
+
+            if (text_from_file)
+            {
+                if (string.IsNullOrWhiteSpace(list[0]?.text)) return;
+
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(static_content)) return;
+            }
+
+            string method = $"{api_key}/admin/ext-service/send_sms";
+
+            System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+
+            client.BaseAddress = new Uri("https://app.nwms.ir/v2/b2b-api/");
+
+            foreach (var item in list)
+            {
+                if (worker.CancellationPending)
+                {
+                    return;
+                }
+
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                string mobile = item.mobile;
+                if (mobile.Length == 10) mobile = "0" + mobile;
+                input["cell_no"] = mobile;
+                input["content"] = text_from_file ? item.text : static_content;
+                System.Net.Http.HttpResponseMessage httpResponse = client.PostAsJsonAsync(method, input).Result;
+
+                string content = httpResponse.Content.ReadAsStringAsync().Result;
+                worker.ReportProgress(1);
+                string query = "";
+                if (httpResponse.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    query = $"update {table_name} set status='{httpResponse.StatusCode.ToString()}'  where ID={item.ID}";
+
+                }
+                else
+                {
+                    query = $"update {table_name} set status='{httpResponse.StatusCode.ToString()}', error=@error  where ID={item.ID}";
+                }
+                var parameters = new OleDbParameter[] { new OleDbParameter("@error", content) };
+
+                SRL.AccessManagement.ExecuteToAccess(query, access_file_name, parameters);
+
+            }
+        }
+
+        private static void ParallelAccessSendSmsCix(List<SendSms> list, BackgroundWorker worker, params object[] args)
+        {
+            string table_name = args[0].ToString();
+            string access_file_name = args[1].ToString();
+            bool text_from_file = (bool)args[2];
+            string static_content = args[3].ToString();
+            string api_key = args[4].ToString();
+
+            if (text_from_file)
+            {
+                if (string.IsNullOrWhiteSpace(list[0]?.text)) return;
+
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(static_content)) return;
+            }
+
+            // Projects.Nwms.SendSms("utcms_admin", "jhdfghfghjh234#$df",)
+
+            foreach (var item in list)
+            {
+                if (worker.CancellationPending)
+                {
+                    return;
+                }
+
+                Dictionary<string, object> input = new Dictionary<string, object>();
+                string mobile = item.mobile;
+                if (mobile.Length == 10) mobile = "0" + mobile;
+                input["cell_no"] = mobile;
+                input["content"] = text_from_file ? item.text : static_content;
+                System.Net.Http.HttpResponseMessage httpResponse = new HttpResponseMessage();// client.PostAsJsonAsync(method, input).Result;
+
+                string content = "";//= httpResponse.Content.ReadAsStringAsync().Result;
+                worker.ReportProgress(1);
+                string query = "";
+                if (httpResponse.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    query = $"update {table_name} set status='{httpResponse.StatusCode.ToString()}'  where ID={item.ID}";
+
+                }
+                else
+                {
+                    query = $"update {table_name} set status='{httpResponse.StatusCode.ToString()}', error=@error  where ID={item.ID}";
+                }
+                var parameters = new OleDbParameter[] { new OleDbParameter("@error", content) };
+
+                SRL.AccessManagement.ExecuteToAccess(query, access_file_name, parameters);
+
+            }
+        }
+
+        public class SendSms
+        {
+            public long ID { get; set; }
+            public string mobile { get; set; }
+            public string text { get; set; }
+            public string status { get; set; }
         }
 
         public class AccessSchema
@@ -7350,14 +7632,6 @@ namespace SRL
             btn_loader = btnLoader;
             btn_loader.Tag = btn_loader.Text;
         }
-
-        //public ControlLoad(Control controlToLoad)
-        //{
-        //    control_to_load = controlToLoad;
-        //    control_to_load.Tag = control_to_load.Text;
-        //}
-
-
 
         public void ButtonLoader(int all)
         {
@@ -7869,7 +8143,16 @@ namespace SRL
             }
 
         }
+        public static bool CreateFileIfNotExists(string file_pat)
+        {
+            if (!System.IO.File.Exists(file_pat))
+            {
+                System.IO.File.Create(file_pat).Close();
+                return true;
+            }
+            else return false;
 
+        }
         public static void CreateFileOverwrite(string file_path, string text, bool launch)
         {
             // var file_path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "json.txt");
@@ -7879,6 +8162,13 @@ namespace SRL
             if (launch)
                 System.Diagnostics.Process.Start(file_path);
 
+        }
+
+        public static string GetFilePathInCurrent(string fileName)
+        {
+            string path = SRL.FileManagement.GetCurrentDirectory();
+            path = Path.Combine(path, fileName);
+            return path;
         }
     }
 
